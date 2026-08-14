@@ -1,0 +1,21 @@
+// Shared palette with the portal (see ../stxt-cms/scss/_settings.scss and _panels.scss).
+// Keep these values in sync by hand: the playground and the portal must not drift apart.
+
+$color1: #0a6fae;
+$color2: #0a6fae;
+$color3: #e8f4fa;
+$color4: #f7fcff;
+$grey: #f5f5f5;
+$black: #444;
+$alert: #fae8e8;
+
+// STXT syntax colours, used by the editor and by any highlighted snippet.
+$stxt-node: #0d5cb6; // inline node names
+$stxt-block: #00b2f0; // '>>' text-block header
+$stxt-namespace: #0a9396; // namespace / annotation in name position
+$stxt-value: #d05a80; // value / literal string
+$stxt-muted: #6a737d; // punctuation, so it recedes
+$stxt-comment: #008000; // comments
+
+$font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+$font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;

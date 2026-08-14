@@ -1,0 +1,53 @@
+{
+  "name": "@stxt-lang/play",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Web playground for STXT, an indentation-based structured-text format.",
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('web/js', { recursive: true, force: true }); require('node:fs').rmSync('web/css', { recursive: true, force: true })\"",
+    "build": "npm run build:ts && npm run build:css",
+    "build:ts": "esbuild src/index.ts --bundle --format=iife --target=es2021 --sourcemap --outfile=web/js/play.js",
+    "build:css": "sass css/site.scss web/css/site.css --style=compressed",
+    "watch": "npm run watch:css & npm run watch:ts",
+    "watch:ts": "npm run build:ts -- --watch",
+    "watch:css": "sass --watch css/site.scss:web/css/site.css",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "prebuild": "npm run typecheck && npm run lint",
+    "start": "npm run build && http-server web -p ${PORT:-8080} -c-1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stxt-lang/stxt-play.git"
+  },
+  "keywords": [
+    "stxt",
+    "semantic text",
+    "playground",
+    "editor",
+    "parser",
+    "schema",
+    "validation",
+    "structured text",
+    "text format"
+  ],
+  "author": "Joan Costa Mombiela <joan.costa.mombiela@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://stxt.dev",
+  "bugs": {
+    "url": "https://github.com/stxt-lang/stxt-play/issues"
+  },
+  "dependencies": {
+    "@stxt-lang/core": "^0.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "22.x",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "esbuild": "^0.25.0",
+    "eslint": "^8.57.1",
+    "http-server": "^14.1.1",
+    "sass": "^1.80.0",
+    "typescript": "^5.5.4"
+  }
+}

@@ -4,8 +4,8 @@ A web playground for [STXT](https://stxt.dev), the human-first hierarchical text
 in the browser, with its grammar next to it, and see the result as you type. Think *JSON Editor
 Online*, but for STXT.
 
-> **Status: intent, not implementation.** This repository is empty. What follows is what the
-> playground is meant to be, so that the goal is written down before the first line of code.
+> **Status: scaffolding.** The stack is in place and `web/index.html` says hello, but none of the
+> playground itself is built yet. What follows is what it is meant to become.
 
 ## What it should do
 
@@ -27,6 +27,47 @@ The editor is not meant to be single-use. Two follow-ups shape the design:
   `stxt.dev` itself — and any other site — can embed them.
 - **A WYSIWYG editor** for content management systems: editing STXT documents without seeing the
   syntax.
+
+## Stack
+
+A **fully static site**: no server, no server-side rendering, no API. Everything — parsing,
+validation, highlighting — runs in the browser. Cloudflare serves the `web/` directory straight
+from the repository, with no build step of its own.
+
+| Piece | Choice |
+|---|---|
+| Language | TypeScript, `strict` |
+| Bundler | [esbuild](https://esbuild.github.io/) — one dependency, no config file |
+| Styles | SCSS compiled with `sass` |
+| Local server | `http-server`, caching disabled |
+| Parser | `@stxt-lang/core`, bundled into the page |
+
+```
+css/          SCSS sources         → compiled into web/css/
+src/          TypeScript sources   → bundled into web/js/
+web/          exactly what gets served, committed as is
+compile_css.sh
+start_server.sh
+```
+
+**`web/` is committed, build output included.** Since Cloudflare publishes that directory as it
+stands, `npm run build` has to be run — and its result committed — before anything reaches the
+site. Never hand-edit `web/css/` or `web/js/`: they are overwritten on every build. The sources are
+`css/` and `src/`.
+
+## Commands
+
+```bash
+npm install
+npm run build        # typecheck + lint, then bundle TS and compile SCSS into web/
+npm start            # build, then serve web/ on http://localhost:8080 (PORT overrides)
+npm run watch        # rebuild TS and SCSS on change
+npm run typecheck    # tsc --noEmit
+npm run lint         # eslint src
+```
+
+`./start_server.sh` and `./compile_css.sh` are the same thing from a file manager: they reopen
+themselves in a terminal when double-clicked, as the other repositories' scripts do.
 
 ## Design constraints
 

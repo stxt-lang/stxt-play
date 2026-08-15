@@ -52,6 +52,14 @@ export function isGrammarRoot(node: Node): boolean {
 }
 
 /**
+ * @param node a grammar root (see {@link isGrammarRoot}).
+ * @returns which kind of grammar the root defines.
+ */
+export function grammarKindOf(node: Node): "schema" | "template" {
+	return node.getNamespace() === TEMPLATE_NAMESPACE ? "template" : "schema";
+}
+
+/**
  * The {@link SchemaProvider} of the playground workspace.
  *
  * STXT-DISCOVERY-SPEC resolves grammars through a chain of directories, but the browser has no

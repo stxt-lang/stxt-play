@@ -62,10 +62,23 @@ Chrome headless: coloreado, gutter de errores, panel y contador.
 
 ### Fase 3 — Workspace multi-documento
 
-- [ ] Lista lateral: crear, renombrar, borrar, seleccionar. Todo es un documento.
-- [ ] Esquemas y plantillas detectados por su namespace `@stxt.*` al parsear; se pintan distintos
+- [x] Lista lateral: crear, renombrar, borrar, seleccionar. Todo es un documento.
+- [x] Esquemas y plantillas detectados por su namespace `@stxt.*` al parsear; se pintan distintos
       y los identifica su namespace, no un título.
-- [ ] Modelo de workspace en memoria + persistencia en `localStorage`.
+- [x] Modelo de workspace en memoria + persistencia en `localStorage`.
+
+**Hecha el 2026-08-15.** Quedó así: `src/workspace/` (`Workspace`, el modelo en memoria —lista
+ordenada de documentos, activo, eventos— y `storage.ts`, la persistencia versionada en un
+`localStorage` inyectable; ambos sin DOM y con su suite en mocha), `src/ui/documentList.ts` (la
+lista lateral: clic selecciona, `+` crea, doble clic o F2 renombra en línea, `×` o Supr borra con
+confirmación; contadores de errores y avisos por documento) y `src/seed.ts` (el workspace inicial:
+una receta y la plantilla que la valida). El editor mantiene **un `EditorState` por documento**
+(`createStxtEditor` devuelve la vista y la fábrica de estados), así que cambiar de documento
+conserva el historial de undo y la selección de cada uno. Decisiones tomadas por el camino:
+las gramáticas **no se renombran** (su namespace es su nombre; el título queda como reserva si el
+namespace aún está en blanco); borrar el último documento crea un `Untitled` nuevo, para que el
+editor nunca se quede vacío; la validación cruzada ya funciona (el analizador la traía de la fase
+1) aunque su tratamiento en la interfaz sigue siendo de la fase 4.
 
 ### Fase 4 — Validación cruzada y cabecera
 

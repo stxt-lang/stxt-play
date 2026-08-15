@@ -1,6 +1,7 @@
 // Entry point of the playground stylesheet. One partial per area, as in ../stxt-cms/scss.
 
 @use "layout";
+@use "sidebar";
 @use "editor";
 
 *,

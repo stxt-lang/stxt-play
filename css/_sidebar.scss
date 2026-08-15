@@ -1,0 +1,194 @@
+@use "settings" as *;
+
+// The document list of the workspace. Everything is a document, but grammars (schemas and
+// templates) look different: a letter badge in the namespace colour, and a monospace label,
+// because what identifies them is their namespace, not a title.
+
+// Severity colours, the same as the problems panel in _layout.scss
+$error: #c0392b;
+$warning: #9a6b00;
+
+.sidebar {
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	width: 15rem;
+	border-right: 1px solid $color3;
+	background: $color4;
+
+	.sidebar-header {
+		display: flex;
+		align-items: center;
+		padding: 0.35rem 0.6rem 0.35rem 1rem;
+		border-bottom: 1px solid $grey;
+		color: $stxt-muted;
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.sidebar-title {
+		flex: 1;
+	}
+
+	.sidebar-button {
+		width: 1.5rem;
+		height: 1.5rem;
+		padding: 0;
+		border: 1px solid transparent;
+		border-radius: 3px;
+		background: transparent;
+		color: $color1;
+		font-size: 1.1rem;
+		line-height: 1;
+		cursor: pointer;
+
+		&:hover,
+		&:focus-visible {
+			border-color: $color1;
+			background: #fff;
+			outline: none;
+		}
+	}
+
+	.sidebar-footer {
+		padding: 0.35rem 1rem;
+		border-top: 1px solid $grey;
+		color: $stxt-muted;
+		font-size: 0.7rem;
+	}
+}
+
+.doc-list {
+	flex: 1;
+	margin: 0;
+	padding: 0.25rem 0;
+	overflow: auto;
+	list-style: none;
+	font-size: 0.85rem;
+}
+
+.doc {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.3rem 0.5rem 0.3rem 0.75rem;
+	border-left: 3px solid transparent;
+	cursor: pointer;
+
+	&:hover {
+		background: $grey;
+	}
+
+	&:focus-visible {
+		outline: 1px solid $color1;
+		outline-offset: -1px;
+	}
+
+	&.doc-active {
+		border-left-color: $color1;
+		background: $color3;
+	}
+
+	.doc-kind {
+		flex: none;
+		width: 1.2rem;
+		height: 1.2rem;
+		border-radius: 3px;
+		color: $stxt-muted;
+		font-family: $font-mono;
+		font-size: 0.7rem;
+		font-weight: 700;
+		line-height: 1.2rem;
+		text-align: center;
+	}
+
+	.doc-label {
+		flex: 1;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+
+	.doc-problems {
+		display: flex;
+		flex: none;
+		gap: 0.25rem;
+	}
+
+	.doc-count {
+		min-width: 1.1rem;
+		padding: 0 0.3rem;
+		border-radius: 999px;
+		color: #fff;
+		font-size: 0.65rem;
+		font-weight: 700;
+		line-height: 1.1rem;
+		text-align: center;
+	}
+
+	.doc-count-error {
+		background: $error;
+	}
+
+	.doc-count-warning {
+		background: $warning;
+	}
+
+	.doc-delete {
+		flex: none;
+		width: 1.2rem;
+		height: 1.2rem;
+		padding: 0;
+		border: 0;
+		border-radius: 3px;
+		background: transparent;
+		color: $stxt-muted;
+		font-size: 1rem;
+		line-height: 1;
+		cursor: pointer;
+		visibility: hidden;
+
+		&:hover {
+			background: #fff;
+			color: $error;
+		}
+	}
+
+	&:hover .doc-delete,
+	&:focus-within .doc-delete,
+	&.doc-active .doc-delete {
+		visibility: visible;
+	}
+
+	// Grammars: badge in the namespace colour, label in monospace
+	&.doc-schema,
+	&.doc-template {
+		.doc-kind {
+			background: $stxt-namespace;
+			color: #fff;
+		}
+
+		.doc-label {
+			font-family: $font-mono;
+			font-size: 0.8rem;
+			color: $stxt-namespace;
+		}
+	}
+
+	.doc-rename {
+		flex: 1;
+		min-width: 0;
+		padding: 0.1rem 0.3rem;
+		border: 1px solid $color1;
+		border-radius: 3px;
+		font: inherit;
+		color: $black;
+		background: #fff;
+
+		&:focus {
+			outline: none;
+		}
+	}
+}

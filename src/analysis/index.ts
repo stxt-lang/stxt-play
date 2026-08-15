@@ -3,10 +3,11 @@
  * highlighting library consume. Editor-agnostic on purpose — no DOM, no CodeMirror.
  */
 
-export { Analyzer, DocumentAnalysis } from "./Analyzer";
+export { Analyzer, DocumentAnalysis, GrammarInfo, GrammarKind } from "./Analyzer";
 export { Diagnostic, DiagnosticSeverity, DiagnosticSource } from "./Diagnostic";
 export {
 	DUPLICATE_NAMESPACE,
+	grammarKindOf,
 	GrammarIssue,
 	GrammarRegistry,
 	GrammarSource,

@@ -10,10 +10,20 @@
 <body>
 	<header class="topbar">
 		<span class="brand">STXT Playground</span>
-		<span class="doc-title">Sample document</span>
+		<span id="doc-title" class="doc-title"></span>
 		<span class="topbar-note">everything runs in your browser</span>
 	</header>
-	<main id="editor" class="editor" aria-label="STXT editor"></main>
+	<div class="workbench">
+		<aside class="sidebar" aria-label="Documents">
+			<header class="sidebar-header">
+				<span class="sidebar-title">Documents</span>
+				<button id="doc-new" type="button" class="sidebar-button" title="New document" aria-label="New document">+</button>
+			</header>
+			<ul id="doc-list" class="doc-list" role="listbox" aria-label="Workspace documents"></ul>
+			<footer class="sidebar-footer">Saved in this browser</footer>
+		</aside>
+		<main id="editor" class="editor" aria-label="STXT editor"></main>
+	</div>
 	<section class="problems" aria-label="Problems">
 		<header class="problems-header">Problems <span id="problems-count" class="problems-count">0</span></header>
 		<ul id="problems-list" class="problems-list"></ul>

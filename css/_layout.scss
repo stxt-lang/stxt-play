@@ -1,7 +1,7 @@
 @use "settings" as *;
 
-// Layout of the playground page: top bar, editor area and problems panel.
-// Phase 3 adds the document list on the left.
+// Layout of the playground page: top bar, workbench (sidebar + editor) and problems panel.
+// The sidebar itself is styled in _sidebar.scss.
 
 // Severity colours of the problems panel (playground-only, not part of the shared palette)
 $error: #c0392b;
@@ -46,9 +46,15 @@ body {
 	}
 }
 
-.editor {
+.workbench {
+	display: flex;
 	flex: 1;
 	min-height: 0; // let the editor scroll instead of growing the page
+}
+
+.editor {
+	flex: 1;
+	min-width: 0;
 	background: #fff;
 }
 

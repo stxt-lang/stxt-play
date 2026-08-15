@@ -6,12 +6,25 @@ import {
 	StringUtils,
 } from "@stxt-lang/core";
 import { Diagnostic } from "./Diagnostic";
-import { GrammarRegistry, isGrammarRoot } from "./GrammarRegistry";
+import { GrammarRegistry, grammarKindOf, isGrammarRoot } from "./GrammarRegistry";
 import { StxtToken } from "./Tokens";
 import { TokenGeneratorObserver } from "./TokenGeneratorObserver";
 
 /** Code SchemaValidator emits when it cannot resolve the schema of a namespace. */
 const SCHEMA_NOT_FOUND = "SCHEMA_NOT_FOUND";
+
+/** Kind of grammar a root node defines. */
+export type GrammarKind = "schema" | "template";
+
+/** A grammar (schema or template) defined by a root node of a document. */
+export interface GrammarInfo {
+	/** Namespace the grammar defines: its declared value, trimmed and lowercased. */
+	namespace: string;
+	/** Whether the root is a `@stxt.schema` or a `@stxt.template`. */
+	kind: GrammarKind;
+	/** Line of the root node, 0-based. */
+	line: number;
+}
 
 /** Everything the analysis knows about one document. All line numbers are 0-based. */
 export interface DocumentAnalysis {
@@ -26,11 +39,11 @@ export interface DocumentAnalysis {
 	/** For each text line of a block, the BLOCK node it belongs to. */
 	textLineByLineNumber: Map<number, Node>;
 	/**
-	 * Namespaces of the grammars this document defines (lowercased declared values), in document
-	 * order. Empty for plain documents; non-empty marks the document as a schema/template in the
-	 * document list.
+	 * Grammars this document defines, in document order. Empty for plain documents; non-empty
+	 * marks the document as a schema/template in the document list, where its namespace — not a
+	 * title — identifies it.
 	 */
-	grammarNamespaces: string[];
+	grammars: GrammarInfo[];
 	/** Problems of the document, ordered by line. */
 	diagnostics: Diagnostic[];
 }
@@ -220,7 +233,11 @@ export class Analyzer {
 			nodeByLine: parsed.nodeByLine,
 			commentLines: parsed.commentLines,
 			textLineByLineNumber: parsed.textLineByLineNumber,
-			grammarNamespaces: parsed.grammarRoots.map((root) => StringUtils.lowerCase(root.getValue().trim())),
+			grammars: parsed.grammarRoots.map((root) => ({
+				namespace: StringUtils.lowerCase(root.getValue().trim()),
+				kind: grammarKindOf(root),
+				line: root.getLine() - 1,
+			})),
 			diagnostics,
 		};
 	}

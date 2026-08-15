@@ -4,8 +4,9 @@ A web playground for [STXT](https://stxt.dev), the human-first hierarchical text
 in the browser, with its grammar next to it, and see errors as you type. Think VS Code, simplified —
 a real editor, not a form or a viewer.
 
-> **Status: scaffolding.** The stack is in place and `web/index.html` says hello, but none of the
-> playground itself is built yet. What follows is what it is meant to become.
+> **Status: in progress.** The analysis core, the single-document editor and the multi-document
+> workspace are done (phases 1–3 of `ROADMAP.md`); the header switches, autocompletion, the seed
+> content and publication are still to come.
 
 ## What it should do
 
@@ -35,13 +36,17 @@ a real editor, not a form or a viewer.
   different**, because they play a different role: they feed validation and resolution.
 - **Documents may carry a title; schemas and templates may not** — those are identified by their
   **namespace**, which is already their name.
-- **Where errors go is undecided**: right-hand side or footer.
+- **Errors go in a panel at the bottom**, like the *Problems* panel of VS Code, which is the
+  reference; a right-hand panel would compete with the editor for width.
 - The header carries the active document's title and **two switches**: spaces/tabs, and schema
   validation on/off.
 
-Nothing here is settled. The playground is **not** a JSON converter: showing the canonical
-STXT-TREE-SPEC tree was on the list and was dropped — it may come back as a secondary view, but it
-is not what the product is about.
+The playground is **not** a JSON converter: showing the canonical STXT-TREE-SPEC tree was on the
+list and was dropped — it may come back as a secondary view, but it is not what the product is
+about.
+
+The workspace lives in the browser: it is saved to `localStorage` as you type and comes back on
+the next visit. Nothing leaves your machine.
 
 ## Beyond the playground
 
@@ -62,14 +67,20 @@ repository, with no build step in between.
 |---|---|
 | Language | TypeScript, `strict` |
 | Bundler | [esbuild](https://esbuild.github.io/) — one dependency, no config file |
+| Editor | [CodeMirror 6](https://codemirror.net/) — highlighting by decorations fed by the parser, no Lezer grammar |
 | Styles | SCSS compiled with `sass` |
 | Local server | `http-server`, caching disabled |
 | Parser | `@stxt-lang/core`, bundled into the page |
 
 ```
-css/          SCSS sources         → compiled into web/css/
-src/          TypeScript sources   → bundled into web/js/
-web/          exactly what gets served, committed as is
+css/            SCSS sources         → compiled into web/css/
+src/            TypeScript sources   → bundled into web/js/
+src/analysis/   the analysis core: tokens, diagnostics, workspace grammars (no DOM, no editor)
+src/workspace/  the workspace model and its localStorage persistence (no DOM either)
+src/editor/     the CodeMirror layer: decorations from tokens, editor setup
+src/ui/         the document list and the problems panel
+test/           mocha tests of the analysis core and the workspace
+web/            exactly what gets served, committed as is
 compile_css.sh
 start_server.sh
 ```
@@ -83,10 +94,11 @@ start_server.sh
 ```bash
 npm install
 npm run build        # typecheck + lint, then bundle TS and compile SCSS into web/
+npm test             # mocha tests of the analysis core and the workspace
 npm start            # build, then serve web/ on http://localhost:8080 (PORT overrides)
 npm run watch        # rebuild TS and SCSS on change
 npm run typecheck    # tsc --noEmit
-npm run lint         # eslint src
+npm run lint         # eslint src test
 ```
 
 `./start_server.sh` and `./compile_css.sh` are the same thing from a file manager: they reopen
@@ -101,7 +113,10 @@ themselves in a terminal when double-clicked, as the other repositories' scripts
   [VS Code extension](https://github.com/stxt-lang/stxt-vscode) — one definition of the language,
   the core one.
 - Schema discovery (STXT-DISCOVERY-SPEC) assumes a filesystem. The browser has no directory chain,
-  so how a grammar binds to a document on the web is still an open question.
+  so here **the workspace is the discovery mechanism**: every grammar in the document list feeds a
+  single provider, and a document is validated against the grammar of its namespace. Two grammars
+  defining the same namespace are an error, and that namespace has no active definition — the
+  same rule DISCOVERY applies to two definitions at the same level.
 
 ## License
 

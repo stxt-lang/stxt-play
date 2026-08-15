@@ -47,7 +47,7 @@ describe("Analyzer: parsing products", () => {
 		assert.ok(typesAt(2).includes("macro"), "the '>>' head of line 2 is a macro token");
 
 		assert.strictEqual(analysis.diagnostics.length, 0, "a clean document has no diagnostics");
-		assert.deepStrictEqual(analysis.grammarNamespaces, [], "a plain document defines no grammar");
+		assert.deepStrictEqual(analysis.grammars, [], "a plain document defines no grammar");
 	});
 
 	it("reports syntax errors with their stable code and 0-based line", () => {
@@ -136,8 +136,9 @@ describe("Analyzer: grammars in the workspace", () => {
 		analyzer.setDocument("schema", DEMO_SCHEMA);
 		analyzer.setDocument("doc", VALID_DOC);
 
-		assert.deepStrictEqual(analyzer.getAnalysis("schema")?.grammarNamespaces, ["com.example.demo"]);
-		assert.deepStrictEqual(analyzer.getAnalysis("doc")?.grammarNamespaces, []);
+		assert.deepStrictEqual(analyzer.getAnalysis("schema")?.grammars,
+			[{ namespace: "com.example.demo", kind: "schema", line: 0 }]);
+		assert.deepStrictEqual(analyzer.getAnalysis("doc")?.grammars, []);
 	});
 
 	it("flags duplicate namespaces on every definer and leaves the namespace undefined", () => {

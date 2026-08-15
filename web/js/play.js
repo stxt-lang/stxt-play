@@ -17110,6 +17110,9 @@
     const namespace = node.getNamespace();
     return namespace === SCHEMA_NAMESPACE || namespace === TEMPLATE_NAMESPACE;
   }
+  function grammarKindOf(node) {
+    return node.getNamespace() === TEMPLATE_NAMESPACE ? "template" : "schema";
+  }
   var GrammarRegistry = class _GrammarRegistry {
     constructor() {
       /** Empty unified provider, used only for the meta-schemas it serves built-in. */
@@ -17476,7 +17479,11 @@
         nodeByLine: parsed.nodeByLine,
         commentLines: parsed.commentLines,
         textLineByLineNumber: parsed.textLineByLineNumber,
-        grammarNamespaces: parsed.grammarRoots.map((root) => import_core3.StringUtils.lowerCase(root.getValue().trim())),
+        grammars: parsed.grammarRoots.map((root) => ({
+          namespace: import_core3.StringUtils.lowerCase(root.getValue().trim()),
+          kind: grammarKindOf(root),
+          line: root.getLine() - 1
+        })),
         diagnostics
       };
     }
@@ -21895,33 +21902,216 @@
   ].concat(standardKeymap);
 
   // src/editor/stxtEditor.ts
-  function createStxtEditor(config) {
-    return new EditorView({
-      parent: config.parent,
-      state: EditorState.create({
-        doc: config.doc,
-        extensions: [
-          lineNumbers(),
-          highlightActiveLineGutter(),
-          highlightActiveLine(),
-          history(),
-          indentUnit.of("	"),
-          EditorState.tabSize.of(4),
-          keymap.of([
-            { key: "Tab", run: insertTab, shift: indentLess },
-            ...defaultKeymap,
-            ...historyKeymap
-          ]),
-          lintGutter(),
-          highlightField,
-          EditorView.updateListener.of((update) => {
-            if (update.docChanged) {
-              config.onDocChanged(update.view);
-            }
-          })
-        ]
+  function createStxtExtensions(onDocChanged) {
+    return [
+      lineNumbers(),
+      highlightActiveLineGutter(),
+      highlightActiveLine(),
+      history(),
+      indentUnit.of("	"),
+      EditorState.tabSize.of(4),
+      keymap.of([
+        { key: "Tab", run: insertTab, shift: indentLess },
+        ...defaultKeymap,
+        ...historyKeymap
+      ]),
+      lintGutter(),
+      highlightField,
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          onDocChanged(update.view);
+        }
       })
-    });
+    ];
+  }
+  function createStxtEditor(config) {
+    const extensions = createStxtExtensions(config.onDocChanged);
+    const createState = (doc2) => EditorState.create({ doc: doc2, extensions });
+    const view = new EditorView({ parent: config.parent, state: createState("") });
+    return { view, createState };
+  }
+
+  // src/seed.ts
+  var RECIPE = [
+    "# Welcome to the STXT playground.",
+    "# Everything runs in your browser: edit the document and watch the analysis react.",
+    "# The template in the list on the left validates this document. Try adding a node it does not declare.",
+    "Recipe (com.example.cooking): Pa amb tom\xE0quet",
+    "	Serves: 2",
+    "	Ingredients:",
+    "		Ingredient: Bread",
+    "		Ingredient: Ripe tomato",
+    "		Ingredient: Olive oil and salt",
+    "	Steps >>",
+    "		Rub the tomato on the bread.",
+    "		Add olive oil and a pinch of salt.",
+    "		Everything in this block is literal text: # : >> are not parsed.",
+    ""
+  ].join("\n");
+  var RECIPE_TEMPLATE = [
+    "# A template describes the shape of the documents of a namespace.",
+    "# Grammars are listed by their namespace, not by a title.",
+    "Template (@stxt.template): com.example.cooking",
+    "	Structure >>",
+    "		Recipe (com.example.cooking):",
+    "			Serves: (?) NATURAL",
+    "			Ingredients: (1)",
+    "				Ingredient: (+)",
+    "			Steps: (1) TEXT",
+    ""
+  ].join("\n");
+  var SEED_DOCUMENTS = [
+    { title: "Recipe", text: RECIPE },
+    { title: "Recipe template", text: RECIPE_TEMPLATE }
+  ];
+
+  // src/ui/documentList.ts
+  var KIND_BADGE = {
+    document: "\u2261",
+    schema: "S",
+    template: "T"
+  };
+  var KIND_TITLE = {
+    document: "Document",
+    schema: "Schema \u2014 identified by its namespace",
+    template: "Template \u2014 identified by its namespace"
+  };
+  function createDocumentList(list, newButton, handlers2) {
+    let entries = [];
+    let renaming = null;
+    newButton.addEventListener("click", () => handlers2.onCreate());
+    const render = () => {
+      list.textContent = "";
+      for (const entry of entries) {
+        list.appendChild(renaming === entry.id ? renderRenameRow(entry) : renderRow(entry));
+      }
+    };
+    const startRename = (id) => {
+      const entry = entries.find((e) => e.id === id);
+      if (!entry || !entry.renamable) {
+        return;
+      }
+      renaming = id;
+      render();
+      const input = list.querySelector("input.doc-rename");
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    };
+    const finishRename = (entry, title) => {
+      if (renaming !== entry.id) {
+        return;
+      }
+      renaming = null;
+      if (title !== null && title.trim().length > 0 && title.trim() !== entry.label) {
+        handlers2.onRename(entry.id, title.trim());
+      } else {
+        render();
+      }
+    };
+    const renderRow = (entry) => {
+      const row = document.createElement("li");
+      row.className = `doc doc-${entry.kind}${entry.active ? " doc-active" : ""}`;
+      row.tabIndex = 0;
+      row.setAttribute("role", "option");
+      row.setAttribute("aria-selected", String(entry.active));
+      row.dataset.id = entry.id;
+      const badge = document.createElement("span");
+      badge.className = "doc-kind";
+      badge.textContent = KIND_BADGE[entry.kind];
+      badge.title = KIND_TITLE[entry.kind];
+      const label = document.createElement("span");
+      label.className = "doc-label";
+      label.textContent = entry.label;
+      label.title = entry.renamable ? `${entry.label} \u2014 double-click to rename` : entry.label;
+      const problems = document.createElement("span");
+      problems.className = "doc-problems";
+      if (entry.errors > 0) {
+        problems.appendChild(problemCount("error", entry.errors));
+      }
+      if (entry.warnings > 0) {
+        problems.appendChild(problemCount("warning", entry.warnings));
+      }
+      const remove2 = document.createElement("button");
+      remove2.type = "button";
+      remove2.className = "doc-delete";
+      remove2.title = "Delete document";
+      remove2.setAttribute("aria-label", `Delete ${entry.label}`);
+      remove2.textContent = "\xD7";
+      remove2.addEventListener("click", (event) => {
+        event.stopPropagation();
+        handlers2.onDelete(entry.id);
+      });
+      row.append(badge, label, problems, remove2);
+      row.addEventListener("click", () => handlers2.onSelect(entry.id));
+      if (entry.renamable) {
+        label.addEventListener("dblclick", (event) => {
+          event.stopPropagation();
+          startRename(entry.id);
+        });
+      }
+      row.addEventListener("keydown", (event) => {
+        switch (event.key) {
+          case "Enter":
+          case " ":
+            event.preventDefault();
+            handlers2.onSelect(entry.id);
+            break;
+          case "F2":
+            event.preventDefault();
+            startRename(entry.id);
+            break;
+          case "Delete":
+            event.preventDefault();
+            handlers2.onDelete(entry.id);
+            break;
+        }
+      });
+      return row;
+    };
+    const renderRenameRow = (entry) => {
+      const row = document.createElement("li");
+      row.className = `doc doc-${entry.kind} doc-renaming${entry.active ? " doc-active" : ""}`;
+      row.dataset.id = entry.id;
+      const badge = document.createElement("span");
+      badge.className = "doc-kind";
+      badge.textContent = KIND_BADGE[entry.kind];
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "doc-rename";
+      input.value = entry.label;
+      input.setAttribute("aria-label", "New title");
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          finishRename(entry, input.value);
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          finishRename(entry, null);
+        }
+      });
+      input.addEventListener("blur", () => finishRename(entry, input.value));
+      row.append(badge, input);
+      return row;
+    };
+    const problemCount = (severity, count) => {
+      const span = document.createElement("span");
+      span.className = `doc-count doc-count-${severity}`;
+      span.textContent = String(count);
+      span.title = `${count} ${severity}${count === 1 ? "" : "s"}`;
+      return span;
+    };
+    return {
+      render(next) {
+        entries = next;
+        if (renaming !== null && !entries.some((e) => e.id === renaming)) {
+          renaming = null;
+        }
+        render();
+      },
+      startRename
+    };
   }
 
   // src/ui/problemsPanel.ts
@@ -21957,23 +22147,238 @@
     };
   }
 
+  // src/workspace/Workspace.ts
+  var UNTITLED = "Untitled";
+  function defaultIdGenerator() {
+    return `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  }
+  var Workspace = class {
+    /**
+     * @param generateId produces identifiers for new documents; injectable for deterministic tests.
+     */
+    constructor(generateId = defaultIdGenerator) {
+      this.generateId = generateId;
+      this.documents = [];
+      this.listeners = /* @__PURE__ */ new Set();
+      this.active = null;
+    }
+    /**
+     * Subscribes to workspace changes.
+     *
+     * @param listener called after every change.
+     * @returns a function that unsubscribes the listener.
+     */
+    subscribe(listener) {
+      this.listeners.add(listener);
+      return () => this.listeners.delete(listener);
+    }
+    /** @returns the documents in list order. The array is a copy; the documents are immutable. */
+    getDocuments() {
+      return [...this.documents];
+    }
+    /**
+     * @param id identifier of a document.
+     * @returns the document, or undefined if the workspace does not hold it.
+     */
+    getDocument(id) {
+      return this.documents.find((document2) => document2.id === id);
+    }
+    /** @returns the identifier of the active document, or null when the workspace is empty. */
+    getActiveId() {
+      return this.active;
+    }
+    /** @returns the active document, or undefined when the workspace is empty. */
+    getActiveDocument() {
+      return this.active === null ? void 0 : this.getDocument(this.active);
+    }
+    /**
+     * Makes a document the active one. Ignored if the document is not in the workspace or is
+     * already active.
+     *
+     * @param id identifier of the document to activate.
+     */
+    setActive(id) {
+      if (id !== this.active && this.getDocument(id)) {
+        this.active = id;
+        this.emit({ kind: "activated", id });
+      }
+    }
+    /**
+     * Adds a document at the end of the list and makes it active.
+     *
+     * @param text initial text; empty by default.
+     * @param title title; by default the next free "Untitled N".
+     * @returns the new document.
+     */
+    addDocument(text = "", title) {
+      const document2 = {
+        id: this.generateId(),
+        title: title?.trim() || this.nextUntitled(),
+        text
+      };
+      this.documents.push(document2);
+      this.emit({ kind: "added", id: document2.id });
+      this.setActive(document2.id);
+      return document2;
+    }
+    /**
+     * Replaces the text of a document. Ignored if the text is unchanged or the document unknown.
+     *
+     * @param id identifier of the document.
+     * @param text new full text.
+     */
+    setText(id, text) {
+      const index = this.indexOf(id);
+      if (index >= 0 && this.documents[index].text !== text) {
+        this.documents[index] = { ...this.documents[index], text };
+        this.emit({ kind: "text", id });
+      }
+    }
+    /**
+     * Renames a document. A blank title is ignored: a document always has one, even if grammars
+     * do not show it.
+     *
+     * @param id identifier of the document.
+     * @param title new title; trimmed.
+     * @returns true if the title changed.
+     */
+    rename(id, title) {
+      const trimmed = title.trim();
+      const index = this.indexOf(id);
+      if (index < 0 || trimmed.length === 0 || this.documents[index].title === trimmed) {
+        return false;
+      }
+      this.documents[index] = { ...this.documents[index], title: trimmed };
+      this.emit({ kind: "renamed", id });
+      return true;
+    }
+    /**
+     * Removes a document. If it was the active one, the next document in the list takes over (or
+     * the previous one when it was the last), so the editor always shows a neighbour.
+     *
+     * @param id identifier of the document to remove.
+     * @returns true if a document was removed.
+     */
+    removeDocument(id) {
+      const index = this.indexOf(id);
+      if (index < 0) {
+        return false;
+      }
+      this.documents.splice(index, 1);
+      const wasActive = this.active === id;
+      if (wasActive) {
+        this.active = null;
+      }
+      this.emit({ kind: "removed", id });
+      if (wasActive && this.documents.length > 0) {
+        const neighbour = this.documents[Math.min(index, this.documents.length - 1)];
+        this.setActive(neighbour.id);
+      }
+      return true;
+    }
+    /** @returns a serializable copy of the workspace. */
+    toSnapshot() {
+      return { active: this.active, documents: this.getDocuments() };
+    }
+    /**
+     * Replaces the whole workspace with a snapshot, reporting the change document by document.
+     * A snapshot whose active id is missing activates the first document instead.
+     *
+     * @param snapshot the workspace to load.
+     */
+    load(snapshot) {
+      for (const document2 of this.getDocuments()) {
+        this.removeDocument(document2.id);
+      }
+      for (const document2 of snapshot.documents) {
+        this.documents.push({ id: document2.id, title: document2.title, text: document2.text });
+        this.emit({ kind: "added", id: document2.id });
+      }
+      const first = this.documents[0];
+      const active = snapshot.active !== null && this.getDocument(snapshot.active) ? snapshot.active : first?.id;
+      if (active !== void 0) {
+        this.setActive(active);
+      }
+    }
+    indexOf(id) {
+      return this.documents.findIndex((document2) => document2.id === id);
+    }
+    /** First "Untitled N" not taken by any document, starting at 1. */
+    nextUntitled() {
+      const titles = new Set(this.documents.map((document2) => document2.title));
+      for (let n = 1; ; n++) {
+        const candidate = `${UNTITLED} ${n}`;
+        if (!titles.has(candidate)) {
+          return candidate;
+        }
+      }
+    }
+    emit(event) {
+      for (const listener of this.listeners) {
+        listener(event);
+      }
+    }
+  };
+
+  // src/workspace/storage.ts
+  var WORKSPACE_STORAGE_KEY = "stxt-play.workspace";
+  var WORKSPACE_STORAGE_VERSION = 1;
+  function loadWorkspace(storage) {
+    let raw;
+    try {
+      raw = storage.getItem(WORKSPACE_STORAGE_KEY);
+    } catch {
+      return void 0;
+    }
+    if (raw === null) {
+      return void 0;
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return void 0;
+    }
+    return isStoredWorkspace(parsed) ? { active: parsed.active, documents: parsed.documents } : void 0;
+  }
+  function saveWorkspace(storage, snapshot) {
+    const stored = {
+      version: WORKSPACE_STORAGE_VERSION,
+      active: snapshot.active,
+      documents: snapshot.documents.map(({ id, title, text }) => ({ id, title, text }))
+    };
+    try {
+      storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(stored));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  function isStoredWorkspace(value) {
+    if (typeof value !== "object" || value === null) {
+      return false;
+    }
+    const candidate = value;
+    if (candidate.version !== WORKSPACE_STORAGE_VERSION) {
+      return false;
+    }
+    if (candidate.active !== null && typeof candidate.active !== "string") {
+      return false;
+    }
+    if (!Array.isArray(candidate.documents)) {
+      return false;
+    }
+    return candidate.documents.every((document2) => {
+      if (typeof document2 !== "object" || document2 === null) {
+        return false;
+      }
+      const fields = document2;
+      return typeof fields.id === "string" && typeof fields.title === "string" && typeof fields.text === "string";
+    });
+  }
+
   // src/index.ts
-  var DOC_ID = "document";
-  var SAMPLE = [
-    "# Welcome to the STXT playground.",
-    "# Everything runs in your browser: edit the document and watch the analysis react.",
-    "Recipe (com.example.cooking): Pa amb tom\xE0quet",
-    "	Serves: 2",
-    "	Ingredients:",
-    "		Ingredient: Bread",
-    "		Ingredient: Ripe tomato",
-    "		Ingredient: Olive oil and salt",
-    "	Steps >>",
-    "		Rub the tomato on the bread.",
-    "		Add olive oil and a pinch of salt.",
-    "		Everything in this block is literal text: # : >> are not parsed.",
-    ""
-  ].join("\n");
+  var PERSIST_DELAY_MS = 300;
   function toCmDiagnostics(view, diagnostics) {
     const doc2 = view.state.doc;
     return diagnostics.map((diagnostic) => {
@@ -21987,33 +22392,212 @@
       };
     });
   }
+  function labelOf(document2, analysis) {
+    const grammars = analysis?.grammars ?? [];
+    if (grammars.length === 0) {
+      return { label: document2.title, kind: "document", renamable: true };
+    }
+    const namespaces = Array.from(new Set(grammars.map((g) => g.namespace).filter((ns) => ns.length > 0)));
+    return {
+      label: namespaces.length > 0 ? namespaces.join(", ") : document2.title,
+      kind: grammars[0].kind,
+      renamable: false
+    };
+  }
+  function browserStorage() {
+    try {
+      return window.localStorage;
+    } catch {
+      return void 0;
+    }
+  }
   function main() {
     const editorHost = document.getElementById("editor");
+    const docTitle = document.getElementById("doc-title");
+    const docList = document.getElementById("doc-list");
+    const docNew = document.getElementById("doc-new");
     const problemsList = document.getElementById("problems-list");
     const problemsCount = document.getElementById("problems-count");
-    if (!editorHost || !problemsList || !problemsCount) {
+    if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount) {
       return;
     }
     const analyzer = new Analyzer();
+    const workspace = new Workspace();
+    const storage = browserStorage();
+    const states = /* @__PURE__ */ new Map();
+    let shownId = null;
+    let persistTimer;
+    const persistNow = () => {
+      if (persistTimer !== void 0) {
+        window.clearTimeout(persistTimer);
+        persistTimer = void 0;
+      }
+      if (storage) {
+        saveWorkspace(storage, workspace.toSnapshot());
+      }
+    };
+    const schedulePersist = () => {
+      if (!storage) {
+        return;
+      }
+      if (persistTimer !== void 0) {
+        window.clearTimeout(persistTimer);
+      }
+      persistTimer = window.setTimeout(persistNow, PERSIST_DELAY_MS);
+    };
+    window.addEventListener("pagehide", persistNow);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        persistNow();
+      }
+    });
+    const editor = createStxtEditor({
+      parent: editorHost,
+      onDocChanged: (view2) => {
+        if (shownId !== null) {
+          workspace.setText(shownId, view2.state.doc.toString());
+        }
+      }
+    });
+    const view = editor.view;
     const goToLine = (line) => {
       const docLine = view.state.doc.line(Math.min(line + 1, view.state.doc.lines));
       view.dispatch({ selection: { anchor: docLine.from }, scrollIntoView: true });
       view.focus();
     };
     const panel = createProblemsPanel(problemsList, problemsCount, goToLine);
-    const refresh = (v) => {
-      analyzer.setDocument(DOC_ID, v.state.doc.toString());
-      const analysis = analyzer.getAnalysis(DOC_ID);
+    const list = createDocumentList(docList, docNew, {
+      onSelect: (id) => {
+        workspace.setActive(id);
+        view.focus();
+      },
+      onCreate: () => {
+        workspace.addDocument();
+        view.focus();
+      },
+      onRename: (id, title) => workspace.rename(id, title),
+      onDelete: (id) => {
+        const document2 = workspace.getDocument(id);
+        if (!document2) {
+          return;
+        }
+        const { label } = labelOf(document2, analyzer.getAnalysis(id));
+        if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) {
+          return;
+        }
+        workspace.removeDocument(id);
+        if (workspace.getDocuments().length === 0) {
+          workspace.addDocument();
+        }
+      }
+    });
+    const activeAnalysis = () => {
+      const id = workspace.getActiveId();
+      return id === null ? void 0 : analyzer.getAnalysis(id);
+    };
+    const renderHeader = () => {
+      const document2 = workspace.getActiveDocument();
+      docTitle.textContent = document2 ? labelOf(document2, analyzer.getAnalysis(document2.id)).label : "";
+    };
+    const renderList = () => {
+      const activeId = workspace.getActiveId();
+      const entries = workspace.getDocuments().map((document2) => {
+        const analysis = analyzer.getAnalysis(document2.id);
+        const diagnostics = analysis?.diagnostics ?? [];
+        return {
+          id: document2.id,
+          ...labelOf(document2, analysis),
+          active: document2.id === activeId,
+          errors: diagnostics.filter((d) => d.severity === "error").length,
+          warnings: diagnostics.filter((d) => d.severity === "warning").length
+        };
+      });
+      list.render(entries);
+    };
+    const renderPanel = () => {
+      panel.render(activeAnalysis()?.diagnostics ?? []);
+    };
+    const refreshView = () => {
+      const analysis = activeAnalysis();
       if (!analysis) {
         return;
       }
-      v.dispatch(setDiagnostics(v.state, toCmDiagnostics(v, analysis.diagnostics)), {
+      view.dispatch(setDiagnostics(view.state, toCmDiagnostics(view, analysis.diagnostics)), {
         effects: setTokensEffect.of(analysis.tokens)
       });
-      panel.render(analysis.diagnostics);
     };
-    const view = createStxtEditor({ parent: editorHost, doc: SAMPLE, onDocChanged: refresh });
-    refresh(view);
+    const showDocument = (id) => {
+      if (shownId !== null && shownId !== id) {
+        states.set(shownId, view.state);
+      }
+      const document2 = workspace.getDocument(id);
+      if (!document2) {
+        return;
+      }
+      const state = states.get(id) ?? editor.createState(document2.text);
+      states.set(id, state);
+      shownId = id;
+      view.setState(state);
+      refreshView();
+    };
+    workspace.subscribe((event) => {
+      switch (event.kind) {
+        case "added": {
+          const document2 = workspace.getDocument(event.id);
+          if (document2) {
+            analyzer.setDocument(event.id, document2.text);
+          }
+          renderList();
+          break;
+        }
+        case "removed":
+          analyzer.removeDocument(event.id);
+          states.delete(event.id);
+          if (shownId === event.id) {
+            shownId = null;
+          }
+          renderList();
+          renderPanel();
+          renderHeader();
+          break;
+        case "text": {
+          const document2 = workspace.getDocument(event.id);
+          if (document2) {
+            analyzer.setDocument(event.id, document2.text);
+          }
+          if (event.id === shownId) {
+            refreshView();
+          }
+          renderPanel();
+          renderList();
+          renderHeader();
+          break;
+        }
+        case "renamed":
+          renderList();
+          renderHeader();
+          break;
+        case "activated":
+          showDocument(event.id);
+          renderPanel();
+          renderList();
+          renderHeader();
+          break;
+      }
+      schedulePersist();
+    });
+    const stored = storage ? loadWorkspace(storage) : void 0;
+    if (stored && stored.documents.length > 0) {
+      workspace.load(stored);
+    } else {
+      for (const seed of SEED_DOCUMENTS) {
+        workspace.addDocument(seed.text, seed.title);
+      }
+      const first = workspace.getDocuments()[0];
+      if (first) {
+        workspace.setActive(first.id);
+      }
+    }
   }
   document.addEventListener("DOMContentLoaded", main);
 })();

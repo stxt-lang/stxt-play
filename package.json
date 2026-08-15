@@ -5,9 +5,10 @@
   "description": "Web playground for STXT, an indentation-based structured-text format.",
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('web/js', { recursive: true, force: true }); require('node:fs').rmSync('web/css', { recursive: true, force: true })\"",
-    "build": "npm run build:ts && npm run build:css",
+    "build": "npm run build:ts && npm run build:css && npm run build:stamp",
     "build:ts": "esbuild src/index.ts --bundle --format=iife --target=es2021 --sourcemap --loader:.stxt=text --outfile=web/js/play.js",
     "build:css": "sass css/site.scss web/css/site.css --style=compressed",
+    "build:stamp": "node scripts/stamp-assets.mjs",
     "watch": "npm run watch:css & npm run watch:ts",
     "watch:ts": "npm run build:ts -- --watch",
     "watch:css": "sass --watch css/site.scss:web/css/site.css",
@@ -34,7 +35,7 @@
   ],
   "author": "Joan Costa Mombiela <joan.costa.mombiela@gmail.com>",
   "license": "MIT",
-  "homepage": "https://stxt.dev",
+  "homepage": "https://play.stxt.dev",
   "bugs": {
     "url": "https://github.com/stxt-lang/stxt-play/issues"
   },

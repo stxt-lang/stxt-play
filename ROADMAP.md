@@ -165,8 +165,18 @@ cabecera se pliega en dos filas.
 
 ### Fase 7 — Publicación e integración
 
-- [ ] Build final commiteado en `web/` (publica el usuario, como siempre).
-- [ ] Enlace desde `stxt.dev`, vía `../stxt-cms`.
+- [x] URL fijada: **`https://play.stxt.dev`** (2026-08-15). Canonical y `og:url` en `index.html`,
+      `homepage` de `package.json`.
+- [x] Versionado de assets: `scripts/stamp-assets.mjs`, último paso de `npm run build`, estampa
+      `?v=<hash de contenido>` en cada referencia de `web/index.html` (CSS, JS, favicons). Los
+      ficheros conservan su nombre; su URL cambia con su contenido; idempotente.
+- [x] `web/_headers` (HTML sin caché; `css/` y `js/` cacheables largo, ya que van versionados;
+      `nosniff` y `Referrer-Policy`) y `web/_redirects` (`/index.html` e `/index` → `/`). Se
+      sirven tal cual con el resto de `web/`.
+- [ ] Build final commiteado en `web/` y publicación (el usuario, como siempre).
+- [ ] Enlace desde `stxt.dev`, vía `../stxt-cms` (entrada *Playground* en la barra superior:
+      `templates/top_bar.vm` + `menu.playground` en `lang/pages_{en,es}.properties`; regenera el
+      usuario).
 
 ## Fuera del alcance de «terminado»
 

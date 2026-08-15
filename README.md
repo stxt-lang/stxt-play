@@ -4,9 +4,10 @@ A web playground for [STXT](https://stxt.dev), the human-first hierarchical text
 in the browser, with its grammar next to it, and see errors as you type. Think VS Code, simplified —
 a real editor, not a form or a viewer.
 
-> **Status: feature complete, pending publication.** Phases 1–6 of `ROADMAP.md` are done: analysis
-> core, editor, multi-document workspace, header switches, autocompletion and hover, seed content,
-> reset, share links. What remains is publishing it and linking it from `stxt.dev`.
+> **Status: feature complete, being published at [play.stxt.dev](https://play.stxt.dev).** Phases
+> 1–6 of `ROADMAP.md` are done: analysis core, editor, multi-document workspace, header switches,
+> autocompletion and hover, seed content, reset, share links. What remains is the link from
+> `stxt.dev`.
 
 ## What it should do
 
@@ -96,14 +97,19 @@ start_server.sh
 ```
 
 **`web/` is committed, build output included.** Since that directory is published as it stands,
-`npm run build` has to be run — and its result committed — before anything reaches the site. Never hand-edit `web/css/` or `web/js/`: they are overwritten on every build. The sources are
-`css/` and `src/`.
+`npm run build` has to be run — and its result committed — before anything reaches the site. Never
+hand-edit `web/css/` or `web/js/`: they are overwritten on every build. The sources are `css/` and
+`src/`. `web/index.html` is written by hand, but the last build step (`scripts/stamp-assets.mjs`)
+rewrites the `?v=<hash>` of every asset it references, so a new build always changes the asset
+URLs and no cache — browser or CDN — can hold on to an old bundle. `web/_headers` and
+`web/_redirects` complete the picture: the HTML is never cached, the versioned assets are cached
+for long, and `/index.html` redirects to `/`.
 
 ## Commands
 
 ```bash
 npm install
-npm run build        # typecheck + lint, then bundle TS and compile SCSS into web/
+npm run build        # typecheck + lint, then bundle TS, compile SCSS and stamp asset versions into web/
 npm test             # mocha tests of the analysis core and the workspace
 npm start            # build, then serve web/ on http://localhost:8080 (PORT overrides)
 npm run watch        # rebuild TS and SCSS on change

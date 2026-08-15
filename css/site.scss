@@ -1,59 +1,10 @@
-@use "settings" as *;
-
 // Entry point of the playground stylesheet. One partial per area, as in ../stxt-cms/scss.
+
+@use "layout";
+@use "editor";
 
 *,
 *::before,
 *::after {
 	box-sizing: border-box;
-}
-
-body {
-	margin: 0;
-	padding: 2rem;
-	font-family: $font-body;
-	color: $black;
-	background: $color4;
-}
-
-h1 {
-	margin: 0 0 0.25rem;
-	color: $color1;
-	font-size: 2rem;
-}
-
-.subtitle {
-	margin: 0 0 2rem;
-	color: $stxt-muted;
-}
-
-.smoke-test {
-	max-width: 60rem;
-	padding: 1rem 1.25rem;
-	border: 1px solid $color3;
-	border-radius: 6px;
-	background: #fff;
-
-	h2 {
-		margin-top: 0;
-		font-size: 1rem;
-		color: $stxt-muted;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	pre {
-		margin: 0;
-		overflow-x: auto;
-		font-family: $font-mono;
-		font-size: 0.875rem;
-		line-height: 1.5;
-		tab-size: 4;
-	}
-
-	.note {
-		margin: 1rem 0 0;
-		color: $stxt-muted;
-		font-size: 0.875rem;
-	}
 }

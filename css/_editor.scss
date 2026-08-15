@@ -1,0 +1,58 @@
+@use "settings" as *;
+
+// CodeMirror chrome and the STXT token colours. The token classes (.stxt-tok-*) are attached by
+// the highlight decorations of src/editor/highlight.ts, fed by the analysis — the colours are
+// the $stxt-* palette shared with the portal.
+
+.cm-editor {
+	height: 100%;
+
+	&.cm-focused {
+		outline: none;
+	}
+
+	.cm-scroller {
+		font-family: $font-mono;
+		font-size: 0.9rem;
+		line-height: 1.55;
+		tab-size: 4;
+	}
+
+	.cm-gutters {
+		border-right: 1px solid $color3;
+		background: $color4;
+		color: $stxt-muted;
+	}
+
+	.cm-activeLine {
+		background: rgba($color1, 0.04);
+	}
+
+	.cm-activeLineGutter {
+		background: $color3;
+	}
+
+	.cm-cursor {
+		border-left-color: $black;
+	}
+}
+
+.stxt-tok-comment {
+	color: $stxt-comment;
+}
+
+.stxt-tok-namespace {
+	color: $stxt-namespace;
+}
+
+.stxt-tok-property {
+	color: $stxt-node;
+}
+
+.stxt-tok-macro {
+	color: $stxt-block;
+}
+
+.stxt-tok-string {
+	color: $stxt-value;
+}

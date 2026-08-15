@@ -39,17 +39,22 @@
     "url": "https://github.com/stxt-lang/stxt-play/issues"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.10.4",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/lint": "^6.9.7",
+    "@codemirror/state": "^6.7.1",
+    "@codemirror/view": "^6.43.8",
     "@stxt-lang/core": "^0.6.2"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "mocha": "^11.7.5",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "esbuild": "^0.25.0",
     "eslint": "^8.57.1",
     "http-server": "^14.1.1",
+    "mocha": "^11.7.5",
     "sass": "^1.80.0",
     "typescript": "^5.5.4"
   }

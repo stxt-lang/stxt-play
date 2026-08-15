@@ -45,14 +45,20 @@ y `SCHEMA_NOT_FOUND` se silencia si el workspace no tiene ninguna gramática, co
 
 ### Fase 2 — Editor de un solo documento
 
-- [ ] Integrar CodeMirror 6 con tema a partir de la paleta `$stxt-*` de `css/_settings.scss`.
-- [ ] Coloreado por decoraciones alimentadas por los tokens de la fase 1.
-- [ ] Tabuladores como indentación de primera (tecla Tab, sangrado de selección).
-- [ ] Errores de sintaxis subrayados en el texto y listados en el panel del pie, con clic que
+- [x] Integrar CodeMirror 6 con tema a partir de la paleta `$stxt-*` de `css/_settings.scss`.
+- [x] Coloreado por decoraciones alimentadas por los tokens de la fase 1.
+- [x] Tabuladores como indentación de primera (tecla Tab, sangrado de selección).
+- [x] Errores de sintaxis subrayados en el texto y listados en el panel del pie, con clic que
       lleva a la línea.
-- [ ] Layout base HTML/SCSS: cabecera, editor, panel de errores. Sustituye entero al smoke test.
+- [x] Layout base HTML/SCSS: cabecera, editor, panel de errores. Sustituye entero al smoke test.
 
-**Hito: playground usable con un documento.**
+**Hito: playground usable con un documento. Hecha el 2026-08-15.** Quedó así: `src/editor/`
+(`highlight.ts`, el campo de decoraciones alimentado por tokens; `stxtEditor.ts`, el montaje de la
+vista con Tab = tabulador real e `indentUnit` de tabulador), `src/ui/problemsPanel.ts` (el panel
+del pie) y `src/index.ts` como aplicación: cada cambio de documento dispara un análisis y de ese
+único resultado leen el coloreado, los subrayados (`@codemirror/lint`) y el panel. Dependencias
+nuevas: `@codemirror/{state,view,commands,language,lint}`, sin `basic-setup`. Verificado en
+Chrome headless: coloreado, gutter de errores, panel y contador.
 
 ### Fase 3 — Workspace multi-documento
 

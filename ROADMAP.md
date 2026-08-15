@@ -105,9 +105,30 @@ del punto de severidad. La reordenación vive en `Workspace.move(id, índiceFina
 
 ### Fase 5 — Autocompletado
 
-- [ ] Autocompletado guiado por el esquema o plantilla activos, portando la lógica de
+- [x] Autocompletado guiado por el esquema o plantilla activos, portando la lógica de
       `CompletionProvider` de `stxt-vscode` a CodeMirror.
-- [ ] Opcionales: hover con la definición del nodo; formateo.
+- [x] Opcional hecho: hover con la definición del nodo.
+- [ ] Opcional descartado por ahora: formateo. `NodeWriter` del núcleo reescribe el documento
+      **perdiendo los comentarios**, y reformatear es por tanto una acción destructiva que exige
+      un gesto explícito y una advertencia; no encaja como acción rutinaria del playground.
+      Si vuelve, será un botón con confirmación, no un atajo.
+
+**Hecha el 2026-08-15.** La lógica vive en la capa de análisis, sin editor:
+`src/analysis/completion.ts` (`computeCompletions`, portado de `CompletionProvider` +
+`CompletionProviderSearch` de la extensión: sugerencias raíz de todas las gramáticas del workspace
+**más los raíces de las meta-gramáticas** `Schema (@stxt.schema)` y `Template (@stxt.template)`,
+para arrancar una gramática con dos teclas; hijos del nodo padre descontando los que ya están en
+su cardinalidad máxima; valores `ENUM` tras los dos puntos; nada en comentarios, texto de bloque
+ni tras `>>`) y `src/analysis/nodeInfo.ts` (`describeNodeAtLine`, lo que enseña el hover). El
+`Analyzer` los expone como `getCompletions(id, línea, prefijo)` y `describeNode(id, línea)`; el
+`GrammarRegistry` ganó `getWorkspaceSchemas()` y `getMetaSchemas()`. La capa CodeMirror
+(`src/editor/completion.ts` con `@codemirror/autocomplete`, `src/editor/hover.ts` con
+`hoverTooltip`) solo traduce: el filtrado lo hace el análisis con la comparación canónica de STXT
+(`filter: false`), las sugerencias de bloque añaden salto de línea más la indentación del cuerpo
+con la unidad vigente (tabs o espacios), y el desplegable se abre al teclear o con Ctrl+Espacio.
+Un detalle que salió al probar: la línea en blanco justo después del texto de un bloque sigue
+siendo del bloque para el parser, pero si su indentación no es más profunda que el bloque, el
+usuario está desindentando para escribir un hermano, y ahí sí se completa.
 
 ### Fase 6 — Contenido inicial y acabado
 

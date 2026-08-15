@@ -168,6 +168,23 @@ export class GrammarRegistry implements SchemaProvider {
 		return this.issues;
 	}
 
+	/** @returns the active grammars of the workspace (conflicted namespaces excluded), in load order. */
+	getWorkspaceSchemas(): Schema[] {
+		return Array.from(this.schemas.values());
+	}
+
+	/** @returns the meta-schemas of `@stxt.schema` and `@stxt.template`, always available. */
+	getMetaSchemas(): Schema[] {
+		const metas: Schema[] = [];
+		for (const namespace of [SCHEMA_NAMESPACE, TEMPLATE_NAMESPACE]) {
+			const schema = this.metas.getSchema(namespace);
+			if (schema) {
+				metas.push(schema);
+			}
+		}
+		return metas;
+	}
+
 	private static toIssue(documentId: string, root: Node, e: unknown): GrammarIssue {
 		if (e instanceof ParseException) {
 			return {

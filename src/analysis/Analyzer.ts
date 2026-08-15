@@ -5,8 +5,10 @@ import {
 	SchemaValidator,
 	StringUtils,
 } from "@stxt-lang/core";
+import { CompletionResult, computeCompletions } from "./completion";
 import { Diagnostic } from "./Diagnostic";
 import { GrammarRegistry, grammarKindOf, isGrammarRoot } from "./GrammarRegistry";
+import { describeNodeAtLine, NodeInfo } from "./nodeInfo";
 import { StxtToken } from "./Tokens";
 import { TokenGeneratorObserver } from "./TokenGeneratorObserver";
 
@@ -152,6 +154,31 @@ export class Analyzer {
 	/** @returns the identifiers of every document of the workspace, in insertion order. */
 	getDocumentIds(): string[] {
 		return Array.from(this.parsed.keys());
+	}
+
+	/**
+	 * Grammar-driven completions for a cursor position of a document (see `completion.ts`).
+	 *
+	 * @param id identifier of the document.
+	 * @param line 0-based line of the cursor.
+	 * @param linePrefix text of the line up to the cursor.
+	 * @returns the suggestions and where they apply, or null when there is nothing to offer.
+	 */
+	getCompletions(id: string, line: number, linePrefix: string): CompletionResult | null {
+		const analysis = this.analyses.get(id);
+		return analysis ? computeCompletions(analysis, this.registry, line, linePrefix) : null;
+	}
+
+	/**
+	 * Describes the node opened at a line of a document, for the hover (see `nodeInfo.ts`).
+	 *
+	 * @param id identifier of the document.
+	 * @param line 0-based line.
+	 * @returns the description, or undefined when the line opens no node.
+	 */
+	describeNode(id: string, line: number): NodeInfo | undefined {
+		const analysis = this.analyses.get(id);
+		return analysis ? describeNodeAtLine(analysis, this.registry, line) : undefined;
 	}
 
 	/** Parses a document once, collecting tokens, line maps and syntax errors. */

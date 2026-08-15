@@ -11,7 +11,9 @@ import {
 	lineNumbers,
 } from "@codemirror/view";
 import { IndentMode } from "../workspace";
+import { CompletionProvider, stxtCompletion } from "./completion";
 import { highlightField } from "./highlight";
+import { NodeInfoProvider, stxtHover } from "./hover";
 
 /** What it takes to create the STXT editor. */
 export interface StxtEditorConfig {
@@ -21,6 +23,10 @@ export interface StxtEditorConfig {
 	indent: IndentMode;
 	/** Called after every transaction that changes the document, to re-run the analysis. */
 	onDocChanged: (view: EditorView) => void;
+	/** Completions for a position of the document in the view (grammar-driven, from the analysis). */
+	completions: CompletionProvider;
+	/** Description of the node at a line of the document in the view, for the hover. */
+	describeNode: NodeInfoProvider;
 }
 
 /** The STXT editor: one view, and a factory for the state of every workspace document. */
@@ -81,11 +87,12 @@ const insertIndentUnit: Command = (view) => {
  *   dedents; the unit is a tab by default and four spaces when the header says so.
  * - Highlighting comes from {@link highlightField}, fed by the analysis — never from a grammar.
  * - The lint gutter marks the lines with diagnostics; the app pushes them with `setDiagnostics`.
+ * - Autocompletion and hover ask the analysis through the two providers of the config.
  *
- * @param onDocChanged called after every transaction that changes the document.
- * @param indent the initial indentation mode.
+ * @param config the editor configuration (the parent element is not used here).
  */
-export function createStxtExtensions(onDocChanged: (view: EditorView) => void, indent: IndentMode): Extension {
+export function createStxtExtensions(config: Omit<StxtEditorConfig, "parent">): Extension {
+	const { onDocChanged, indent } = config;
 	return [
 		lineNumbers(),
 		highlightActiveLineGutter(),
@@ -100,6 +107,8 @@ export function createStxtExtensions(onDocChanged: (view: EditorView) => void, i
 		]),
 		lintGutter(),
 		highlightField,
+		stxtCompletion(config.completions),
+		stxtHover(config.describeNode),
 		EditorView.updateListener.of((update) => {
 			if (update.docChanged) {
 				onDocChanged(update.view);
@@ -114,7 +123,7 @@ export function createStxtExtensions(onDocChanged: (view: EditorView) => void, i
  */
 export function createStxtEditor(config: StxtEditorConfig): StxtEditor {
 	let indent = config.indent;
-	const extensions = createStxtExtensions(config.onDocChanged, indent);
+	const extensions = createStxtExtensions(config);
 	const view = new EditorView({ parent: config.parent, state: EditorState.create({ doc: "", extensions }) });
 
 	const applyIndent = (): void => {

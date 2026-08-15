@@ -20,7 +20,7 @@ import {
 } from "./workspace";
 
 /**
- * Entry point of the playground (phase 4: workspace, header switches, cross validation).
+ * Entry point of the playground (phase 5: workspace, header switches, completion and hover).
  *
  * The wiring keeps a single flow of data: the workspace model is the source of truth for the
  * documents, the analyzer mirrors it (one cached parse per document), and everything visible —
@@ -146,6 +146,8 @@ function main(): void {
 				workspace.setText(shownId, view.state.doc.toString());
 			}
 		},
+		completions: (line, linePrefix) => (shownId === null ? null : analyzer.getCompletions(shownId, line, linePrefix)),
+		describeNode: (line) => (shownId === null ? undefined : analyzer.describeNode(shownId, line)),
 	});
 	const view = editor.view;
 

@@ -39,6 +39,7 @@
     "url": "https://github.com/stxt-lang/stxt-play/issues"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/commands": "^6.10.4",
     "@codemirror/language": "^6.12.4",
     "@codemirror/lint": "^6.9.7",

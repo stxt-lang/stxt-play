@@ -56,3 +56,115 @@
 .stxt-tok-string {
 	color: $stxt-value;
 }
+
+// Autocompletion popup (CodeMirror's, restyled with the palette)
+.cm-tooltip.cm-tooltip-autocomplete {
+	border: 1px solid $color3;
+	border-radius: 4px;
+	background: #fff;
+	box-shadow: 0 4px 14px rgba(#000, 0.12);
+	font-family: $font-mono;
+	font-size: 0.85rem;
+
+	> ul {
+		max-height: 14rem;
+
+		> li {
+			padding: 0.15rem 0.5rem;
+			line-height: 1.5;
+		}
+
+		> li[aria-selected] {
+			background: $color3;
+			color: $black;
+		}
+	}
+
+	.cm-completionLabel {
+		color: $stxt-node;
+	}
+
+	.cm-completionDetail {
+		margin-left: 0.6rem;
+		color: $stxt-muted;
+		font-style: normal;
+		font-size: 0.75rem;
+	}
+
+	.cm-completionIcon {
+		opacity: 0.6;
+	}
+}
+
+// Hover tooltip: the node under the pointer and what its grammar says
+.cm-tooltip.cm-tooltip-hover {
+	border: 1px solid $color3;
+	border-radius: 4px;
+	background: #fff;
+	box-shadow: 0 4px 14px rgba(#000, 0.12);
+}
+
+.stxt-hover {
+	max-width: 32rem;
+	padding: 0.5rem 0.75rem;
+	font-family: $font-body;
+	font-size: 0.8rem;
+	line-height: 1.5;
+	color: $black;
+
+	.stxt-hover-title {
+		font-family: $font-mono;
+		font-size: 0.85rem;
+	}
+
+	.stxt-hover-name {
+		color: $stxt-node;
+		font-weight: 700;
+	}
+
+	.stxt-hover-namespace {
+		color: $stxt-namespace;
+	}
+
+	.stxt-hover-facts,
+	.stxt-hover-none {
+		color: $stxt-muted;
+	}
+
+	.stxt-hover-definition {
+		margin-top: 0.4rem;
+		padding-top: 0.4rem;
+		border-top: 1px solid $grey;
+	}
+
+	.stxt-hover-heading {
+		margin-bottom: 0.15rem;
+		color: $stxt-namespace;
+		font-size: 0.7rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.stxt-hover-row {
+		display: flex;
+		gap: 0.6rem;
+	}
+
+	.stxt-hover-key {
+		flex: none;
+		width: 4rem;
+		color: $stxt-muted;
+	}
+
+	.stxt-hover-value {
+		font-family: $font-mono;
+		font-size: 0.78rem;
+		word-break: break-word;
+	}
+
+	.stxt-hover-description {
+		margin-top: 0.4rem;
+		white-space: pre-wrap;
+	}
+}

@@ -4,8 +4,8 @@ A web playground for [STXT](https://stxt.dev), the human-first hierarchical text
 in the browser, with its grammar next to it, and see errors as you type. Think VS Code, simplified —
 a real editor, not a form or a viewer.
 
-> **Status: in progress.** The analysis core, the editor, the multi-document workspace and the
-> header switches are done (phases 1–4 of `ROADMAP.md`); autocompletion, the seed content and
+> **Status: in progress.** The analysis core, the editor, the multi-document workspace, the header
+> switches, autocompletion and hover are done (phases 1–5 of `ROADMAP.md`); the seed content and
 > publication are still to come.
 
 ## What it should do
@@ -14,7 +14,11 @@ a real editor, not a form or a viewer.
 - **Edit and insert grammars** — `@stxt.schema` and `@stxt.template` — alongside the documents they
   validate.
 - **Show syntax errors as you type**, and schema validation errors next to them.
-- **Autocomplete** driven by the active schema or template.
+- **Autocomplete** driven by the active schema or template: root nodes of every grammar of the
+  workspace (plus `Schema (@stxt.schema)` and `Template (@stxt.template)` to start one), the
+  children the grammar declares for the enclosing node, and `ENUM` values. Type, or press
+  Ctrl+Space.
+- **Hover** over a node to see what the parse and its grammar know about it.
 
 ## The interface
 
@@ -77,9 +81,9 @@ repository, with no build step in between.
 ```
 css/            SCSS sources         → compiled into web/css/
 src/            TypeScript sources   → bundled into web/js/
-src/analysis/   the analysis core: tokens, diagnostics, workspace grammars (no DOM, no editor)
+src/analysis/   the analysis core: tokens, diagnostics, workspace grammars, completion, node info (no DOM, no editor)
 src/workspace/  the workspace model and its localStorage persistence (no DOM either)
-src/editor/     the CodeMirror layer: decorations from tokens, editor setup
+src/editor/     the CodeMirror layer: decorations from tokens, completion, hover, editor setup
 src/ui/         the document list and the problems panel
 test/           mocha tests of the analysis core and the workspace
 web/            exactly what gets served, committed as is

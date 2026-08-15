@@ -1,15 +1,18 @@
-import { Node, Parser } from "@stxt-lang/core";
+import { Node } from "@stxt-lang/core";
+import { Analyzer } from "./analysis";
 
 /**
  * Entry point of the playground.
  *
  * For now this is a smoke test rather than an application: it proves that the whole stack is
- * wired up — TypeScript compiles, esbuild bundles `@stxt-lang/core` for the browser, the SCSS
- * is served, and the core parser runs client-side with no server involved.
+ * wired up — TypeScript compiles, esbuild bundles `@stxt-lang/core` and the analysis layer for
+ * the browser, the SCSS is served, and everything runs client-side with no server involved.
+ * Since phase 1 it exercises the analysis module (parse, tokens and diagnostics) instead of
+ * calling the parser directly.
  */
 
 const SAMPLE = [
-	"# The playground is not built yet, but the parser already runs in the browser.",
+	"# The playground is not built yet, but the analysis layer already runs in the browser.",
 	"Greeting (dev.stxt.play): hola!",
 	"\tFrom: stxt-play",
 	"\tNote >>",
@@ -34,8 +37,16 @@ function main(): void {
 	}
 
 	try {
-		const nodes = new Parser().parse(SAMPLE);
-		output.textContent = nodes.flatMap((node) => outline(node, 0)).join("\n");
+		const analyzer = new Analyzer();
+		analyzer.setDocument("sample", SAMPLE);
+		const analysis = analyzer.getAnalysis("sample");
+		if (!analysis) {
+			output.textContent = "The analysis did not run.";
+			return;
+		}
+
+		const summary = `# Analysis: ${analysis.tokens.length} tokens, ${analysis.diagnostics.length} diagnostics.`;
+		output.textContent = [...analysis.roots.flatMap((node) => outline(node, 0)), "", summary].join("\n");
 	} catch (error) {
 		output.textContent = String(error);
 	}

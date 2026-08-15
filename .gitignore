@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Test build output (tsconfig.test.json)
+out/
+
 # web/ is NOT ignored: it is served straight from the repository, so web/css/ and web/js/
 # are build output that has to be committed.
 

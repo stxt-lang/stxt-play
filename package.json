@@ -12,8 +12,9 @@
     "watch:ts": "npm run build:ts -- --watch",
     "watch:css": "sass --watch css/site.scss:web/css/site.css",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src test --ext .ts",
     "prebuild": "npm run typecheck && npm run lint",
+    "test": "tsc -p tsconfig.test.json && mocha \"out/test/**/*.test.js\"",
     "start": "npm run build && http-server web -p ${PORT:-8080} -c-1"
   },
   "repository": {
@@ -41,7 +42,9 @@
     "@stxt-lang/core": "^0.6.2"
   },
   "devDependencies": {
+    "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
+    "mocha": "^11.7.5",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "esbuild": "^0.25.0",

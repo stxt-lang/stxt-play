@@ -31,11 +31,17 @@ El corazón, siguiendo el modelo de `../stxt-vscode` (un solo parseo por cambio,
 leen todos los consumidores). Nace ya separable —sin DOM ni CodeMirror— porque es el germen de la
 futura librería de coloreado.
 
-- [ ] Módulo `analysis`: texto de entrada → tokens semánticos, errores de parseo y nodos por
+- [x] Módulo `analysis`: texto de entrada → tokens semánticos, errores de parseo y nodos por
       línea, con `Parser` + `Observer` (modelo `TokenGeneratorObserver` de `stxt-vscode`).
-- [ ] Validación: `transformNodeToSchema` / `transformTemplateNodeToSchema` +
+- [x] Validación: `transformNodeToSchema` / `transformTemplateNodeToSchema` +
       `SchemaValidator` / `ConditionalValidator`, contra las gramáticas del workspace.
-- [ ] Tests mínimos en Node del módulo de análisis (el repositorio hoy no tiene ninguno).
+- [x] Tests mínimos en Node del módulo de análisis (`npm test`, mocha como en `stxt-js`).
+
+**Hecha el 2026-08-15.** Quedó en `src/analysis/`: `Analyzer` (el orquestador del workspace, un
+parseo cacheado por documento), `GrammarRegistry` (el provider por namespace, con la regla de
+duplicados de DISCOVERY), `TokenGeneratorObserver` (portado de `stxt-vscode`) y los modelos
+`Tokens` / `Diagnostic`. La validación replica al `Parser` (cada nodo al cerrarse, en post-orden)
+y `SCHEMA_NOT_FOUND` se silencia si el workspace no tiene ninguna gramática, como en la extensión.
 
 ### Fase 2 — Editor de un solo documento
 

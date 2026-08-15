@@ -1,8 +1,12 @@
 import * as assert from "assert";
 import {
+	DEFAULT_SETTINGS,
 	KeyValueStorage,
+	loadSettings,
 	loadWorkspace,
+	saveSettings,
 	saveWorkspace,
+	SETTINGS_STORAGE_KEY,
 	Workspace,
 	WORKSPACE_STORAGE_KEY,
 	WorkspaceEvent,
@@ -92,6 +96,26 @@ describe("Workspace: documents and activation", () => {
 		workspace.setActive("nope");
 		workspace.setActive("d1");
 		assert.deepStrictEqual(events, ["activated:d1"]);
+	});
+});
+
+describe("Workspace: order", () => {
+	it("moves a document to a final position, clamping and ignoring no-ops", () => {
+		const workspace = new Workspace(sequentialIds());
+		workspace.addDocument();
+		workspace.addDocument();
+		workspace.addDocument();
+		const events = record(workspace);
+		const order = () => workspace.getDocuments().map((d) => d.id);
+
+		assert.strictEqual(workspace.move("d1", 2), true);
+		assert.deepStrictEqual(order(), ["d2", "d3", "d1"]);
+		assert.strictEqual(workspace.move("d1", 99), false, "already last: clamped, no change");
+		assert.strictEqual(workspace.move("d3", -5), true, "clamped to the first position");
+		assert.deepStrictEqual(order(), ["d3", "d2", "d1"]);
+		assert.strictEqual(workspace.move("ghost", 0), false);
+		assert.deepStrictEqual(events, ["moved:d1", "moved:d3"]);
+		assert.strictEqual(workspace.getActiveId(), "d3", "moving does not change the active document");
 	});
 });
 
@@ -193,5 +217,23 @@ describe("Workspace: snapshots and persistence", () => {
 		};
 		assert.strictEqual(loadWorkspace(broken), undefined, "a throwing store reads as empty");
 		assert.strictEqual(saveWorkspace(broken, { active: null, documents: [] }), false, "and refuses writes quietly");
+	});
+});
+
+describe("Settings persistence", () => {
+	it("round-trips the settings and defaults field by field", () => {
+		const storage = memoryStorage();
+		assert.deepStrictEqual(loadSettings(storage), DEFAULT_SETTINGS, "nothing stored: defaults");
+		assert.notStrictEqual(loadSettings(storage), DEFAULT_SETTINGS, "and a copy, not the shared object");
+
+		assert.strictEqual(saveSettings(storage, { indent: "spaces", validation: false }), true);
+		assert.deepStrictEqual(loadSettings(storage), { indent: "spaces", validation: false });
+
+		storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ indent: "elephants", validation: false }));
+		assert.deepStrictEqual(loadSettings(storage), { indent: "tabs", validation: false },
+			"a malformed field falls back to its default, the rest is kept");
+
+		storage.setItem(SETTINGS_STORAGE_KEY, "{oops");
+		assert.deepStrictEqual(loadSettings(storage), DEFAULT_SETTINGS, "corrupt JSON: defaults");
 	});
 });

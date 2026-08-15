@@ -12,6 +12,23 @@ export const WORKSPACE_STORAGE_KEY = "stxt-play.workspace";
 /** Version of the stored format. Bump on any incompatible change of {@link StoredWorkspace}. */
 export const WORKSPACE_STORAGE_VERSION = 1;
 
+/** Key the playground settings are stored under. */
+export const SETTINGS_STORAGE_KEY = "stxt-play.settings";
+
+/** How the editor indents: a real tab per level, or four spaces. STXT accepts both. */
+export type IndentMode = "tabs" | "spaces";
+
+/** The user preferences of the playground: the two switches of the header. */
+export interface PlaygroundSettings {
+	/** What the Tab key inserts. Existing text is never converted. */
+	indent: IndentMode;
+	/** Whether documents are validated against the workspace grammars. */
+	validation: boolean;
+}
+
+/** Settings of a fresh playground. */
+export const DEFAULT_SETTINGS: PlaygroundSettings = { indent: "tabs", validation: true };
+
 /** The subset of the Web Storage API the playground uses. */
 export interface KeyValueStorage {
 	getItem(key: string): string | null;
@@ -82,6 +99,47 @@ export function clearWorkspace(storage: KeyValueStorage): void {
 		storage.removeItem(WORKSPACE_STORAGE_KEY);
 	} catch {
 		// Nothing to do: if the store is unavailable there is nothing to forget
+	}
+}
+
+/**
+ * Reads the settings back from the store. Fields that are missing or malformed take their default,
+ * so a partial or older record still yields usable settings.
+ *
+ * @param storage the store to read from.
+ * @returns the settings, complete; the defaults if nothing usable is stored. Never throws.
+ */
+export function loadSettings(storage: KeyValueStorage): PlaygroundSettings {
+	let parsed: unknown;
+	try {
+		const raw = storage.getItem(SETTINGS_STORAGE_KEY);
+		parsed = raw === null ? undefined : JSON.parse(raw);
+	} catch {
+		return { ...DEFAULT_SETTINGS };
+	}
+	if (typeof parsed !== "object" || parsed === null) {
+		return { ...DEFAULT_SETTINGS };
+	}
+	const candidate = parsed as Record<string, unknown>;
+	return {
+		indent: candidate.indent === "spaces" || candidate.indent === "tabs" ? candidate.indent : DEFAULT_SETTINGS.indent,
+		validation: typeof candidate.validation === "boolean" ? candidate.validation : DEFAULT_SETTINGS.validation,
+	};
+}
+
+/**
+ * Writes the settings to the store.
+ *
+ * @param storage the store to write to.
+ * @param settings the settings to save.
+ * @returns true if the write succeeded.
+ */
+export function saveSettings(storage: KeyValueStorage, settings: PlaygroundSettings): boolean {
+	try {
+		storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+		return true;
+	} catch {
+		return false;
 	}
 }
 

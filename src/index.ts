@@ -7,16 +7,27 @@ import { createStxtEditor } from "./editor/stxtEditor";
 import { SEED_DOCUMENTS } from "./seed";
 import { createDocumentList, DocumentListEntry, DocumentListKind } from "./ui/documentList";
 import { createProblemsPanel } from "./ui/problemsPanel";
-import { KeyValueStorage, loadWorkspace, saveWorkspace, Workspace, WorkspaceDocument } from "./workspace";
+import {
+	IndentMode,
+	KeyValueStorage,
+	loadSettings,
+	loadWorkspace,
+	PlaygroundSettings,
+	saveSettings,
+	saveWorkspace,
+	Workspace,
+	WorkspaceDocument,
+} from "./workspace";
 
 /**
- * Entry point of the playground (phase 3: a workspace of documents).
+ * Entry point of the playground (phase 4: workspace, header switches, cross validation).
  *
  * The wiring keeps a single flow of data: the workspace model is the source of truth for the
  * documents, the analyzer mirrors it (one cached parse per document), and everything visible —
  * highlighting, underlines, the problems panel, the document list, the header — reads from the
  * analysis. The editor shows one document at a time; every workspace document keeps its own
- * CodeMirror state, so switching preserves undo history and selection.
+ * CodeMirror state, so switching preserves undo history and selection. The two header switches
+ * — indentation mode and validation on/off — are settings, persisted apart from the workspace.
  */
 
 /** How long after the last change the workspace is written to localStorage. */
@@ -78,13 +89,19 @@ function main(): void {
 	const docNew = document.getElementById("doc-new");
 	const problemsList = document.getElementById("problems-list");
 	const problemsCount = document.getElementById("problems-count");
-	if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount) {
+	const indentTabs = document.getElementById("indent-tabs");
+	const indentSpaces = document.getElementById("indent-spaces");
+	const validationToggle = document.getElementById("validation-toggle");
+	if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount
+		|| !indentTabs || !indentSpaces || !validationToggle) {
 		return;
 	}
 
 	const analyzer = new Analyzer();
 	const workspace = new Workspace();
 	const storage = browserStorage();
+	const settings: PlaygroundSettings = storage ? loadSettings(storage) : { indent: "tabs", validation: true };
+	analyzer.setValidation(settings.validation);
 
 	/** One editor state per workspace document. */
 	const states = new Map<string, EditorState>();
@@ -123,6 +140,7 @@ function main(): void {
 
 	const editor = createStxtEditor({
 		parent: editorHost,
+		indent: settings.indent,
 		onDocChanged: (view) => {
 			if (shownId !== null) {
 				workspace.setText(shownId, view.state.doc.toString());
@@ -166,6 +184,7 @@ function main(): void {
 				workspace.addDocument();
 			}
 		},
+		onMove: (id, toIndex) => workspace.move(id, toIndex),
 	});
 
 	const activeAnalysis = (): DocumentAnalysis | undefined => {
@@ -223,9 +242,49 @@ function main(): void {
 		const state = states.get(id) ?? editor.createState(document.text);
 		states.set(id, state);
 		shownId = id;
-		view.setState(state);
+		editor.showState(state);
 		refreshView();
 	};
+
+	// --- Header switches ----------------------------------------------------------------------
+
+	const renderSwitches = (): void => {
+		indentTabs.setAttribute("aria-pressed", String(settings.indent === "tabs"));
+		indentSpaces.setAttribute("aria-pressed", String(settings.indent === "spaces"));
+		validationToggle.setAttribute("aria-checked", String(settings.validation));
+	};
+
+	const persistSettings = (): void => {
+		if (storage) {
+			saveSettings(storage, settings);
+		}
+	};
+
+	/** Changes what Tab inserts from now on. Existing text is left as it is, on purpose. */
+	const setIndent = (mode: IndentMode): void => {
+		if (settings.indent !== mode) {
+			settings.indent = mode;
+			editor.setIndentMode(mode);
+			renderSwitches();
+			persistSettings();
+		}
+		view.focus();
+	};
+	indentTabs.addEventListener("click", () => setIndent("tabs"));
+	indentSpaces.addEventListener("click", () => setIndent("spaces"));
+
+	/** Switches schema validation on or off for the whole workspace and repaints everything. */
+	validationToggle.addEventListener("click", () => {
+		settings.validation = !settings.validation;
+		analyzer.setValidation(settings.validation);
+		refreshView();
+		renderPanel();
+		renderList();
+		renderSwitches();
+		persistSettings();
+		view.focus();
+	});
+	renderSwitches();
 
 	// --- Wiring: the workspace drives everything ----------------------------------------------
 
@@ -267,6 +326,9 @@ function main(): void {
 			case "renamed":
 				renderList();
 				renderHeader();
+				break;
+			case "moved":
+				renderList();
 				break;
 			case "activated":
 				showDocument(event.id);

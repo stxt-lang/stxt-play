@@ -13,9 +13,15 @@ export {
 } from "./Workspace";
 export {
 	clearWorkspace,
+	DEFAULT_SETTINGS,
+	IndentMode,
 	KeyValueStorage,
+	loadSettings,
 	loadWorkspace,
+	PlaygroundSettings,
+	saveSettings,
 	saveWorkspace,
+	SETTINGS_STORAGE_KEY,
 	WORKSPACE_STORAGE_KEY,
 	WORKSPACE_STORAGE_VERSION,
 } from "./storage";

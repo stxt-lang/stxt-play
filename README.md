@@ -4,9 +4,9 @@ A web playground for [STXT](https://stxt.dev), the human-first hierarchical text
 in the browser, with its grammar next to it, and see errors as you type. Think VS Code, simplified —
 a real editor, not a form or a viewer.
 
-> **Status: in progress.** The analysis core, the single-document editor and the multi-document
-> workspace are done (phases 1–3 of `ROADMAP.md`); the header switches, autocompletion, the seed
-> content and publication are still to come.
+> **Status: in progress.** The analysis core, the editor, the multi-document workspace and the
+> header switches are done (phases 1–4 of `ROADMAP.md`); autocompletion, the seed content and
+> publication are still to come.
 
 ## What it should do
 
@@ -38,8 +38,10 @@ a real editor, not a form or a viewer.
   **namespace**, which is already their name.
 - **Errors go in a panel at the bottom**, like the *Problems* panel of VS Code, which is the
   reference; a right-hand panel would compete with the editor for width.
-- The header carries the active document's title and **two switches**: spaces/tabs, and schema
-  validation on/off.
+- The header carries the active document's title and **two switches**: spaces/tabs (what the Tab
+  key inserts — existing text is never converted), and schema validation on/off. Both are
+  remembered between visits.
+- The document list can be **reordered** by dragging rows, or with Alt+Up/Down.
 
 The playground is **not** a JSON converter: showing the canonical STXT-TREE-SPEC tree was on the
 list and was dropped — it may come back as a secondary view, but it is not what the product is

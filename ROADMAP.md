@@ -82,11 +82,26 @@ editor nunca se quede vacío; la validación cruzada ya funciona (el analizador 
 
 ### Fase 4 — Validación cruzada y cabecera
 
-- [ ] Las gramáticas del workspace validan en vivo los demás documentos (asociación por
+- [x] Las gramáticas del workspace validan en vivo los demás documentos (asociación por
       namespace).
-- [ ] Cabecera completa: título del documento activo, interruptor espacios/tabs e interruptor
+- [x] Cabecera completa: título del documento activo, interruptor espacios/tabs e interruptor
       validación on/off.
-- [ ] Errores de validación en el mismo panel que los de sintaxis, distinguidos entre sí.
+- [x] Errores de validación en el mismo panel que los de sintaxis, distinguidos entre sí.
+- [x] Reordenar los documentos de la lista lateral: arrastrar y soltar, y Alt+↑/↓ con el teclado
+      (pedido el 2026-08-15; entró aquí por tocar las mismas piezas que el resto de la fase).
+
+**Hecha el 2026-08-15.** La validación cruzada ya la traía el `Analyzer` de la fase 1; lo que
+faltaba era la interfaz. La cabecera lleva un segmentado **Tabs | Spaces** y un interruptor
+**Validation**; ambos son *ajustes* del playground, guardados aparte del workspace
+(`stxt-play.settings`, `loadSettings`/`saveSettings` en `src/workspace/storage.ts`, campo a campo
+con sus defaults). El modo de indentación cambia lo que inserta Tab (un tabulador o cuatro
+espacios, vía un `Compartment` de CodeMirror sobre `indentUnit`, aplicado también a los estados
+aparcados al mostrarlos) y **no convierte el texto existente**: convertir sería un default
+destructivo, y si un día se quiere reindentar será una acción explícita. El interruptor de
+validación llama a `Analyzer.setValidation` y repinta editor, panel y contadores. En el panel,
+cada fila lleva una etiqueta de origen —`syntax`, `grammar`, `validation`— con su color, además
+del punto de severidad. La reordenación vive en `Workspace.move(id, índiceFinal)` (evento
+`moved`) y en la lista (`draggable`, marca de destino antes/después según la mitad de la fila).
 
 ### Fase 5 — Autocompletado
 

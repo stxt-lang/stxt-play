@@ -91,6 +91,19 @@ $warning: #9a6b00;
 		background: $color3;
 	}
 
+	// Drag and drop to reorder: the dragged row fades, the target shows a line where it would land
+	&.doc-dragging {
+		opacity: 0.4;
+	}
+
+	&.doc-drop-before {
+		box-shadow: inset 0 2px 0 $color1;
+	}
+
+	&.doc-drop-after {
+		box-shadow: inset 0 -2px 0 $color1;
+	}
+
 	.doc-kind {
 		flex: none;
 		width: 1.2rem;

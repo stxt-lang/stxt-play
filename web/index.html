@@ -11,7 +11,16 @@
 	<header class="topbar">
 		<span class="brand">STXT Playground</span>
 		<span id="doc-title" class="doc-title"></span>
-		<span class="topbar-note">everything runs in your browser</span>
+		<div class="topbar-controls">
+			<div class="segmented" role="group" aria-label="Indentation">
+				<button id="indent-tabs" type="button" aria-pressed="true" title="Tab inserts a tab character (existing text is not converted)">Tabs</button>
+				<button id="indent-spaces" type="button" aria-pressed="false" title="Tab inserts four spaces (existing text is not converted)">Spaces</button>
+			</div>
+			<button id="validation-toggle" type="button" class="switch" role="switch" aria-checked="true" title="Validate documents against the grammars of the workspace">
+				<span class="switch-track"><span class="switch-thumb"></span></span>
+				<span class="switch-label">Validation</span>
+			</button>
+		</div>
 	</header>
 	<div class="workbench">
 		<aside class="sidebar" aria-label="Documents">
@@ -20,7 +29,7 @@
 				<button id="doc-new" type="button" class="sidebar-button" title="New document" aria-label="New document">+</button>
 			</header>
 			<ul id="doc-list" class="doc-list" role="listbox" aria-label="Workspace documents"></ul>
-			<footer class="sidebar-footer">Saved in this browser</footer>
+			<footer class="sidebar-footer">Everything runs in your browser · saved locally</footer>
 		</aside>
 		<main id="editor" class="editor" aria-label="STXT editor"></main>
 	</div>

@@ -31,6 +31,8 @@ export interface DocumentListHandlers {
 	onRename(id: string, title: string): void;
 	/** The user asked to delete a row (the app confirms). */
 	onDelete(id: string): void;
+	/** The user dragged a row (or moved it with the keyboard) to a new final position. */
+	onMove(id: string, toIndex: number): void;
 }
 
 /** The document list of the sidebar. */
@@ -59,9 +61,10 @@ const KIND_TITLE: Record<DocumentListKind, string> = {
  * Creates the document list inside its `<ul>` and wires the "new document" button.
  *
  * Plain DOM, like the problems panel. Rows are focusable: Enter or Space selects, F2 renames,
- * Delete asks for deletion; double-click on the label renames too. The list keeps only one piece
- * of state of its own — which row is being renamed — so re-rendering while the user types a new
- * title keeps the input in place.
+ * Delete asks for deletion, Alt+Up/Down moves; double-click on the label renames too, and rows can
+ * be dragged to reorder them. The list keeps only two pieces of state of its own — which row is
+ * being renamed, which one is being dragged — so re-rendering while the user types a new title
+ * keeps the input in place.
  *
  * @param list element the rows are rendered into.
  * @param newButton the "new document" button.
@@ -74,6 +77,24 @@ export function createDocumentList(
 ): DocumentList {
 	let entries: DocumentListEntry[] = [];
 	let renaming: string | null = null;
+	let dragging: string | null = null;
+
+	/** Class of the drop marker: whether the dragged row would land before or after the target. */
+	const dropClass = (row: HTMLElement, event: DragEvent): "doc-drop-before" | "doc-drop-after" =>
+		event.clientY < row.getBoundingClientRect().top + row.offsetHeight / 2 ? "doc-drop-before" : "doc-drop-after";
+
+	const clearDropMarks = (): void => {
+		list.querySelectorAll(".doc-drop-before, .doc-drop-after").forEach((row) => {
+			row.classList.remove("doc-drop-before", "doc-drop-after");
+		});
+	};
+
+	/** Final index of `id` if dropped before/after the row at `targetIndex`. */
+	const dropIndex = (id: string, targetIndex: number, before: boolean): number => {
+		const from = entries.findIndex((e) => e.id === id);
+		const insertAt = before ? targetIndex : targetIndex + 1;
+		return from >= 0 && from < insertAt ? insertAt - 1 : insertAt;
+	};
 
 	newButton.addEventListener("click", () => handlers.onCreate());
 
@@ -150,6 +171,51 @@ export function createDocumentList(
 
 		row.append(badge, label, problems, remove);
 
+		// Drag and drop to reorder
+		row.draggable = true;
+		row.addEventListener("dragstart", (event) => {
+			dragging = entry.id;
+			row.classList.add("doc-dragging");
+			if (event.dataTransfer) {
+				event.dataTransfer.effectAllowed = "move";
+				event.dataTransfer.setData("text/plain", entry.id);
+			}
+		});
+		row.addEventListener("dragend", () => {
+			dragging = null;
+			row.classList.remove("doc-dragging");
+			clearDropMarks();
+		});
+		row.addEventListener("dragover", (event) => {
+			if (dragging === null || dragging === entry.id) {
+				return;
+			}
+			event.preventDefault();
+			if (event.dataTransfer) {
+				event.dataTransfer.dropEffect = "move";
+			}
+			const mark = dropClass(row, event);
+			if (!row.classList.contains(mark)) {
+				clearDropMarks();
+				row.classList.add(mark);
+			}
+		});
+		row.addEventListener("dragleave", () => {
+			row.classList.remove("doc-drop-before", "doc-drop-after");
+		});
+		row.addEventListener("drop", (event) => {
+			if (dragging === null || dragging === entry.id) {
+				return;
+			}
+			event.preventDefault();
+			const before = dropClass(row, event) === "doc-drop-before";
+			const targetIndex = entries.findIndex((e) => e.id === entry.id);
+			const id = dragging;
+			dragging = null;
+			clearDropMarks();
+			handlers.onMove(id, dropIndex(id, targetIndex, before));
+		});
+
 		row.addEventListener("click", () => handlers.onSelect(entry.id));
 		if (entry.renamable) {
 			label.addEventListener("dblclick", (event) => {
@@ -171,6 +237,14 @@ export function createDocumentList(
 				case "Delete":
 					event.preventDefault();
 					handlers.onDelete(entry.id);
+					break;
+				case "ArrowUp":
+				case "ArrowDown":
+					if (event.altKey) {
+						event.preventDefault();
+						const index = entries.findIndex((e) => e.id === entry.id);
+						handlers.onMove(entry.id, event.key === "ArrowUp" ? index - 1 : index + 1);
+					}
 					break;
 			}
 		});
@@ -216,11 +290,18 @@ export function createDocumentList(
 
 	return {
 		render(next: DocumentListEntry[]): void {
+			// Keep keyboard focus on the same row across a re-render (e.g. after Alt+Arrow moves it)
+			const focused = list.contains(document.activeElement)
+				? (document.activeElement as HTMLElement).closest<HTMLElement>(".doc")?.dataset.id
+				: undefined;
 			entries = next;
 			if (renaming !== null && !entries.some((e) => e.id === renaming)) {
 				renaming = null;
 			}
 			render();
+			if (focused !== undefined && renaming === null) {
+				list.querySelector<HTMLElement>(`.doc[data-id="${CSS.escape(focused)}"]`)?.focus();
+			}
 		},
 		startRename,
 	};

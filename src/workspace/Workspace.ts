@@ -23,6 +23,7 @@ export type WorkspaceEvent =
 	| { kind: "removed"; id: string }
 	| { kind: "text"; id: string }
 	| { kind: "renamed"; id: string }
+	| { kind: "moved"; id: string }
 	| { kind: "activated"; id: string };
 
 /** Receives every {@link WorkspaceEvent}, in the order they happen. */
@@ -151,6 +152,28 @@ export class Workspace {
 		}
 		this.documents[index] = { ...this.documents[index], title: trimmed };
 		this.emit({ kind: "renamed", id });
+		return true;
+	}
+
+	/**
+	 * Moves a document to another position of the list. Out-of-range positions are clamped.
+	 *
+	 * @param id identifier of the document.
+	 * @param toIndex final position of the document, 0-based.
+	 * @returns true if the order changed.
+	 */
+	move(id: string, toIndex: number): boolean {
+		const from = this.indexOf(id);
+		if (from < 0) {
+			return false;
+		}
+		const to = Math.max(0, Math.min(Math.trunc(toIndex), this.documents.length - 1));
+		if (to === from) {
+			return false;
+		}
+		const [document] = this.documents.splice(from, 1);
+		this.documents.splice(to, 0, document);
+		this.emit({ kind: "moved", id });
 		return true;
 	}
 

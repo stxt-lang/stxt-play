@@ -21829,12 +21829,6 @@
     view.setTabFocusMode();
     return true;
   };
-  var insertTab = ({ state, dispatch }) => {
-    if (state.selection.ranges.some((r) => !r.empty))
-      return indentMore({ state, dispatch });
-    dispatch(state.update(state.replaceSelection("	"), { scrollIntoView: true, userEvent: "input" }));
-    return true;
-  };
   var emacsStyleKeymap = [
     { key: "Ctrl-b", run: cursorCharLeft, shift: selectCharLeft, preventDefault: true },
     { key: "Ctrl-f", run: cursorCharRight, shift: selectCharRight },
@@ -21902,16 +21896,29 @@
   ].concat(standardKeymap);
 
   // src/editor/stxtEditor.ts
-  function createStxtExtensions(onDocChanged) {
+  var INDENT_UNITS = { tabs: "	", spaces: "    " };
+  var indentCompartment = new Compartment();
+  var insertIndentUnit = (view) => {
+    const { state } = view;
+    if (state.selection.ranges.some((range) => !range.empty)) {
+      return indentMore(view);
+    }
+    view.dispatch(state.update(state.replaceSelection(state.facet(indentUnit)), {
+      scrollIntoView: true,
+      userEvent: "input"
+    }));
+    return true;
+  };
+  function createStxtExtensions(onDocChanged, indent) {
     return [
       lineNumbers(),
       highlightActiveLineGutter(),
       highlightActiveLine(),
       history(),
-      indentUnit.of("	"),
+      indentCompartment.of(indentUnit.of(INDENT_UNITS[indent])),
       EditorState.tabSize.of(4),
       keymap.of([
-        { key: "Tab", run: insertTab, shift: indentLess },
+        { key: "Tab", run: insertIndentUnit, shift: indentLess },
         ...defaultKeymap,
         ...historyKeymap
       ]),
@@ -21925,10 +21932,27 @@
     ];
   }
   function createStxtEditor(config) {
-    const extensions = createStxtExtensions(config.onDocChanged);
-    const createState = (doc2) => EditorState.create({ doc: doc2, extensions });
-    const view = new EditorView({ parent: config.parent, state: createState("") });
-    return { view, createState };
+    let indent = config.indent;
+    const extensions = createStxtExtensions(config.onDocChanged, indent);
+    const view = new EditorView({ parent: config.parent, state: EditorState.create({ doc: "", extensions }) });
+    const applyIndent = () => {
+      if (view.state.facet(indentUnit) !== INDENT_UNITS[indent]) {
+        view.dispatch({ effects: indentCompartment.reconfigure(indentUnit.of(INDENT_UNITS[indent])) });
+      }
+    };
+    return {
+      view,
+      // States are born with the initial mode; showState brings them to the current one
+      createState: (doc2) => EditorState.create({ doc: doc2, extensions }),
+      showState: (state) => {
+        view.setState(state);
+        applyIndent();
+      },
+      setIndentMode: (mode) => {
+        indent = mode;
+        applyIndent();
+      }
+    };
   }
 
   // src/seed.ts
@@ -21979,6 +22003,18 @@
   function createDocumentList(list, newButton, handlers2) {
     let entries = [];
     let renaming = null;
+    let dragging = null;
+    const dropClass = (row, event) => event.clientY < row.getBoundingClientRect().top + row.offsetHeight / 2 ? "doc-drop-before" : "doc-drop-after";
+    const clearDropMarks = () => {
+      list.querySelectorAll(".doc-drop-before, .doc-drop-after").forEach((row) => {
+        row.classList.remove("doc-drop-before", "doc-drop-after");
+      });
+    };
+    const dropIndex = (id, targetIndex, before) => {
+      const from = entries.findIndex((e) => e.id === id);
+      const insertAt = before ? targetIndex : targetIndex + 1;
+      return from >= 0 && from < insertAt ? insertAt - 1 : insertAt;
+    };
     newButton.addEventListener("click", () => handlers2.onCreate());
     const render = () => {
       list.textContent = "";
@@ -22044,6 +22080,49 @@
         handlers2.onDelete(entry.id);
       });
       row.append(badge, label, problems, remove2);
+      row.draggable = true;
+      row.addEventListener("dragstart", (event) => {
+        dragging = entry.id;
+        row.classList.add("doc-dragging");
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", entry.id);
+        }
+      });
+      row.addEventListener("dragend", () => {
+        dragging = null;
+        row.classList.remove("doc-dragging");
+        clearDropMarks();
+      });
+      row.addEventListener("dragover", (event) => {
+        if (dragging === null || dragging === entry.id) {
+          return;
+        }
+        event.preventDefault();
+        if (event.dataTransfer) {
+          event.dataTransfer.dropEffect = "move";
+        }
+        const mark = dropClass(row, event);
+        if (!row.classList.contains(mark)) {
+          clearDropMarks();
+          row.classList.add(mark);
+        }
+      });
+      row.addEventListener("dragleave", () => {
+        row.classList.remove("doc-drop-before", "doc-drop-after");
+      });
+      row.addEventListener("drop", (event) => {
+        if (dragging === null || dragging === entry.id) {
+          return;
+        }
+        event.preventDefault();
+        const before = dropClass(row, event) === "doc-drop-before";
+        const targetIndex = entries.findIndex((e) => e.id === entry.id);
+        const id = dragging;
+        dragging = null;
+        clearDropMarks();
+        handlers2.onMove(id, dropIndex(id, targetIndex, before));
+      });
       row.addEventListener("click", () => handlers2.onSelect(entry.id));
       if (entry.renamable) {
         label.addEventListener("dblclick", (event) => {
@@ -22065,6 +22144,14 @@
           case "Delete":
             event.preventDefault();
             handlers2.onDelete(entry.id);
+            break;
+          case "ArrowUp":
+          case "ArrowDown":
+            if (event.altKey) {
+              event.preventDefault();
+              const index = entries.findIndex((e) => e.id === entry.id);
+              handlers2.onMove(entry.id, event.key === "ArrowUp" ? index - 1 : index + 1);
+            }
             break;
         }
       });
@@ -22104,17 +22191,26 @@
     };
     return {
       render(next) {
+        const focused = list.contains(document.activeElement) ? document.activeElement.closest(".doc")?.dataset.id : void 0;
         entries = next;
         if (renaming !== null && !entries.some((e) => e.id === renaming)) {
           renaming = null;
         }
         render();
+        if (focused !== void 0 && renaming === null) {
+          list.querySelector(`.doc[data-id="${CSS.escape(focused)}"]`)?.focus();
+        }
       },
       startRename
     };
   }
 
   // src/ui/problemsPanel.ts
+  var SOURCE_TITLES = {
+    syntax: "Syntax: the document does not parse (STXT-SPEC)",
+    grammar: "Grammar: a schema or template of the workspace cannot be used",
+    validation: "Validation: the document does not conform to the grammar of its namespace (STXT-SCHEMA-SPEC)"
+  };
   function createProblemsPanel(list, counter, onSelect) {
     return {
       render(diagnostics) {
@@ -22132,14 +22228,18 @@
           row.className = `problem problem-${diagnostic.severity}`;
           const severity = document.createElement("span");
           severity.className = "problem-severity";
-          severity.title = `${diagnostic.severity} (${diagnostic.source})`;
+          severity.title = diagnostic.severity;
+          const source = document.createElement("span");
+          source.className = `problem-source problem-source-${diagnostic.source}`;
+          source.textContent = diagnostic.source;
+          source.title = SOURCE_TITLES[diagnostic.source];
           const message = document.createElement("span");
           message.className = "problem-message";
           message.textContent = `[${diagnostic.code}] ${diagnostic.message}`;
           const line = document.createElement("span");
           line.className = "problem-line";
           line.textContent = `Ln ${diagnostic.line + 1}`;
-          row.append(severity, message, line);
+          row.append(severity, source, message, line);
           row.addEventListener("click", () => onSelect(diagnostic.line));
           list.appendChild(row);
         }
@@ -22253,6 +22353,27 @@
       return true;
     }
     /**
+     * Moves a document to another position of the list. Out-of-range positions are clamped.
+     *
+     * @param id identifier of the document.
+     * @param toIndex final position of the document, 0-based.
+     * @returns true if the order changed.
+     */
+    move(id, toIndex) {
+      const from = this.indexOf(id);
+      if (from < 0) {
+        return false;
+      }
+      const to = Math.max(0, Math.min(Math.trunc(toIndex), this.documents.length - 1));
+      if (to === from) {
+        return false;
+      }
+      const [document2] = this.documents.splice(from, 1);
+      this.documents.splice(to, 0, document2);
+      this.emit({ kind: "moved", id });
+      return true;
+    }
+    /**
      * Removes a document. If it was the active one, the next document in the list takes over (or
      * the previous one when it was the last), so the editor always shows a neighbour.
      *
@@ -22323,6 +22444,8 @@
   // src/workspace/storage.ts
   var WORKSPACE_STORAGE_KEY = "stxt-play.workspace";
   var WORKSPACE_STORAGE_VERSION = 1;
+  var SETTINGS_STORAGE_KEY = "stxt-play.settings";
+  var DEFAULT_SETTINGS = { indent: "tabs", validation: true };
   function loadWorkspace(storage) {
     let raw;
     try {
@@ -22349,6 +22472,31 @@
     };
     try {
       storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(stored));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  function loadSettings(storage) {
+    let parsed;
+    try {
+      const raw = storage.getItem(SETTINGS_STORAGE_KEY);
+      parsed = raw === null ? void 0 : JSON.parse(raw);
+    } catch {
+      return { ...DEFAULT_SETTINGS };
+    }
+    if (typeof parsed !== "object" || parsed === null) {
+      return { ...DEFAULT_SETTINGS };
+    }
+    const candidate = parsed;
+    return {
+      indent: candidate.indent === "spaces" || candidate.indent === "tabs" ? candidate.indent : DEFAULT_SETTINGS.indent,
+      validation: typeof candidate.validation === "boolean" ? candidate.validation : DEFAULT_SETTINGS.validation
+    };
+  }
+  function saveSettings(storage, settings) {
+    try {
+      storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
       return true;
     } catch {
       return false;
@@ -22418,12 +22566,17 @@
     const docNew = document.getElementById("doc-new");
     const problemsList = document.getElementById("problems-list");
     const problemsCount = document.getElementById("problems-count");
-    if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount) {
+    const indentTabs = document.getElementById("indent-tabs");
+    const indentSpaces = document.getElementById("indent-spaces");
+    const validationToggle = document.getElementById("validation-toggle");
+    if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount || !indentTabs || !indentSpaces || !validationToggle) {
       return;
     }
     const analyzer = new Analyzer();
     const workspace = new Workspace();
     const storage = browserStorage();
+    const settings = storage ? loadSettings(storage) : { indent: "tabs", validation: true };
+    analyzer.setValidation(settings.validation);
     const states = /* @__PURE__ */ new Map();
     let shownId = null;
     let persistTimer;
@@ -22453,6 +22606,7 @@
     });
     const editor = createStxtEditor({
       parent: editorHost,
+      indent: settings.indent,
       onDocChanged: (view2) => {
         if (shownId !== null) {
           workspace.setText(shownId, view2.state.doc.toString());
@@ -22489,7 +22643,8 @@
         if (workspace.getDocuments().length === 0) {
           workspace.addDocument();
         }
-      }
+      },
+      onMove: (id, toIndex) => workspace.move(id, toIndex)
     });
     const activeAnalysis = () => {
       const id = workspace.getActiveId();
@@ -22537,9 +22692,41 @@
       const state = states.get(id) ?? editor.createState(document2.text);
       states.set(id, state);
       shownId = id;
-      view.setState(state);
+      editor.showState(state);
       refreshView();
     };
+    const renderSwitches = () => {
+      indentTabs.setAttribute("aria-pressed", String(settings.indent === "tabs"));
+      indentSpaces.setAttribute("aria-pressed", String(settings.indent === "spaces"));
+      validationToggle.setAttribute("aria-checked", String(settings.validation));
+    };
+    const persistSettings = () => {
+      if (storage) {
+        saveSettings(storage, settings);
+      }
+    };
+    const setIndent = (mode) => {
+      if (settings.indent !== mode) {
+        settings.indent = mode;
+        editor.setIndentMode(mode);
+        renderSwitches();
+        persistSettings();
+      }
+      view.focus();
+    };
+    indentTabs.addEventListener("click", () => setIndent("tabs"));
+    indentSpaces.addEventListener("click", () => setIndent("spaces"));
+    validationToggle.addEventListener("click", () => {
+      settings.validation = !settings.validation;
+      analyzer.setValidation(settings.validation);
+      refreshView();
+      renderPanel();
+      renderList();
+      renderSwitches();
+      persistSettings();
+      view.focus();
+    });
+    renderSwitches();
     workspace.subscribe((event) => {
       switch (event.kind) {
         case "added": {
@@ -22576,6 +22763,9 @@
         case "renamed":
           renderList();
           renderHeader();
+          break;
+        case "moved":
+          renderList();
           break;
         case "activated":
           showDocument(event.id);

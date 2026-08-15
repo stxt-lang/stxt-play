@@ -1,23 +1,47 @@
 # STXT Playground
 
 A web playground for [STXT](https://stxt.dev), the human-first hierarchical text format: write STXT
-in the browser, with its grammar next to it, and see the result as you type. Think *JSON Editor
-Online*, but for STXT.
+in the browser, with its grammar next to it, and see errors as you type. Think VS Code, simplified —
+a real editor, not a form or a viewer.
 
 > **Status: scaffolding.** The stack is in place and `web/index.html` says hello, but none of the
 > playground itself is built yet. What follows is what it is meant to become.
 
 ## What it should do
 
-- **Edit one or several STXT documents** at once. The editor is the centrepiece.
+- **Edit one or several STXT documents** at once, with syntax highlighting.
 - **Edit and insert grammars** — `@stxt.schema` and `@stxt.template` — alongside the documents they
   validate.
 - **Show syntax errors as you type**, and schema validation errors next to them.
 - **Autocomplete** driven by the active schema or template.
-- Syntax highlighting, and the canonical JSON tree (STXT-TREE-SPEC) side by side with the source.
-- Share an example by URL, for documentation and demos.
 
-The list is open; more will be added as the design settles.
+## The interface
+
+```
+┌──────────────────────────────────────────────────────┐
+│ active document title      [spaces/tabs] [validate]  │  header
+├───────────────┬──────────────────────────────────────┤
+│ documents     │                                      │
+│ (schemas and  │              EDITOR                  │
+│  templates    │                                      │
+│  look         │                                      │
+│  different)   │                                      │
+├───────────────┴──────────────────────────────────────┤
+│ validation errors            (right side or footer)  │
+└──────────────────────────────────────────────────────┘
+```
+
+- **Everything is a document.** Schemas and templates sit in the same list as the rest, but **look
+  different**, because they play a different role: they feed validation and resolution.
+- **Documents may carry a title; schemas and templates may not** — those are identified by their
+  **namespace**, which is already their name.
+- **Where errors go is undecided**: right-hand side or footer.
+- The header carries the active document's title and **two switches**: spaces/tabs, and schema
+  validation on/off.
+
+Nothing here is settled. The playground is **not** a JSON converter: showing the canonical
+STXT-TREE-SPEC tree was on the list and was dropped — it may come back as a secondary view, but it
+is not what the product is about.
 
 ## Beyond the playground
 

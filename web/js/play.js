@@ -220,7 +220,7 @@
       var RuntimeException_1 = require_RuntimeException();
       var NamespaceValidator_1 = require_NamespaceValidator();
       var StringUtils_1 = require_StringUtils();
-      var Node = class {
+      var Node2 = class {
         /**
          * Creates a node with its full position in the document. This is the constructor the
          * {@link Parser} uses while parsing.
@@ -369,7 +369,7 @@
           return s;
         }
       };
-      exports.Node = Node;
+      exports.Node = Node2;
     }
   });
 
@@ -2478,11 +2478,11 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.toCanonicalTree = toCanonicalTree;
-      exports.toCanonicalJson = toCanonicalJson2;
+      exports.toCanonicalJson = toCanonicalJson;
       function toCanonicalTree(nodes) {
         return nodes.map((node) => toCanonicalNode(node));
       }
-      function toCanonicalJson2(nodes) {
+      function toCanonicalJson(nodes) {
         return JSON.stringify(toCanonicalTree(nodes), null, 2);
       }
       function toCanonicalNode(node) {
@@ -2965,6 +2965,15 @@
     "	Note >>",
     "		Everything under a '>>' node is literal text."
   ].join("\n");
+  function outline(node, depth) {
+    const indent = "	".repeat(depth);
+    if (node.isTextNode()) {
+      const lines = node.getTextLines().map((line) => `${indent}	${line}`);
+      return [`${indent}${node.getName()} >>`, ...lines];
+    }
+    const children = node.getChildren().flatMap((child) => outline(child, depth + 1));
+    return [`${indent}${node.getName()}: ${node.getValue()}`, ...children];
+  }
   function main() {
     const output = document.getElementById("smoke-test-output");
     if (!output) {
@@ -2972,7 +2981,7 @@
     }
     try {
       const nodes = new import_core.Parser().parse(SAMPLE);
-      output.textContent = (0, import_core.toCanonicalJson)(nodes);
+      output.textContent = nodes.flatMap((node) => outline(node, 0)).join("\n");
     } catch (error) {
       output.textContent = String(error);
     }

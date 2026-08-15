@@ -1,4 +1,4 @@
-import { Parser, toCanonicalJson } from "@stxt-lang/core";
+import { Node, Parser } from "@stxt-lang/core";
 
 /**
  * Entry point of the playground.
@@ -16,6 +16,17 @@ const SAMPLE = [
 	"\t\tEverything under a '>>' node is literal text.",
 ].join("\n");
 
+/** Renders a node and its descendants as an indented outline, one line per node. */
+function outline(node: Node, depth: number): string[] {
+	const indent = "\t".repeat(depth);
+	if (node.isTextNode()) {
+		const lines = node.getTextLines().map((line) => `${indent}\t${line}`);
+		return [`${indent}${node.getName()} >>`, ...lines];
+	}
+	const children = node.getChildren().flatMap((child) => outline(child, depth + 1));
+	return [`${indent}${node.getName()}: ${node.getValue()}`, ...children];
+}
+
 function main(): void {
 	const output = document.getElementById("smoke-test-output");
 	if (!output) {
@@ -24,7 +35,7 @@ function main(): void {
 
 	try {
 		const nodes = new Parser().parse(SAMPLE);
-		output.textContent = toCanonicalJson(nodes);
+		output.textContent = nodes.flatMap((node) => outline(node, 0)).join("\n");
 	} catch (error) {
 		output.textContent = String(error);
 	}

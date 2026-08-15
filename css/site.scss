@@ -48,5 +48,12 @@ h1 {
 		font-family: $font-mono;
 		font-size: 0.875rem;
 		line-height: 1.5;
+		tab-size: 4;
+	}
+
+	.note {
+		margin: 1rem 0 0;
+		color: $stxt-muted;
+		font-size: 0.875rem;
 	}
 }

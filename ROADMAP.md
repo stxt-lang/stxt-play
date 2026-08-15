@@ -173,10 +173,17 @@ cabecera se pliega en dos filas.
 - [x] `web/_headers` (HTML sin caché; `css/` y `js/` cacheables largo, ya que van versionados;
       `nosniff` y `Referrer-Policy`) y `web/_redirects` (`/index.html` e `/index` → `/`). Se
       sirven tal cual con el resto de `web/`.
-- [ ] Build final commiteado en `web/` y publicación (el usuario, como siempre).
-- [ ] Enlace desde `stxt.dev`, vía `../stxt-cms` (entrada *Playground* en la barra superior:
-      `templates/top_bar.vm` + `menu.playground` en `lang/pages_{en,es}.properties`; regenera el
-      usuario).
+- [x] Build final commiteado en `web/` y **publicado en `https://play.stxt.dev`** (2026-08-15;
+      comprobado: HTML sin caché, `js/` inmutable, `nosniff`, `/index.html` → `/`).
+- [x] Enlace desde `stxt.dev`, vía `../stxt-cms` (2026-08-15): entrada *Playground* en la barra
+      superior (`templates/top_bar.vm` + `menu.playground` en `lang/pages_{en,es}.properties`) y en
+      la navegación lateral (`Link: Playground` / `Url: https://play.stxt.dev` en `_index.stxt` de
+      `../stxt-web`, en y es; `node.vm` aprendió el `Url` externo y `navigation.vm` lo salta en
+      anterior/siguiente; la plantilla `dev.stxt.website` declara ahora `Url: (?) URL`).
+      Verificado generando a un directorio de pruebas; **`stxt-dev` lo regenera el usuario**.
+
+**El playground está terminado** según este plan. Lo que venga —ideas nuevas— entra por el
+`TODO.md` de `../stxt` y, si cuaja, como fase nueva aquí.
 
 ## Fuera del alcance de «terminado»
 

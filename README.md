@@ -4,10 +4,9 @@ A web playground for [STXT](https://stxt.dev), the human-first hierarchical text
 in the browser, with its grammar next to it, and see errors as you type. Think VS Code, simplified —
 a real editor, not a form or a viewer.
 
-> **Status: feature complete, being published at [play.stxt.dev](https://play.stxt.dev).** Phases
-> 1–6 of `ROADMAP.md` are done: analysis core, editor, multi-document workspace, header switches,
-> autocompletion and hover, seed content, reset, share links. What remains is the link from
-> `stxt.dev`.
+> **Live at [play.stxt.dev](https://play.stxt.dev).** Every phase of `ROADMAP.md` is done: analysis
+> core, editor, multi-document workspace, header switches, autocompletion and hover, seed content,
+> reset, share links, publication.
 
 ## What it should do
 

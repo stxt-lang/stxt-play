@@ -30,8 +30,67 @@ body {
 	color: #fff;
 
 	.brand {
+		flex: none;
+		color: #fff;
 		font-weight: 700;
 		letter-spacing: 0.02em;
+		text-decoration: none;
+
+		&:hover .brand-sub,
+		&:focus-visible .brand-sub {
+			text-decoration: underline;
+		}
+
+		&:focus-visible {
+			outline: 2px solid #fff;
+			outline-offset: 2px;
+		}
+	}
+
+	.brand-sub {
+		font-weight: 400;
+		opacity: 0.9;
+	}
+
+	.topbar-button {
+		padding: 0.15rem 0.6rem;
+		border: 1px solid rgba(#fff, 0.6);
+		border-radius: 3px;
+		background: transparent;
+		color: #fff;
+		font: inherit;
+		cursor: pointer;
+
+		&:hover {
+			background: rgba(#fff, 0.15);
+		}
+
+		&:focus-visible {
+			outline: 2px solid #fff;
+			outline-offset: 2px;
+		}
+	}
+
+	.topbar-links {
+		display: flex;
+		gap: 0.75rem;
+
+		a {
+			color: #fff;
+			opacity: 0.85;
+			text-decoration: none;
+
+			&:hover,
+			&:focus-visible {
+				opacity: 1;
+				text-decoration: underline;
+			}
+
+			&:focus-visible {
+				outline: 2px solid #fff;
+				outline-offset: 2px;
+			}
+		}
 	}
 
 	.doc-title {
@@ -139,10 +198,57 @@ body {
 	}
 }
 
+// Transient message under the top bar (link copied, workspace reset…)
+.status {
+	position: fixed;
+	top: 2.6rem;
+	left: 50%;
+	z-index: 20;
+	padding: 0.35rem 0.9rem;
+	border-radius: 999px;
+	background: $black;
+	color: #fff;
+	font-size: 0.8rem;
+	opacity: 0;
+	transform: translate(-50%, -0.5rem);
+	transition: opacity 0.2s, transform 0.2s;
+	pointer-events: none;
+
+	&.status-visible {
+		opacity: 1;
+		transform: translate(-50%, 0);
+	}
+}
+
 .workbench {
 	display: flex;
 	flex: 1;
 	min-height: 0; // let the editor scroll instead of growing the page
+}
+
+// Narrow screens: the sidebar becomes a strip above the editor, the header drops its links
+@media (max-width: 720px) {
+	.topbar {
+		flex-wrap: wrap;
+		gap: 0.5rem 0.75rem;
+
+		.doc-title {
+			flex-basis: 100%;
+			order: 3;
+		}
+
+		.topbar-links {
+			display: none;
+		}
+	}
+
+	.workbench {
+		flex-direction: column;
+	}
+
+	.problems {
+		height: 8rem;
+	}
 }
 
 .editor {

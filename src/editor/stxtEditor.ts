@@ -50,7 +50,8 @@ export interface StxtEditor {
 	showState(state: EditorState): void;
 	/**
 	 * Changes what the Tab key inserts and what the indent commands use, in the view and in every
-	 * state created or shown from now on. Existing text is never converted.
+	 * state created or shown from now on. Re-indenting the existing text is the app's job (it
+	 * knows the analysis); this only sets the unit.
 	 *
 	 * @param mode tabs or spaces.
 	 */

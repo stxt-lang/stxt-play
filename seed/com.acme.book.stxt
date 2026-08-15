@@ -1,0 +1,47 @@
+Schema (@stxt.schema): com.acme.book
+	Node: Book
+		Type: GROUP
+		Children:
+			Child: Title
+				Min: 1
+				Max: 1
+			Child: Authors
+				Min: 1
+				Max: 1
+			Child: ISBN
+				Min: 1
+				Max: 1
+			Child: Publisher
+				Max: 1
+			Child: Published
+				Max: 1
+			Child: Summary
+				Max: 1
+			Child: Chapters
+				Max: 1
+				
+	Node: Authors
+		Children:
+			Child: Author
+				Min: 1
+				
+	Node: Chapters
+		Children:
+			Child: Chapter
+				Min: 1
+				
+	Node: Chapter
+		Children:
+			Child: Content
+				Max: 1
+				
+	Node: Title
+	Node: Author
+	Node: ISBN
+	Node: Publisher
+	Node: Published
+		Type: DATE
+	Node: Summary
+		Type: TEXT
+	Node: Content
+		Type: TEXT

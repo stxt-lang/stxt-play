@@ -20,7 +20,7 @@ export type IndentMode = "tabs" | "spaces";
 
 /** The user preferences of the playground: the two switches of the header. */
 export interface PlaygroundSettings {
-	/** What the Tab key inserts. Existing text is never converted. */
+	/** What the Tab key inserts; switching re-indents the structural indentation of the workspace. */
 	indent: IndentMode;
 	/** Whether documents are validated against the workspace grammars. */
 	validation: boolean;
@@ -65,7 +65,7 @@ export function loadWorkspace(storage: KeyValueStorage): WorkspaceSnapshot | und
 	} catch {
 		return undefined;
 	}
-	return isStoredWorkspace(parsed) ? { active: parsed.active, documents: parsed.documents } : undefined;
+	return toWorkspaceSnapshot(parsed);
 }
 
 /**
@@ -76,13 +76,8 @@ export function loadWorkspace(storage: KeyValueStorage): WorkspaceSnapshot | und
  * @returns true if the write succeeded; false if the store refused it (quota, private mode…).
  */
 export function saveWorkspace(storage: KeyValueStorage, snapshot: WorkspaceSnapshot): boolean {
-	const stored: StoredWorkspace = {
-		version: WORKSPACE_STORAGE_VERSION,
-		active: snapshot.active,
-		documents: snapshot.documents.map(({ id, title, text }) => ({ id, title, text })),
-	};
 	try {
-		storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(stored));
+		storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(fromWorkspaceSnapshot(snapshot)));
 		return true;
 	} catch {
 		return false;
@@ -141,6 +136,32 @@ export function saveSettings(storage: KeyValueStorage, settings: PlaygroundSetti
 	} catch {
 		return false;
 	}
+}
+
+/**
+ * Turns a parsed JSON value into a workspace snapshot, if it has the stored shape and version.
+ * Shared by the local store and the share links, which carry the same JSON.
+ *
+ * @param value anything that came out of `JSON.parse`.
+ * @returns the snapshot, or undefined if the value is not a stored workspace.
+ */
+export function toWorkspaceSnapshot(value: unknown): WorkspaceSnapshot | undefined {
+	return isStoredWorkspace(value) ? { active: value.active, documents: value.documents } : undefined;
+}
+
+/**
+ * The stored form of a snapshot: the documents and the active id, plus the format version.
+ *
+ * @param snapshot the workspace to serialize.
+ * @returns a plain object ready for `JSON.stringify`.
+ */
+export function fromWorkspaceSnapshot(snapshot: WorkspaceSnapshot): object {
+	const stored: StoredWorkspace = {
+		version: WORKSPACE_STORAGE_VERSION,
+		active: snapshot.active,
+		documents: snapshot.documents.map(({ id, title, text }) => ({ id, title, text })),
+	};
+	return stored;
 }
 
 /** Structural check of what came out of the store, field by field. */

@@ -5,27 +5,39 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>STXT Playground</title>
 	<meta name="description" content="Web playground for STXT: edit documents and grammars in the browser.">
+	<meta name="theme-color" content="#0a6fae">
+	<link rel="icon" href="favicon.ico" sizes="any">
+	<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+	<link rel="apple-touch-icon" href="apple-touch-icon.png">
 	<link rel="stylesheet" href="css/site.css">
 </head>
 <body>
 	<header class="topbar">
-		<span class="brand">STXT Playground</span>
+		<a class="brand" href="https://stxt.dev" title="STXT — the language site">STXT <span class="brand-sub">Playground</span></a>
 		<span id="doc-title" class="doc-title"></span>
 		<div class="topbar-controls">
 			<div class="segmented" role="group" aria-label="Indentation">
-				<button id="indent-tabs" type="button" aria-pressed="true" title="Tab inserts a tab character (existing text is not converted)">Tabs</button>
-				<button id="indent-spaces" type="button" aria-pressed="false" title="Tab inserts four spaces (existing text is not converted)">Spaces</button>
+				<button id="indent-tabs" type="button" aria-pressed="true" title="Indent with tabs: Tab inserts a tab, and the indentation of every document is converted (undoable)">Tabs</button>
+				<button id="indent-spaces" type="button" aria-pressed="false" title="Indent with four spaces: Tab inserts spaces, and the indentation of every document is converted (undoable)">Spaces</button>
 			</div>
 			<button id="validation-toggle" type="button" class="switch" role="switch" aria-checked="true" title="Validate documents against the grammars of the workspace">
 				<span class="switch-track"><span class="switch-thumb"></span></span>
 				<span class="switch-label">Validation</span>
 			</button>
+			<button id="share" type="button" class="topbar-button" title="Copy a link that carries this workspace">Share</button>
+			<nav class="topbar-links" aria-label="Links">
+				<a href="https://stxt.dev/stxt-core-ref" title="Language reference on stxt.dev">Reference</a>
+				<a href="https://github.com/stxt-lang/stxt-play" title="Source of the playground on GitHub">GitHub</a>
+			</nav>
 		</div>
 	</header>
+	<div id="status" class="status" role="status" aria-live="polite"></div>
 	<div class="workbench">
 		<aside class="sidebar" aria-label="Documents">
 			<header class="sidebar-header">
 				<span class="sidebar-title">Documents</span>
+				<button id="doc-reset" type="button" class="sidebar-button" title="Reset the workspace to the example documents" aria-label="Reset workspace">↺</button>
 				<button id="doc-new" type="button" class="sidebar-button" title="New document" aria-label="New document">+</button>
 			</header>
 			<ul id="doc-list" class="doc-list" role="listbox" aria-label="Workspace documents"></ul>
@@ -34,7 +46,7 @@
 		<main id="editor" class="editor" aria-label="STXT editor"></main>
 	</div>
 	<section class="problems" aria-label="Problems">
-		<header class="problems-header">Problems <span id="problems-count" class="problems-count">0</span></header>
+		<header class="problems-header">Problems <span id="problems-count" class="problems-count" aria-live="polite" aria-label="Number of problems">0</span></header>
 		<ul id="problems-list" class="problems-list"></ul>
 	</section>
 	<script src="js/play.js"></script>

@@ -17435,6 +17435,51 @@
     return info;
   }
 
+  // src/analysis/reindent.ts
+  var TAB_UNIT = "	";
+  var SPACES_UNIT = "    ";
+  function computeIndentChanges(analysis, text, unit) {
+    const changes = [];
+    const lines = text.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const leading = /^[\t ]*/.exec(lines[i])?.[0] ?? "";
+      if (leading.length === 0) {
+        continue;
+      }
+      const node = analysis.nodeByLine.get(i);
+      const block = analysis.textLineByLineNumber.get(i);
+      const wanted = node ? node.getLevel() : block ? block.getLevel() + 1 : Number.POSITIVE_INFINITY;
+      let consumed = 0;
+      let units = 0;
+      while (units < wanted && consumed < leading.length) {
+        if (leading.startsWith(TAB_UNIT, consumed)) {
+          consumed += TAB_UNIT.length;
+        } else if (leading.startsWith(SPACES_UNIT, consumed)) {
+          consumed += SPACES_UNIT.length;
+        } else {
+          break;
+        }
+        units++;
+      }
+      const insert2 = unit.repeat(units);
+      if (consumed > 0 && leading.slice(0, consumed) !== insert2) {
+        changes.push({ line: i, from: 0, to: consumed, insert: insert2 });
+      }
+    }
+    return changes;
+  }
+  function applyIndentChanges(text, changes) {
+    if (changes.length === 0) {
+      return text;
+    }
+    const lines = text.split("\n");
+    for (const change of changes) {
+      const line = lines[change.line];
+      lines[change.line] = line.slice(0, change.from) + change.insert + line.slice(change.to);
+    }
+    return lines.join("\n");
+  }
+
   // src/analysis/TokenGeneratorObserver.ts
   var import_core3 = __toESM(require_all());
   var TokenGeneratorObserver = class _TokenGeneratorObserver {
@@ -17649,6 +17694,19 @@
     getCompletions(id, line, linePrefix) {
       const analysis = this.analyses.get(id);
       return analysis ? computeCompletions(analysis, this.registry, line, linePrefix) : null;
+    }
+    /**
+     * The changes that re-indent a document to a unit, touching only structural indentation
+     * (see `reindent.ts`).
+     *
+     * @param id identifier of the document.
+     * @param unit target indent unit: a tab or four spaces.
+     * @returns the per-line replacements; empty if the document is unknown or already there.
+     */
+    getIndentChanges(id, unit) {
+      const parsed = this.parsed.get(id);
+      const analysis = this.analyses.get(id);
+      return parsed && analysis ? computeIndentChanges(analysis, parsed.text, unit) : [];
     }
     /**
      * Describes the node opened at a line of a document, for the hover (see `nodeInfo.ts`).
@@ -21261,7 +21319,7 @@
       return new HistoryState(json.done.map(HistEvent.fromJSON), json.undone.map(HistEvent.fromJSON));
     }
   });
-  function history(config = {}) {
+  function history2(config = {}) {
     return [
       historyField_,
       historyConfig.of(config),
@@ -23653,7 +23711,7 @@ ${indentation}${unit}` : suggestion.text
       lineNumbers(),
       highlightActiveLineGutter(),
       highlightActiveLine(),
-      history(),
+      history2(),
       indentCompartment.of(indentUnit.of(INDENT_UNITS[indent])),
       EditorState.tabSize.of(4),
       keymap.of([
@@ -23696,38 +23754,32 @@ ${indentation}${unit}` : suggestion.text
     };
   }
 
+  // seed/book.stxt
+  var book_default = "# This document is validated by a schema, the other way of writing a grammar.\n# Hover over a node to see what the schema declares for it.\nBook (com.acme.book):\n	Title: The Semantic Text Handbook\n	Authors:\n		Author: Joan Costa\n	ISBN: 978-84-000-0000-0\n	Publisher: Example Press\n	Published: 2026-08-15\n	Summary >>\n		A short guide to writing documents that people read\n		and machines parse, without getting in each other's way.\n	Chapters:\n		Chapter: One\n			Content >>\n				Indentation is structure.\n		Chapter: Two\n			Content >>\n				Grammars are optional.\n";
+
+  // seed/com.acme.book.stxt
+  var com_acme_book_default = "Schema (@stxt.schema): com.acme.book\n	Node: Book\n		Type: GROUP\n		Children:\n			Child: Title\n				Min: 1\n				Max: 1\n			Child: Authors\n				Min: 1\n				Max: 1\n			Child: ISBN\n				Min: 1\n				Max: 1\n			Child: Publisher\n				Max: 1\n			Child: Published\n				Max: 1\n			Child: Summary\n				Max: 1\n			Child: Chapters\n				Max: 1\n				\n	Node: Authors\n		Children:\n			Child: Author\n				Min: 1\n				\n	Node: Chapters\n		Children:\n			Child: Chapter\n				Min: 1\n				\n	Node: Chapter\n		Children:\n			Child: Content\n				Max: 1\n				\n	Node: Title\n	Node: Author\n	Node: ISBN\n	Node: Publisher\n	Node: Published\n		Type: DATE\n	Node: Summary\n		Type: TEXT\n	Node: Content\n		Type: TEXT\n";
+
+  // seed/com.example.cooking.stxt
+  var com_example_cooking_default = "# A template describes the shape of the documents of a namespace.\n# Grammars are listed by their namespace, not by a title.\nTemplate (@stxt.template): com.example.cooking\n	Structure >>\n		Recipe (com.example.cooking):\n			Serves: (?) NATURAL\n			Difficulty: (?) ENUM [Easy, Medium, Hard]\n			Ingredients: (1)\n				Ingredient: (+)\n			Steps: (1) TEXT\n";
+
+  // seed/com.example.docs.stxt
+  var com_example_docs_default = "Template (@stxt.template): com.example.docs\n	Structure >>\n		Email (com.example.docs):\n			From:\n			To:\n			Cc:\n			Bcc:\n			Title: (?)\n			Body    Content: (1) TEXT\n			Metadata (org.example.meta): (?) \n";
+
+  // seed/email.stxt
+  var email_default = "Email (com.example.docs):\n	From: John Smith\n	To: Mery Adams\n	Cc: Keyla Brown\n	Title: Project report\n	Body Content >>\n		Hello Mery!!\n		The book is finished!!\n";
+
+  // seed/recipe.stxt
+  var recipe_default = '# Welcome to the STXT playground.\n# Everything runs in your browser: edit the document and watch the analysis react.\n# The template "com.example.cooking" in the list on the left validates this document.\n# Try adding a node it does not declare, or press Ctrl+Space on a new line to see what fits.\nRecipe (com.example.cooking): Pa amb tom\xE0quet\n	Serves: 2\n	Difficulty: Easy\n	Ingredients:\n		Ingredient: Bread\n		Ingredient: Ripe tomato\n		Ingredient: Olive oil and salt\n	Steps >>\n		Rub the tomato on the bread.\n		Add olive oil and a pinch of salt.\n		Everything in this block is literal text: # : >> are not parsed.\n';
+
   // src/seed.ts
-  var RECIPE = [
-    "# Welcome to the STXT playground.",
-    "# Everything runs in your browser: edit the document and watch the analysis react.",
-    "# The template in the list on the left validates this document. Try adding a node it does not declare.",
-    "Recipe (com.example.cooking): Pa amb tom\xE0quet",
-    "	Serves: 2",
-    "	Ingredients:",
-    "		Ingredient: Bread",
-    "		Ingredient: Ripe tomato",
-    "		Ingredient: Olive oil and salt",
-    "	Steps >>",
-    "		Rub the tomato on the bread.",
-    "		Add olive oil and a pinch of salt.",
-    "		Everything in this block is literal text: # : >> are not parsed.",
-    ""
-  ].join("\n");
-  var RECIPE_TEMPLATE = [
-    "# A template describes the shape of the documents of a namespace.",
-    "# Grammars are listed by their namespace, not by a title.",
-    "Template (@stxt.template): com.example.cooking",
-    "	Structure >>",
-    "		Recipe (com.example.cooking):",
-    "			Serves: (?) NATURAL",
-    "			Ingredients: (1)",
-    "				Ingredient: (+)",
-    "			Steps: (1) TEXT",
-    ""
-  ].join("\n");
   var SEED_DOCUMENTS = [
-    { title: "Recipe", text: RECIPE },
-    { title: "Recipe template", text: RECIPE_TEMPLATE }
+    { title: "Recipe", text: recipe_default },
+    { title: "Recipe template", text: com_example_cooking_default },
+    { title: "Email", text: email_default },
+    { title: "Docs template", text: com_example_docs_default },
+    { title: "Book", text: book_default },
+    { title: "Book schema", text: com_acme_book_default }
   ];
 
   // src/ui/documentList.ts
@@ -24203,16 +24255,11 @@ ${indentation}${unit}` : suggestion.text
     } catch {
       return void 0;
     }
-    return isStoredWorkspace(parsed) ? { active: parsed.active, documents: parsed.documents } : void 0;
+    return toWorkspaceSnapshot(parsed);
   }
   function saveWorkspace(storage, snapshot) {
-    const stored = {
-      version: WORKSPACE_STORAGE_VERSION,
-      active: snapshot.active,
-      documents: snapshot.documents.map(({ id, title, text }) => ({ id, title, text }))
-    };
     try {
-      storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(stored));
+      storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(fromWorkspaceSnapshot(snapshot)));
       return true;
     } catch {
       return false;
@@ -24243,6 +24290,17 @@ ${indentation}${unit}` : suggestion.text
       return false;
     }
   }
+  function toWorkspaceSnapshot(value) {
+    return isStoredWorkspace(value) ? { active: value.active, documents: value.documents } : void 0;
+  }
+  function fromWorkspaceSnapshot(snapshot) {
+    const stored = {
+      version: WORKSPACE_STORAGE_VERSION,
+      active: snapshot.active,
+      documents: snapshot.documents.map(({ id, title, text }) => ({ id, title, text }))
+    };
+    return stored;
+  }
   function isStoredWorkspace(value) {
     if (typeof value !== "object" || value === null) {
       return false;
@@ -24266,8 +24324,56 @@ ${indentation}${unit}` : suggestion.text
     });
   }
 
+  // src/workspace/share.ts
+  var SHARE_PARAM = "w";
+  function toBase64Url(bytes) {
+    let binary = "";
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
+    }
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function fromBase64Url(text) {
+    const base64 = text.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - text.length % 4) % 4);
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+  async function pipe(bytes, stream) {
+    const response = new Response(new Blob([bytes]).stream().pipeThrough(stream));
+    return new Uint8Array(await response.arrayBuffer());
+  }
+  async function encodeShare(snapshot) {
+    const json = JSON.stringify(fromWorkspaceSnapshot(snapshot));
+    const compressed = await pipe(new TextEncoder().encode(json), new CompressionStream("deflate-raw"));
+    return toBase64Url(compressed);
+  }
+  async function decodeShare(payload) {
+    try {
+      const bytes = await pipe(fromBase64Url(payload), new DecompressionStream("deflate-raw"));
+      return toWorkspaceSnapshot(JSON.parse(new TextDecoder().decode(bytes)));
+    } catch {
+      return void 0;
+    }
+  }
+  function sharePayloadOf(hash) {
+    const params = new URLSearchParams(hash.replace(/^#/, ""));
+    const payload = params.get(SHARE_PARAM);
+    return payload && payload.length > 0 ? payload : void 0;
+  }
+
   // src/index.ts
   var PERSIST_DELAY_MS = 300;
+  var STATUS_MS = 2500;
+  function toCmChanges(doc2, changes) {
+    return changes.map((change) => {
+      const line = doc2.line(change.line + 1);
+      return { from: line.from + change.from, to: line.from + change.to, insert: change.insert };
+    });
+  }
   function toCmDiagnostics(view, diagnostics) {
     const doc2 = view.state.doc;
     return diagnostics.map((diagnostic) => {
@@ -24310,9 +24416,21 @@ ${indentation}${unit}` : suggestion.text
     const indentTabs = document.getElementById("indent-tabs");
     const indentSpaces = document.getElementById("indent-spaces");
     const validationToggle = document.getElementById("validation-toggle");
-    if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount || !indentTabs || !indentSpaces || !validationToggle) {
+    const docReset = document.getElementById("doc-reset");
+    const shareButton = document.getElementById("share");
+    const status = document.getElementById("status");
+    if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount || !indentTabs || !indentSpaces || !validationToggle || !docReset || !shareButton || !status) {
       return;
     }
+    let statusTimer;
+    const showStatus = (message) => {
+      status.textContent = message;
+      status.classList.add("status-visible");
+      if (statusTimer !== void 0) {
+        window.clearTimeout(statusTimer);
+      }
+      statusTimer = window.setTimeout(() => status.classList.remove("status-visible"), STATUS_MS);
+    };
     const analyzer = new Analyzer();
     const workspace = new Workspace();
     const storage = browserStorage();
@@ -24448,10 +24566,32 @@ ${indentation}${unit}` : suggestion.text
         saveSettings(storage, settings);
       }
     };
+    const reindentAll = (mode) => {
+      const unit = mode === "tabs" ? TAB_UNIT : SPACES_UNIT;
+      for (const document2 of workspace.getDocuments()) {
+        const changes = analyzer.getIndentChanges(document2.id, unit);
+        if (changes.length === 0) {
+          continue;
+        }
+        if (document2.id === shownId) {
+          view.dispatch({ changes: toCmChanges(view.state.doc, changes), userEvent: "reindent" });
+          continue;
+        }
+        const parked = states.get(document2.id);
+        if (parked) {
+          const next = parked.update({ changes: toCmChanges(parked.doc, changes), userEvent: "reindent" }).state;
+          states.set(document2.id, next);
+          workspace.setText(document2.id, next.doc.toString());
+        } else {
+          workspace.setText(document2.id, applyIndentChanges(document2.text, changes));
+        }
+      }
+    };
     const setIndent = (mode) => {
       if (settings.indent !== mode) {
         settings.indent = mode;
         editor.setIndentMode(mode);
+        reindentAll(mode);
         renderSwitches();
         persistSettings();
       }
@@ -24519,10 +24659,10 @@ ${indentation}${unit}` : suggestion.text
       }
       schedulePersist();
     });
-    const stored = storage ? loadWorkspace(storage) : void 0;
-    if (stored && stored.documents.length > 0) {
-      workspace.load(stored);
-    } else {
+    const loadSeed = () => {
+      for (const document2 of workspace.getDocuments()) {
+        workspace.removeDocument(document2.id);
+      }
       for (const seed of SEED_DOCUMENTS) {
         workspace.addDocument(seed.text, seed.title);
       }
@@ -24530,6 +24670,61 @@ ${indentation}${unit}` : suggestion.text
       if (first) {
         workspace.setActive(first.id);
       }
+    };
+    docReset.addEventListener("click", () => {
+      if (window.confirm("Reset the workspace? Every document is replaced by the examples. This cannot be undone.")) {
+        loadSeed();
+        showStatus("Workspace reset to the examples.");
+        view.focus();
+      }
+    });
+    shareButton.addEventListener("click", () => {
+      void encodeShare(workspace.toSnapshot()).then(async (payload2) => {
+        const url = `${location.origin}${location.pathname}#${SHARE_PARAM}=${payload2}`;
+        try {
+          await navigator.clipboard.writeText(url);
+          showStatus("Link copied to the clipboard.");
+        } catch {
+          window.prompt("Copy this link:", url);
+        }
+      });
+    });
+    const loadShared = (snapshot) => {
+      for (const document2 of workspace.getDocuments()) {
+        workspace.removeDocument(document2.id);
+      }
+      let activeId;
+      for (const document2 of snapshot.documents) {
+        const added = workspace.addDocument(document2.text, document2.title);
+        if (document2.id === snapshot.active) {
+          activeId = added.id;
+        }
+      }
+      const first = workspace.getDocuments()[0];
+      workspace.setActive(activeId ?? first?.id ?? "");
+    };
+    const stored = storage ? loadWorkspace(storage) : void 0;
+    if (stored && stored.documents.length > 0) {
+      workspace.load(stored);
+    } else {
+      loadSeed();
+    }
+    const payload = sharePayloadOf(location.hash);
+    if (payload) {
+      void decodeShare(payload).then((shared) => {
+        history.replaceState(null, "", `${location.pathname}${location.search}`);
+        if (!shared || shared.documents.length === 0) {
+          showStatus("The link does not carry a valid workspace.");
+          return;
+        }
+        const replace2 = !stored || window.confirm(
+          "This link carries a workspace. Load it? Your current documents in this browser are replaced."
+        );
+        if (replace2) {
+          loadShared(shared);
+          showStatus("Shared workspace loaded.");
+        }
+      });
     }
   }
   document.addEventListener("DOMContentLoaded", main);

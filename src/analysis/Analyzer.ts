@@ -9,6 +9,7 @@ import { CompletionResult, computeCompletions } from "./completion";
 import { Diagnostic } from "./Diagnostic";
 import { GrammarRegistry, grammarKindOf, isGrammarRoot } from "./GrammarRegistry";
 import { describeNodeAtLine, NodeInfo } from "./nodeInfo";
+import { computeIndentChanges, IndentChange } from "./reindent";
 import { StxtToken } from "./Tokens";
 import { TokenGeneratorObserver } from "./TokenGeneratorObserver";
 
@@ -167,6 +168,20 @@ export class Analyzer {
 	getCompletions(id: string, line: number, linePrefix: string): CompletionResult | null {
 		const analysis = this.analyses.get(id);
 		return analysis ? computeCompletions(analysis, this.registry, line, linePrefix) : null;
+	}
+
+	/**
+	 * The changes that re-indent a document to a unit, touching only structural indentation
+	 * (see `reindent.ts`).
+	 *
+	 * @param id identifier of the document.
+	 * @param unit target indent unit: a tab or four spaces.
+	 * @returns the per-line replacements; empty if the document is unknown or already there.
+	 */
+	getIndentChanges(id: string, unit: string): IndentChange[] {
+		const parsed = this.parsed.get(id);
+		const analysis = this.analyses.get(id);
+		return parsed && analysis ? computeIndentChanges(analysis, parsed.text, unit) : [];
 	}
 
 	/**

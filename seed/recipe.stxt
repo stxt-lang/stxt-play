@@ -1,0 +1,15 @@
+# Welcome to the STXT playground.
+# Everything runs in your browser: edit the document and watch the analysis react.
+# The template "com.example.cooking" in the list on the left validates this document.
+# Try adding a node it does not declare, or press Ctrl+Space on a new line to see what fits.
+Recipe (com.example.cooking): Pa amb tomàquet
+	Serves: 2
+	Difficulty: Easy
+	Ingredients:
+		Ingredient: Bread
+		Ingredient: Ripe tomato
+		Ingredient: Olive oil and salt
+	Steps >>
+		Rub the tomato on the bread.
+		Add olive oil and a pinch of salt.
+		Everything in this block is literal text: # : >> are not parsed.

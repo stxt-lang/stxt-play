@@ -96,9 +96,16 @@ faltaba era la interfaz. La cabecera lleva un segmentado **Tabs | Spaces** y un 
 (`stxt-play.settings`, `loadSettings`/`saveSettings` en `src/workspace/storage.ts`, campo a campo
 con sus defaults). El modo de indentación cambia lo que inserta Tab (un tabulador o cuatro
 espacios, vía un `Compartment` de CodeMirror sobre `indentUnit`, aplicado también a los estados
-aparcados al mostrarlos) y **no convierte el texto existente**: convertir sería un default
-destructivo, y si un día se quiere reindentar será una acción explícita. El interruptor de
-validación llama a `Analyzer.setValidation` y repinta editor, panel y contadores. En el panel,
+aparcados al mostrarlos) **y reindenta todos los documentos del workspace** (decidido el
+2026-08-15, después de la fase 5; al principio no convertía nada). La conversión es de
+`src/analysis/reindent.ts` y toca **solo la indentación estructural**: en cada línea, tantas
+unidades como nivel tenga —en las líneas de texto de un bloque, el nivel del bloque más uno—, y
+en comentarios, líneas en blanco y líneas rechazadas por el parser, las unidades completas que
+haya. La indentación relativa del contenido de los bloques, los comentarios y los valores no se
+tocan; el árbol canónico es idéntico antes y después (hay test). Se aplica como cambios de
+CodeMirror —transacción en el documento visible, `state.update` en los aparcados—, así que es
+**deshacible con Ctrl+Z** en cada documento; por eso no es un default destructivo. El interruptor
+de validación llama a `Analyzer.setValidation` y repinta editor, panel y contadores. En el panel,
 cada fila lleva una etiqueta de origen —`syntax`, `grammar`, `validation`— con su color, además
 del punto de severidad. La reordenación vive en `Workspace.move(id, índiceFinal)` (evento
 `moved`) y en la lista (`draggable`, marca de destino antes/después según la mitad de la fila).
@@ -132,11 +139,29 @@ usuario está desindentando para escribir un hermano, y ahí sí se completa.
 
 ### Fase 6 — Contenido inicial y acabado
 
-- [ ] Documentos y gramáticas de ejemplo precargados (del corpus de `../stxt-web`) y botón de
+- [x] Documentos y gramáticas de ejemplo precargados (del corpus de `../stxt-web`) y botón de
       reset.
-- [ ] Favicon, título, enlaces al portal, mínimos de responsive y accesibilidad.
-- [ ] Posible extra: compartir por URL (workspace comprimido en el hash). Sin servidor, encaja
+- [x] Favicon, título, enlaces al portal, mínimos de responsive y accesibilidad.
+- [x] Extra hecho: compartir por URL (workspace comprimido en el hash). Sin servidor, encaja
       con el stack.
+
+**Hecha el 2026-08-15.** La semilla son **seis ficheros `.stxt` reales en `seed/`** (tres
+escritos para el playground —receta, su plantilla con un `ENUM`, un libro— y tres copias del
+corpus de `../stxt-web`: `email.stxt`, la plantilla `com.example.docs` y el esquema tutorial
+`com.acme.book`, así hay un `S` y varias `T` en la lista; el `README.md` de `seed/` dice de dónde
+sale cada uno). esbuild los empaqueta como texto (`--loader:.stxt=text`, declaración en
+`src/stxt-text.d.ts`) y `src/seed.ts` solo los lista con sus títulos; `test/seed.test.ts` los lee
+del disco y comprueba que el conjunto parsea y valida limpio y que van con tabuladores. El botón
+**↺ Reset** de la barra lateral los restaura, con confirmación. Favicons copiados de
+`../stxt-cms/static` (misma identidad que el portal); la marca enlaza a `stxt.dev` y la cabecera
+lleva *Reference* (`stxt.dev/stxt-core-ref`) y *GitHub*. **Share** copia al portapapeles una URL
+con el workspace en el fragmento (`#w=` + base64url del deflate-raw del mismo JSON versionado que
+guarda `localStorage`; `src/workspace/share.ts`, con test de ida y vuelta en Node): al abrirla, se
+carga directamente si el navegador no tenía workspace y, si lo tenía, se pregunta antes de
+sustituirlo; el fragmento se retira de la URL en cuanto se consume, para que recargar no vuelva a
+preguntar. Un mensaje de estado (`role="status"`, `aria-live`) confirma la copia, el reset o un
+enlace inválido. Responsive: por debajo de 720 px la barra lateral pasa a franja superior y la
+cabecera se pliega en dos filas.
 
 ### Fase 7 — Publicación e integración
 

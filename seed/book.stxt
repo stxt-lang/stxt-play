@@ -1,0 +1,19 @@
+# This document is validated by a schema, the other way of writing a grammar.
+# Hover over a node to see what the schema declares for it.
+Book (com.acme.book):
+	Title: The Semantic Text Handbook
+	Authors:
+		Author: Joan Costa
+	ISBN: 978-84-000-0000-0
+	Publisher: Example Press
+	Published: 2026-08-15
+	Summary >>
+		A short guide to writing documents that people read
+		and machines parse, without getting in each other's way.
+	Chapters:
+		Chapter: One
+			Content >>
+				Indentation is structure.
+		Chapter: Two
+			Content >>
+				Grammars are optional.

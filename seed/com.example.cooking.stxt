@@ -1,0 +1,10 @@
+# A template describes the shape of the documents of a namespace.
+# Grammars are listed by their namespace, not by a title.
+Template (@stxt.template): com.example.cooking
+	Structure >>
+		Recipe (com.example.cooking):
+			Serves: (?) NATURAL
+			Difficulty: (?) ENUM [Easy, Medium, Hard]
+			Ingredients: (1)
+				Ingredient: (+)
+			Steps: (1) TEXT

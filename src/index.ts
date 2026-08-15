@@ -1,13 +1,15 @@
 import { Diagnostic as CmDiagnostic, setDiagnostics } from "@codemirror/lint";
-import { EditorState } from "@codemirror/state";
+import { ChangeSpec, EditorState, Text } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { Analyzer, Diagnostic, DocumentAnalysis } from "./analysis";
+import { Analyzer, applyIndentChanges, Diagnostic, DocumentAnalysis, IndentChange, SPACES_UNIT, TAB_UNIT } from "./analysis";
 import { setTokensEffect } from "./editor/highlight";
 import { createStxtEditor } from "./editor/stxtEditor";
 import { SEED_DOCUMENTS } from "./seed";
 import { createDocumentList, DocumentListEntry, DocumentListKind } from "./ui/documentList";
 import { createProblemsPanel } from "./ui/problemsPanel";
 import {
+	decodeShare,
+	encodeShare,
 	IndentMode,
 	KeyValueStorage,
 	loadSettings,
@@ -15,12 +17,15 @@ import {
 	PlaygroundSettings,
 	saveSettings,
 	saveWorkspace,
+	SHARE_PARAM,
+	sharePayloadOf,
 	Workspace,
 	WorkspaceDocument,
+	WorkspaceSnapshot,
 } from "./workspace";
 
 /**
- * Entry point of the playground (phase 5: workspace, header switches, completion and hover).
+ * Entry point of the playground (phase 6: seed content, reset, share links, finish).
  *
  * The wiring keeps a single flow of data: the workspace model is the source of truth for the
  * documents, the analyzer mirrors it (one cached parse per document), and everything visible —
@@ -33,11 +38,22 @@ import {
 /** How long after the last change the workspace is written to localStorage. */
 const PERSIST_DELAY_MS = 300;
 
+/** How long a status message stays on screen. */
+const STATUS_MS = 2500;
+
 /** How a document presents itself in the list and the header. */
 interface DocumentLabel {
 	label: string;
 	kind: DocumentListKind;
 	renamable: boolean;
+}
+
+/** Maps re-indentation changes (0-based line and columns) to CodeMirror change specs. */
+function toCmChanges(doc: Text, changes: IndentChange[]): ChangeSpec[] {
+	return changes.map((change) => {
+		const line = doc.line(change.line + 1);
+		return { from: line.from + change.from, to: line.from + change.to, insert: change.insert };
+	});
 }
 
 /** Maps analysis diagnostics (0-based lines) to CodeMirror diagnostics (whole-line ranges). */
@@ -92,10 +108,25 @@ function main(): void {
 	const indentTabs = document.getElementById("indent-tabs");
 	const indentSpaces = document.getElementById("indent-spaces");
 	const validationToggle = document.getElementById("validation-toggle");
+	const docReset = document.getElementById("doc-reset");
+	const shareButton = document.getElementById("share");
+	const status = document.getElementById("status");
 	if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount
-		|| !indentTabs || !indentSpaces || !validationToggle) {
+		|| !indentTabs || !indentSpaces || !validationToggle || !docReset || !shareButton || !status) {
 		return;
 	}
+
+	// --- Status messages ----------------------------------------------------------------------
+
+	let statusTimer: number | undefined;
+	const showStatus = (message: string): void => {
+		status.textContent = message;
+		status.classList.add("status-visible");
+		if (statusTimer !== undefined) {
+			window.clearTimeout(statusTimer);
+		}
+		statusTimer = window.setTimeout(() => status.classList.remove("status-visible"), STATUS_MS);
+	};
 
 	const analyzer = new Analyzer();
 	const workspace = new Workspace();
@@ -262,11 +293,42 @@ function main(): void {
 		}
 	};
 
-	/** Changes what Tab inserts from now on. Existing text is left as it is, on purpose. */
+	/**
+	 * Re-indents every document of the workspace to the unit of a mode. Only structural
+	 * indentation changes (see `analysis/reindent.ts`); comments and block content stay as they
+	 * are. The document in the view goes through a transaction, parked documents through their
+	 * own state, so the change is undoable everywhere; documents never shown are rewritten in
+	 * the model.
+	 */
+	const reindentAll = (mode: IndentMode): void => {
+		const unit = mode === "tabs" ? TAB_UNIT : SPACES_UNIT;
+		for (const document of workspace.getDocuments()) {
+			const changes = analyzer.getIndentChanges(document.id, unit);
+			if (changes.length === 0) {
+				continue;
+			}
+			if (document.id === shownId) {
+				// The update listener pushes the new text into the workspace
+				view.dispatch({ changes: toCmChanges(view.state.doc, changes), userEvent: "reindent" });
+				continue;
+			}
+			const parked = states.get(document.id);
+			if (parked) {
+				const next = parked.update({ changes: toCmChanges(parked.doc, changes), userEvent: "reindent" }).state;
+				states.set(document.id, next);
+				workspace.setText(document.id, next.doc.toString());
+			} else {
+				workspace.setText(document.id, applyIndentChanges(document.text, changes));
+			}
+		}
+	};
+
+	/** Changes what Tab inserts from now on, and re-indents the workspace to match. */
 	const setIndent = (mode: IndentMode): void => {
 		if (settings.indent !== mode) {
 			settings.indent = mode;
 			editor.setIndentMode(mode);
+			reindentAll(mode);
 			renderSwitches();
 			persistSettings();
 		}
@@ -342,12 +404,13 @@ function main(): void {
 		schedulePersist();
 	});
 
-	// --- Start: the stored workspace, or the seed ---------------------------------------------
+	// --- Seed and reset -----------------------------------------------------------------------
 
-	const stored = storage ? loadWorkspace(storage) : undefined;
-	if (stored && stored.documents.length > 0) {
-		workspace.load(stored);
-	} else {
+	/** Replaces every document with the seed and activates the first one. */
+	const loadSeed = (): void => {
+		for (const document of workspace.getDocuments()) {
+			workspace.removeDocument(document.id);
+		}
 		for (const seed of SEED_DOCUMENTS) {
 			workspace.addDocument(seed.text, seed.title);
 		}
@@ -355,6 +418,72 @@ function main(): void {
 		if (first) {
 			workspace.setActive(first.id);
 		}
+	};
+
+	docReset.addEventListener("click", () => {
+		if (window.confirm("Reset the workspace? Every document is replaced by the examples. This cannot be undone.")) {
+			loadSeed();
+			showStatus("Workspace reset to the examples.");
+			view.focus();
+		}
+	});
+
+	// --- Share links --------------------------------------------------------------------------
+
+	shareButton.addEventListener("click", () => {
+		void encodeShare(workspace.toSnapshot()).then(async (payload) => {
+			const url = `${location.origin}${location.pathname}#${SHARE_PARAM}=${payload}`;
+			try {
+				await navigator.clipboard.writeText(url);
+				showStatus("Link copied to the clipboard.");
+			} catch {
+				// No clipboard (insecure context, permissions): hand the link over the old way
+				window.prompt("Copy this link:", url);
+			}
+		});
+	});
+
+	/** Loads a snapshot that came in a share link, with fresh ids so it cannot collide with local ones. */
+	const loadShared = (snapshot: WorkspaceSnapshot): void => {
+		for (const document of workspace.getDocuments()) {
+			workspace.removeDocument(document.id);
+		}
+		let activeId: string | undefined;
+		for (const document of snapshot.documents) {
+			const added = workspace.addDocument(document.text, document.title);
+			if (document.id === snapshot.active) {
+				activeId = added.id;
+			}
+		}
+		const first = workspace.getDocuments()[0];
+		workspace.setActive(activeId ?? first?.id ?? "");
+	};
+
+	// --- Start: a share link, the stored workspace, or the seed ------------------------------
+
+	const stored = storage ? loadWorkspace(storage) : undefined;
+	if (stored && stored.documents.length > 0) {
+		workspace.load(stored);
+	} else {
+		loadSeed();
+	}
+
+	const payload = sharePayloadOf(location.hash);
+	if (payload) {
+		void decodeShare(payload).then((shared) => {
+			// The link is consumed either way: a reload must not ask again
+			history.replaceState(null, "", `${location.pathname}${location.search}`);
+			if (!shared || shared.documents.length === 0) {
+				showStatus("The link does not carry a valid workspace.");
+				return;
+			}
+			const replace = !stored || window.confirm(
+				"This link carries a workspace. Load it? Your current documents in this browser are replaced.");
+			if (replace) {
+				loadShared(shared);
+				showStatus("Shared workspace loaded.");
+			}
+		});
 	}
 }
 

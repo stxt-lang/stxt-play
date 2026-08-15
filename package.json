@@ -6,7 +6,7 @@
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('web/js', { recursive: true, force: true }); require('node:fs').rmSync('web/css', { recursive: true, force: true })\"",
     "build": "npm run build:ts && npm run build:css",
-    "build:ts": "esbuild src/index.ts --bundle --format=iife --target=es2021 --sourcemap --outfile=web/js/play.js",
+    "build:ts": "esbuild src/index.ts --bundle --format=iife --target=es2021 --sourcemap --loader:.stxt=text --outfile=web/js/play.js",
     "build:css": "sass css/site.scss web/css/site.css --style=compressed",
     "watch": "npm run watch:css & npm run watch:ts",
     "watch:ts": "npm run build:ts -- --watch",

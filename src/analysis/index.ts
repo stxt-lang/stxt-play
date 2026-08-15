@@ -6,6 +6,7 @@
 export { Analyzer, DocumentAnalysis, GrammarInfo, GrammarKind } from "./Analyzer";
 export { CompletionKind, CompletionResult, CompletionSuggestion, computeCompletions } from "./completion";
 export { describeNodeAtLine, NodeDefinitionInfo, NodeInfo } from "./nodeInfo";
+export { applyIndentChanges, computeIndentChanges, IndentChange, SPACES_UNIT, TAB_UNIT } from "./reindent";
 export { Diagnostic, DiagnosticSeverity, DiagnosticSource } from "./Diagnostic";
 export {
 	DUPLICATE_NAMESPACE,

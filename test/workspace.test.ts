@@ -1,6 +1,9 @@
 import * as assert from "assert";
 import {
+	decodeShare,
 	DEFAULT_SETTINGS,
+	encodeShare,
+	sharePayloadOf,
 	KeyValueStorage,
 	loadSettings,
 	loadWorkspace,
@@ -235,5 +238,26 @@ describe("Settings persistence", () => {
 
 		storage.setItem(SETTINGS_STORAGE_KEY, "{oops");
 		assert.deepStrictEqual(loadSettings(storage), DEFAULT_SETTINGS, "corrupt JSON: defaults");
+	});
+});
+
+describe("Share links", () => {
+	it("round-trips a workspace through the compressed fragment payload", async () => {
+		const workspace = new Workspace(sequentialIds());
+		workspace.addDocument("Recipe (com.example.cooking): Pa amb tomàquet\n\tServes: 2\n", "Recipe");
+		workspace.addDocument("Template (@stxt.template): com.example.cooking\n", "Grammar");
+		workspace.setActive("d1");
+
+		const payload = await encodeShare(workspace.toSnapshot());
+		assert.ok(/^[A-Za-z0-9_-]+$/.test(payload), "base64url, safe in a fragment");
+		assert.deepStrictEqual(await decodeShare(payload), workspace.toSnapshot());
+		assert.strictEqual(sharePayloadOf(`#w=${payload}`), payload);
+	});
+
+	it("reads nothing from garbage or from a fragment without a workspace", async () => {
+		assert.strictEqual(await decodeShare("not-a-payload"), undefined);
+		assert.strictEqual(await decodeShare(""), undefined);
+		assert.strictEqual(sharePayloadOf(""), undefined);
+		assert.strictEqual(sharePayloadOf("#other=1"), undefined);
 	});
 });

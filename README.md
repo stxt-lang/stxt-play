@@ -4,9 +4,9 @@ A web playground for [STXT](https://stxt.dev), the human-first hierarchical text
 in the browser, with its grammar next to it, and see errors as you type. Think VS Code, simplified —
 a real editor, not a form or a viewer.
 
-> **Status: in progress.** The analysis core, the editor, the multi-document workspace, the header
-> switches, autocompletion and hover are done (phases 1–5 of `ROADMAP.md`); the seed content and
-> publication are still to come.
+> **Status: feature complete, pending publication.** Phases 1–6 of `ROADMAP.md` are done: analysis
+> core, editor, multi-document workspace, header switches, autocompletion and hover, seed content,
+> reset, share links. What remains is publishing it and linking it from `stxt.dev`.
 
 ## What it should do
 
@@ -42,9 +42,10 @@ a real editor, not a form or a viewer.
   **namespace**, which is already their name.
 - **Errors go in a panel at the bottom**, like the *Problems* panel of VS Code, which is the
   reference; a right-hand panel would compete with the editor for width.
-- The header carries the active document's title and **two switches**: spaces/tabs (what the Tab
-  key inserts — existing text is never converted), and schema validation on/off. Both are
-  remembered between visits.
+- The header carries the active document's title and **two switches**: spaces/tabs, and schema
+  validation on/off. Both are remembered between visits. Switching the indentation converts the
+  **structural** indentation of every document (levels only — comments, values and the relative
+  indentation inside text blocks are left as they are), and it is undoable in each document.
 - The document list can be **reordered** by dragging rows, or with Alt+Up/Down.
 
 The playground is **not** a JSON converter: showing the canonical STXT-TREE-SPEC tree was on the
@@ -52,7 +53,9 @@ list and was dropped — it may come back as a secondary view, but it is not wha
 about.
 
 The workspace lives in the browser: it is saved to `localStorage` as you type and comes back on
-the next visit. Nothing leaves your machine.
+the next visit. Nothing leaves your machine. **Share** puts the whole workspace, compressed, in the
+URL fragment — the link carries the documents, no server involved — and **↺ Reset** brings back the
+example documents (see `seed/`).
 
 ## Beyond the playground
 
@@ -82,7 +85,8 @@ repository, with no build step in between.
 css/            SCSS sources         → compiled into web/css/
 src/            TypeScript sources   → bundled into web/js/
 src/analysis/   the analysis core: tokens, diagnostics, workspace grammars, completion, node info (no DOM, no editor)
-src/workspace/  the workspace model and its localStorage persistence (no DOM either)
+src/workspace/  the workspace model, its localStorage persistence and share links (no DOM either)
+seed/           the example documents and grammars, bundled as text
 src/editor/     the CodeMirror layer: decorations from tokens, completion, hover, editor setup
 src/ui/         the document list and the problems panel
 test/           mocha tests of the analysis core and the workspace

@@ -31,8 +31,8 @@ The editor is not meant to be single-use. Two follow-ups shape the design:
 ## Stack
 
 A **fully static site**: no server, no server-side rendering, no API. Everything — parsing,
-validation, highlighting — runs in the browser. Cloudflare serves the `web/` directory straight
-from the repository, with no build step of its own.
+validation, highlighting — runs in the browser. The `web/` directory is served straight from the
+repository, with no build step in between.
 
 | Piece | Choice |
 |---|---|
@@ -50,9 +50,8 @@ compile_css.sh
 start_server.sh
 ```
 
-**`web/` is committed, build output included.** Since Cloudflare publishes that directory as it
-stands, `npm run build` has to be run — and its result committed — before anything reaches the
-site. Never hand-edit `web/css/` or `web/js/`: they are overwritten on every build. The sources are
+**`web/` is committed, build output included.** Since that directory is published as it stands,
+`npm run build` has to be run — and its result committed — before anything reaches the site. Never hand-edit `web/css/` or `web/js/`: they are overwritten on every build. The sources are
 `css/` and `src/`.
 
 ## Commands

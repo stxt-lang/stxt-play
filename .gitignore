@@ -1,8 +1,8 @@
 # Dependencies
 node_modules/
 
-# web/ is NOT ignored: Cloudflare serves that directory straight from the repository,
-# so web/css/ and web/js/ are build output that has to be committed.
+# web/ is NOT ignored: it is served straight from the repository, so web/css/ and web/js/
+# are build output that has to be committed.
 
 # Logs
 npm-debug.log*

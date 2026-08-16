@@ -6,6 +6,7 @@ import { setTokensEffect } from "./editor/highlight";
 import { createStxtEditor } from "./editor/stxtEditor";
 import { SEED_DOCUMENTS } from "./seed";
 import { createDocumentList, DocumentListEntry, DocumentListKind } from "./ui/documentList";
+import { confirmDialog, linkDialog } from "./ui/dialog";
 import { createProblemsPanel } from "./ui/problemsPanel";
 import {
 	decodeOpen,
@@ -210,14 +211,21 @@ function main(): void {
 				return;
 			}
 			const { label } = labelOf(document, analyzer.getAnalysis(id));
-			if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) {
-				return;
-			}
-			workspace.removeDocument(id);
-			if (workspace.getDocuments().length === 0) {
-				// The playground always has something to edit
-				workspace.addDocument();
-			}
+			void confirmDialog({
+				title: `Delete "${label}"?`,
+				message: "The document is removed from the workspace. This cannot be undone.",
+				confirmLabel: "Delete",
+				danger: true,
+			}).then((confirmed) => {
+				if (!confirmed || !workspace.getDocument(id)) {
+					return;
+				}
+				workspace.removeDocument(id);
+				if (workspace.getDocuments().length === 0) {
+					// The playground always has something to edit
+					workspace.addDocument();
+				}
+			});
 		},
 		onMove: (id, toIndex) => workspace.move(id, toIndex),
 	});
@@ -423,11 +431,18 @@ function main(): void {
 	};
 
 	docReset.addEventListener("click", () => {
-		if (window.confirm("Reset the workspace? Every document is replaced by the examples. This cannot be undone.")) {
-			loadSeed();
-			showStatus("Workspace reset to the examples.");
-			view.focus();
-		}
+		void confirmDialog({
+			title: "Reset the workspace?",
+			message: "Every document is replaced by the examples. This cannot be undone.",
+			confirmLabel: "Reset",
+			danger: true,
+		}).then((confirmed) => {
+			if (confirmed) {
+				loadSeed();
+				showStatus("Workspace reset to the examples.");
+				view.focus();
+			}
+		});
 	});
 
 	// --- Share links --------------------------------------------------------------------------
@@ -439,8 +454,12 @@ function main(): void {
 				await navigator.clipboard.writeText(url);
 				showStatus("Link copied to the clipboard.");
 			} catch {
-				// No clipboard (insecure context, permissions): hand the link over the old way
-				window.prompt("Copy this link:", url);
+				// No clipboard (insecure context, permissions): hand the link over in a dialog
+				await linkDialog({
+					title: "Share this workspace",
+					message: "The link carries every document of the workspace. Copy it from here:",
+					url,
+				});
 			}
 		});
 	});
@@ -516,14 +535,20 @@ function main(): void {
 	const handleFragment = (ownContent: boolean): void => {
 		const payload = sharePayloadOf(location.hash);
 		if (payload) {
-			void decodeShare(payload).then((shared) => {
+			void decodeShare(payload).then(async (shared) => {
 				consumeFragment();
 				if (!shared || shared.documents.length === 0) {
 					showStatus("The link does not carry a valid workspace.");
 					return;
 				}
-				const replace = !ownContent || window.confirm(
-					"This link carries a workspace. Load it? Your current documents in this browser are replaced.");
+				const replace = !ownContent || await confirmDialog({
+					title: "Load the shared workspace?",
+					message: `The link carries ${shared.documents.length} document${shared.documents.length === 1 ? "" : "s"}. `
+						+ "Your current documents in this browser are replaced.",
+					confirmLabel: "Load",
+					cancelLabel: "Keep mine",
+					danger: true,
+				});
 				if (replace) {
 					loadShared(shared);
 					showStatus("Shared workspace loaded.");

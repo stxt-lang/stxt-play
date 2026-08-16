@@ -196,6 +196,12 @@ cabecera se pliega en dos filas.
       fragmento se atiende al arrancar y en cada `hashchange`, porque esos enlaces del portal
       llevan `target="stxt-play"` y reutilizan una pestaña que ya había retirado su fragmento
       (solo cambia el hash, no recarga). Sale en la **0.2.1**.
+- [x] **Diálogos propios en vez de `window.confirm`/`prompt`** (2026-08-16, idea del `TODO.md`
+      de `../stxt`): `src/ui/dialog.ts` sobre el `<dialog>` nativo (`showModal`) con estilo en
+      `css/_dialog.scss`; `confirmDialog` para borrar, resetear y cargar un workspace
+      compartido (botones con nombre, variante `danger`, foco inicial en *Cancel*, Escape y clic
+      fuera cancelan) y `linkDialog` como fallback de *Share* sin portapapeles (URL seleccionada
+      + *Copy*). Comprobado en Chrome headless. También en la **0.2.1**.
 
 **El playground está terminado** según este plan. Lo que venga —ideas nuevas— entra por el
 `TODO.md` de `../stxt` y, si cuaja, como fase nueva aquí.

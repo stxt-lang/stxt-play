@@ -3463,9 +3463,9 @@
         line++;
       }
     }
-    decompose(from, to, target, open) {
+    decompose(from, to, target, open2) {
       let text = from <= 0 && to >= this.length ? this : new _TextLeaf(sliceText(this.text, from, to), Math.min(to, this.length) - Math.max(0, from));
-      if (open & 1) {
+      if (open2 & 1) {
         let prev = target.pop();
         let joined = appendText(text.text, prev.text.slice(), 0, text.length);
         if (joined.length <= 32) {
@@ -3542,11 +3542,11 @@
         line = endLine + 1;
       }
     }
-    decompose(from, to, target, open) {
+    decompose(from, to, target, open2) {
       for (let i = 0, pos = 0; pos <= to && i < this.children.length; i++) {
         let child = this.children[i], end = pos + child.length;
         if (from <= end && to >= pos) {
-          let childOpen = open & ((pos <= from ? 1 : 0) | (end >= to ? 2 : 0));
+          let childOpen = open2 & ((pos <= from ? 1 : 0) | (end >= to ? 2 : 0));
           if (pos >= from && end <= to && !childOpen)
             target.push(child);
           else
@@ -4377,14 +4377,14 @@
     let sections = [];
     let insert2 = mkSet ? [] : null;
     let a = new SectionIter(setA), b = new SectionIter(setB);
-    for (let open = false; ; ) {
+    for (let open2 = false; ; ) {
       if (a.done && b.done) {
         return insert2 ? ChangeSet.createSet(sections, insert2) : ChangeDesc.create(sections);
       } else if (a.ins == 0) {
-        addSection(sections, a.len, 0, open);
+        addSection(sections, a.len, 0, open2);
         a.next();
       } else if (b.len == 0 && !b.done) {
-        addSection(sections, 0, b.ins, open);
+        addSection(sections, 0, b.ins, open2);
         if (insert2)
           addInsert(insert2, sections, b.text);
         b.next();
@@ -4394,19 +4394,19 @@
         let len = Math.min(a.len2, b.len), sectionLen = sections.length;
         if (a.ins == -1) {
           let insB = b.ins == -1 ? -1 : b.off ? 0 : b.ins;
-          addSection(sections, len, insB, open);
+          addSection(sections, len, insB, open2);
           if (insert2 && insB)
             addInsert(insert2, sections, b.text);
         } else if (b.ins == -1) {
-          addSection(sections, a.off ? 0 : a.len, len, open);
+          addSection(sections, a.off ? 0 : a.len, len, open2);
           if (insert2)
             addInsert(insert2, sections, a.textBit(len));
         } else {
-          addSection(sections, a.off ? 0 : a.len, b.off ? 0 : b.ins, open);
+          addSection(sections, a.off ? 0 : a.len, b.off ? 0 : b.ins, open2);
           if (insert2 && !b.off)
             addInsert(insert2, sections, b.text);
         }
-        open = (a.ins > len || b.ins >= 0 && b.len > len) && (open || sections.length > sectionLen);
+        open2 = (a.ins > len || b.ins >= 0 && b.len > len) && (open2 || sections.length > sectionLen);
         a.forward2(len);
         b.forward(len);
       }
@@ -6577,10 +6577,10 @@
       return active.reverse();
     }
     openEnd(to) {
-      let open = 0;
+      let open2 = 0;
       for (let i = this.activeTo.length - 1; i >= 0 && this.activeTo[i] > to; i--)
-        open++;
-      return open;
+        open2++;
+      return open2;
     }
   };
   function compare(a, startA, b, startB, length, comparator) {
@@ -8207,14 +8207,14 @@
     RangeSet.spans(sets, line.from, line.to, {
       point() {
       },
-      span(fromDoc, toDoc, active, open) {
+      span(fromDoc, toDoc, active, open2) {
         let from = fromDoc - line.from, to = toDoc - line.from;
         let level = result;
-        for (let i = active.length - 1; i >= 0; i--, open--) {
+        for (let i = active.length - 1; i >= 0; i--, open2--) {
           let direction = active[i].spec.bidiIsolate, update;
           if (direction == null)
             direction = autoDirection(line.text, from, to);
-          if (open > 0 && level.length && (update = level[level.length - 1]).to == from && update.direction == direction) {
+          if (open2 > 0 && level.length && (update = level[level.length - 1]).to == from && update.direction == direction) {
             update.to = to;
             level = update.inner;
           } else {
@@ -15856,7 +15856,7 @@
       this.activateHover(view, pos, side);
     }
     activateHover(view, pos, side, locked) {
-      let open = this.source(view, pos, side);
+      let open2 = this.source(view, pos, side);
       let done = (value) => {
         if (value && !(Array.isArray(value) && !value.length)) {
           let tooltips = Array.isArray(value) ? value : [value];
@@ -15865,16 +15865,16 @@
           view.dispatch({ effects: this.setHover.of(tooltips) });
         }
       };
-      if (open && "then" in open) {
+      if (open2 && "then" in open2) {
         let pending = this.pending = { pos };
-        open.then((result) => {
+        open2.then((result) => {
           if (this.pending == pending) {
             this.pending = null;
             done(result);
           }
         }, (e) => logException(view.state, e, "hover tooltip"));
       } else {
-        done(open);
+        done(open2);
       }
     }
     get tooltip() {
@@ -16058,17 +16058,17 @@
         let specs = input.filter((x) => x);
         let panels = [], top2 = [], bottom = [], mount = [];
         for (let spec of specs) {
-          let known = this.specs.indexOf(spec), panel;
+          let known = this.specs.indexOf(spec), panel2;
           if (known < 0) {
-            panel = spec(update.view);
-            mount.push(panel);
+            panel2 = spec(update.view);
+            mount.push(panel2);
           } else {
-            panel = this.panels[known];
-            if (panel.update)
-              panel.update(update);
+            panel2 = this.panels[known];
+            if (panel2.update)
+              panel2.update(update);
           }
-          panels.push(panel);
-          (panel.top ? top2 : bottom).push(panel);
+          panels.push(panel2);
+          (panel2.top ? top2 : bottom).push(panel2);
         }
         this.specs = specs;
         this.panels = panels;
@@ -16127,13 +16127,13 @@
         parent.insertBefore(this.dom, this.top ? parent.firstChild : null);
       }
       let curDOM = this.dom.firstChild;
-      for (let panel of this.panels) {
-        if (panel.dom.parentNode == this.dom) {
-          while (curDOM != panel.dom)
+      for (let panel2 of this.panels) {
+        if (panel2.dom.parentNode == this.dom) {
+          while (curDOM != panel2.dom)
             curDOM = rm(curDOM);
           curDOM = curDOM.nextSibling;
         } else {
-          this.dom.insertBefore(panel.dom, curDOM);
+          this.dom.insertBefore(panel2.dom, curDOM);
         }
       }
       while (curDOM)
@@ -16646,12 +16646,12 @@
     }
   };
   var LintState = class _LintState {
-    constructor(diagnostics, panel, selected) {
+    constructor(diagnostics, panel2, selected) {
       this.diagnostics = diagnostics;
-      this.panel = panel;
+      this.panel = panel2;
       this.selected = selected;
     }
-    static init(diagnostics, panel, state) {
+    static init(diagnostics, panel2, state) {
       let diagnosticFilter = state.facet(lintConfig).markerFilter;
       if (diagnosticFilter)
         diagnostics = diagnosticFilter(diagnostics, state);
@@ -16730,7 +16730,7 @@
             active.splice(i2--, 1);
       }
       let set = deco.finish();
-      return new _LintState(set, panel, findDiagnostic(set));
+      return new _LintState(set, panel2, findDiagnostic(set));
     }
   };
   function findDiagnostic(diagnostics, diagnostic = null, after = 0) {
@@ -16772,19 +16772,19 @@
     },
     update(value, tr) {
       if (tr.docChanged && value.diagnostics.size) {
-        let mapped = value.diagnostics.map(tr.changes), selected = null, panel = value.panel;
+        let mapped = value.diagnostics.map(tr.changes), selected = null, panel2 = value.panel;
         if (value.selected) {
           let selPos = tr.changes.mapPos(value.selected.from, 1);
           selected = findDiagnostic(mapped, value.selected.diagnostic, selPos) || findDiagnostic(mapped, null, selPos);
         }
-        if (!mapped.size && panel && tr.state.facet(lintConfig).autoPanel)
-          panel = null;
-        value = new LintState(mapped, panel, selected);
+        if (!mapped.size && panel2 && tr.state.facet(lintConfig).autoPanel)
+          panel2 = null;
+        value = new LintState(mapped, panel2, selected);
       }
       for (let effect of tr.effects) {
         if (effect.is(setDiagnosticsEffect)) {
-          let panel = !tr.state.facet(lintConfig).autoPanel ? value.panel : effect.value.length ? LintPanel.open : null;
-          value = LintState.init(effect.value, panel, tr.state);
+          let panel2 = !tr.state.facet(lintConfig).autoPanel ? value.panel : effect.value.length ? LintPanel.open : null;
+          value = LintState.init(effect.value, panel2, tr.state);
         } else if (effect.is(togglePanel)) {
           value = new LintState(value.diagnostics, effect.value ? LintPanel.open : null, value.selected);
         } else if (effect.is(movePanelSelection)) {
@@ -17041,12 +17041,12 @@
         this.view.requestMeasure({
           key: this,
           read: () => ({ sel: newSelectedItem.dom.getBoundingClientRect(), panel: this.list.getBoundingClientRect() }),
-          write: ({ sel, panel }) => {
-            let scaleY = panel.height / this.list.offsetHeight;
-            if (sel.top < panel.top)
-              this.list.scrollTop -= (panel.top - sel.top) / scaleY;
-            else if (sel.bottom > panel.bottom)
-              this.list.scrollTop += (sel.bottom - panel.bottom) / scaleY;
+          write: ({ sel, panel: panel2 }) => {
+            let scaleY = panel2.height / this.list.offsetHeight;
+            if (sel.top < panel2.top)
+              this.list.scrollTop -= (panel2.top - sel.top) / scaleY;
+            else if (sel.bottom > panel2.bottom)
+              this.list.scrollTop += (sel.bottom - panel2.bottom) / scaleY;
           }
         });
       } else if (this.selectedIndex < 0) {
@@ -17351,8 +17351,8 @@
   var lintExtensions = [
     lintState,
     /* @__PURE__ */ EditorView.decorations.compute([lintState], (state) => {
-      let { selected, panel } = state.field(lintState);
-      return !selected || !panel || selected.from == selected.to ? Decoration.none : Decoration.set([
+      let { selected, panel: panel2 } = state.field(lintState);
+      return !selected || !panel2 || selected.from == selected.to ? Decoration.none : Decoration.set([
         activeMark.range(selected.from, selected.to)
       ]);
     }),
@@ -21408,12 +21408,12 @@
     return data.length ? data[0] : {};
   }
   var SearchMargin = 50;
-  function findBlockComment(state, { open, close }, from, to) {
+  function findBlockComment(state, { open: open2, close }, from, to) {
     let textBefore = state.sliceDoc(from - SearchMargin, from);
     let textAfter = state.sliceDoc(to, to + SearchMargin);
     let spaceBefore = /\s*$/.exec(textBefore)[0].length, spaceAfter = /^\s*/.exec(textAfter)[0].length;
     let beforeOff = textBefore.length - spaceBefore;
-    if (textBefore.slice(beforeOff - open.length, beforeOff) == open && textAfter.slice(spaceAfter, spaceAfter + close.length) == close) {
+    if (textBefore.slice(beforeOff - open2.length, beforeOff) == open2 && textAfter.slice(spaceAfter, spaceAfter + close.length) == close) {
       return {
         open: { pos: from - spaceBefore, margin: spaceBefore && 1 },
         close: { pos: to + spaceAfter, margin: spaceAfter && 1 }
@@ -21428,11 +21428,11 @@
     }
     let startSpace = /^\s*/.exec(startText)[0].length, endSpace = /\s*$/.exec(endText)[0].length;
     let endOff = endText.length - endSpace - close.length;
-    if (startText.slice(startSpace, startSpace + open.length) == open && endText.slice(endOff, endOff + close.length) == close) {
+    if (startText.slice(startSpace, startSpace + open2.length) == open2 && endText.slice(endOff, endOff + close.length) == close) {
       return {
         open: {
-          pos: from + startSpace + open.length,
-          margin: /\s/.test(startText.charAt(startSpace + open.length)) ? 1 : 0
+          pos: from + startSpace + open2.length,
+          margin: /\s/.test(startText.charAt(startSpace + open2.length)) ? 1 : 0
         },
         close: {
           pos: to - endSpace - close.length,
@@ -21472,8 +21472,8 @@
       let changes = [];
       for (let i = 0, comment2; i < comments.length; i++)
         if (comment2 = comments[i]) {
-          let token = tokens[i], { open, close } = comment2;
-          changes.push({ from: open.pos - token.open.length, to: open.pos + open.margin }, { from: close.pos - close.margin, to: close.pos + token.close.length });
+          let token = tokens[i], { open: open2, close } = comment2;
+          changes.push({ from: open2.pos - token.open.length, to: open2.pos + open2.margin }, { from: close.pos - close.margin, to: close.pos + token.close.length });
         }
       return { changes };
     }
@@ -22965,15 +22965,15 @@
         this.view.requestMeasure(this.placeInfoReq);
     }
     updateSel() {
-      let cState = this.view.state.field(this.stateField), open = cState.open;
-      if (open.selected > -1 && open.selected < this.range.from || open.selected >= this.range.to) {
-        this.range = rangeAroundSelected(open.options.length, open.selected, this.view.state.facet(completionConfig).maxRenderedOptions);
-        this.showOptions(open.options, cState.id);
+      let cState = this.view.state.field(this.stateField), open2 = cState.open;
+      if (open2.selected > -1 && open2.selected < this.range.from || open2.selected >= this.range.to) {
+        this.range = rangeAroundSelected(open2.options.length, open2.selected, this.view.state.facet(completionConfig).maxRenderedOptions);
+        this.showOptions(open2.options, cState.id);
       }
-      let newSel = this.updateSelectedOption(open.selected);
+      let newSel = this.updateSelectedOption(open2.selected);
       if (newSel) {
         this.destroyInfo();
-        let { completion } = open.options[open.selected];
+        let { completion } = open2.options[open2.selected];
         let { info } = completion;
         if (!info)
           return;
@@ -23113,9 +23113,9 @@
   function completionTooltip(stateField, applyCompletion2) {
     return (view) => new CompletionTooltip(view, stateField, applyCompletion2);
   }
-  function scrollIntoView2(container, element) {
+  function scrollIntoView2(container, element2) {
     let parent = container.getBoundingClientRect();
-    let self = element.getBoundingClientRect();
+    let self = element2.getBoundingClientRect();
     let scaleY = parent.height / container.offsetHeight;
     if (self.top < parent.top)
       container.scrollTop -= (parent.top - self.top) / scaleY;
@@ -23232,10 +23232,10 @@
     }
   };
   var CompletionState = class _CompletionState {
-    constructor(active, id, open) {
+    constructor(active, id, open2) {
       this.active = active;
       this.id = id;
-      this.open = open;
+      this.open = open2;
     }
     static start() {
       return new _CompletionState(none3, "cm-ac-" + Math.floor(Math.random() * 2e6).toString(36), null);
@@ -23256,14 +23256,14 @@
       });
       if (active.length == this.active.length && active.every((a, i) => a == this.active[i]))
         active = this.active;
-      let open = this.open, didSet = tr.effects.some((e) => e.is(setActiveEffect));
-      if (open && tr.docChanged)
-        open = open.map(tr.changes);
+      let open2 = this.open, didSet = tr.effects.some((e) => e.is(setActiveEffect));
+      if (open2 && tr.docChanged)
+        open2 = open2.map(tr.changes);
       if (tr.selection || active.some((a) => a.hasResult() && tr.changes.touchesRange(a.from, a.to)) || !sameResults(active, this.active) || didSet)
-        open = CompletionDialog.build(active, state, this.id, open, conf, didSet);
-      else if (open && open.disabled && !active.some((a) => a.isPending))
-        open = null;
-      if (!open && active.every((a) => !a.isPending) && active.some((a) => a.hasResult()))
+        open2 = CompletionDialog.build(active, state, this.id, open2, conf, didSet);
+      else if (open2 && open2.disabled && !active.some((a) => a.isPending))
+        open2 = null;
+      if (!open2 && active.every((a) => !a.isPending) && active.some((a) => a.hasResult()))
         active = active.map((a) => a.hasResult() ? new ActiveSource(
           a.source,
           0
@@ -23271,8 +23271,8 @@
         ) : a);
       for (let effect of tr.effects)
         if (effect.is(setSelectedEffect))
-          open = open && open.setSelected(effect.value, this.id);
-      return active == this.active && open == this.open ? this : new _CompletionState(active, this.id, open);
+          open2 = open2 && open2.setSelected(effect.value, this.id);
+      return active == this.active && open2 == this.open ? this : new _CompletionState(active, this.id, open2);
     }
     get tooltip() {
       return this.open ? this.open.tooltip : null;
@@ -23646,8 +23646,8 @@
       blur(event) {
         let state = this.view.state.field(completionState, false);
         if (state && state.tooltip && this.view.state.facet(completionConfig).closeOnBlur) {
-          let dialog = state.open && getTooltip(this.view, state.open.tooltip);
-          if (!dialog || !dialog.dom.contains(event.relatedTarget))
+          let dialog2 = state.open && getTooltip(this.view, state.open.tooltip);
+          if (!dialog2 || !dialog2.dom.contains(event.relatedTarget))
             setTimeout(() => this.view.dispatch({ effects: closeCompletionEffect.of(null) }), 10);
         }
       },
@@ -23894,12 +23894,12 @@ ${indentation}${unit}` : suggestion.text
     return `(${lo},${max === null ? "\u221E" : max})`;
   }
   function el(tag, className, text) {
-    const element = document.createElement(tag);
-    element.className = className;
+    const element2 = document.createElement(tag);
+    element2.className = className;
     if (text !== void 0) {
-      element.textContent = text;
+      element2.textContent = text;
     }
-    return element;
+    return element2;
   }
   function render(info) {
     const root = el("div", "stxt-hover");
@@ -24261,6 +24261,96 @@ ${indentation}${unit}` : suggestion.text
       },
       startRename
     };
+  }
+
+  // src/ui/dialog.ts
+  var dialog;
+  function element() {
+    if (!dialog) {
+      dialog = document.createElement("dialog");
+      dialog.className = "play-dialog";
+      document.body.appendChild(dialog);
+    }
+    return dialog;
+  }
+  function open(content2, focus) {
+    const host = element();
+    host.textContent = "";
+    host.appendChild(content2);
+    return new Promise((resolve) => {
+      const onClose = () => {
+        host.removeEventListener("close", onClose);
+        host.removeEventListener("click", onBackdrop);
+        resolve(host.returnValue);
+      };
+      const onBackdrop = (event) => {
+        if (event.target === host) {
+          host.close("");
+        }
+      };
+      host.addEventListener("close", onClose);
+      host.addEventListener("click", onBackdrop);
+      host.returnValue = "";
+      host.showModal();
+      focus?.focus();
+    });
+  }
+  function panel(title, message) {
+    const root = document.createElement("div");
+    root.className = "play-dialog-panel";
+    const heading2 = document.createElement("h2");
+    heading2.className = "play-dialog-title";
+    heading2.textContent = title;
+    const text = document.createElement("p");
+    text.className = "play-dialog-message";
+    text.textContent = message;
+    const actions = document.createElement("div");
+    actions.className = "play-dialog-actions";
+    root.append(heading2, text, actions);
+    return { root, actions };
+  }
+  function button(label, className, onClick) {
+    const control = document.createElement("button");
+    control.type = "button";
+    control.className = className;
+    control.textContent = label;
+    control.addEventListener("click", onClick);
+    return control;
+  }
+  async function confirmDialog(options) {
+    const { root, actions } = panel(options.title, options.message);
+    const cancel = button(options.cancelLabel ?? "Cancel", "play-dialog-button", () => element().close(""));
+    const confirm = button(
+      options.confirmLabel,
+      options.danger ? "play-dialog-button play-dialog-danger" : "play-dialog-button play-dialog-primary",
+      () => element().close("confirm")
+    );
+    actions.append(cancel, confirm);
+    return await open(root, options.danger ? cancel : confirm) === "confirm";
+  }
+  async function linkDialog(options) {
+    const { root, actions } = panel(options.title, options.message);
+    const field = document.createElement("input");
+    field.type = "text";
+    field.readOnly = true;
+    field.className = "play-dialog-field";
+    field.value = options.url;
+    field.addEventListener("focus", () => field.select());
+    root.insertBefore(field, actions);
+    const copy = button("Copy", "play-dialog-button play-dialog-primary", () => {
+      field.focus();
+      field.select();
+      void navigator.clipboard?.writeText(options.url).then(
+        () => {
+          copy.textContent = "Copied!";
+        },
+        () => {
+        }
+      );
+    });
+    const close = button("Close", "play-dialog-button", () => element().close(""));
+    actions.append(copy, close);
+    await open(root, field);
   }
 
   // src/ui/problemsPanel.ts
@@ -24769,7 +24859,7 @@ ${indentation}${unit}` : suggestion.text
       view.dispatch({ selection: { anchor: docLine.from }, scrollIntoView: true });
       view.focus();
     };
-    const panel = createProblemsPanel(problemsList, problemsCount, goToLine);
+    const panel2 = createProblemsPanel(problemsList, problemsCount, goToLine);
     const list = createDocumentList(docList, docNew, {
       onSelect: (id) => {
         workspace.setActive(id);
@@ -24786,13 +24876,20 @@ ${indentation}${unit}` : suggestion.text
           return;
         }
         const { label } = labelOf(document2, analyzer.getAnalysis(id));
-        if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) {
-          return;
-        }
-        workspace.removeDocument(id);
-        if (workspace.getDocuments().length === 0) {
-          workspace.addDocument();
-        }
+        void confirmDialog({
+          title: `Delete "${label}"?`,
+          message: "The document is removed from the workspace. This cannot be undone.",
+          confirmLabel: "Delete",
+          danger: true
+        }).then((confirmed) => {
+          if (!confirmed || !workspace.getDocument(id)) {
+            return;
+          }
+          workspace.removeDocument(id);
+          if (workspace.getDocuments().length === 0) {
+            workspace.addDocument();
+          }
+        });
       },
       onMove: (id, toIndex) => workspace.move(id, toIndex)
     });
@@ -24820,7 +24917,7 @@ ${indentation}${unit}` : suggestion.text
       list.render(entries);
     };
     const renderPanel = () => {
-      panel.render(activeAnalysis()?.diagnostics ?? []);
+      panel2.render(activeAnalysis()?.diagnostics ?? []);
     };
     const refreshView = () => {
       const analysis = activeAnalysis();
@@ -24961,11 +25058,18 @@ ${indentation}${unit}` : suggestion.text
       }
     };
     docReset.addEventListener("click", () => {
-      if (window.confirm("Reset the workspace? Every document is replaced by the examples. This cannot be undone.")) {
-        loadSeed();
-        showStatus("Workspace reset to the examples.");
-        view.focus();
-      }
+      void confirmDialog({
+        title: "Reset the workspace?",
+        message: "Every document is replaced by the examples. This cannot be undone.",
+        confirmLabel: "Reset",
+        danger: true
+      }).then((confirmed) => {
+        if (confirmed) {
+          loadSeed();
+          showStatus("Workspace reset to the examples.");
+          view.focus();
+        }
+      });
     });
     shareButton.addEventListener("click", () => {
       void encodeShare(workspace.toSnapshot()).then(async (payload) => {
@@ -24974,7 +25078,11 @@ ${indentation}${unit}` : suggestion.text
           await navigator.clipboard.writeText(url);
           showStatus("Link copied to the clipboard.");
         } catch {
-          window.prompt("Copy this link:", url);
+          await linkDialog({
+            title: "Share this workspace",
+            message: "The link carries every document of the workspace. Copy it from here:",
+            url
+          });
         }
       });
     });
@@ -25023,15 +25131,19 @@ ${indentation}${unit}` : suggestion.text
     const handleFragment = (ownContent) => {
       const payload = sharePayloadOf(location.hash);
       if (payload) {
-        void decodeShare(payload).then((shared) => {
+        void decodeShare(payload).then(async (shared) => {
           consumeFragment();
           if (!shared || shared.documents.length === 0) {
             showStatus("The link does not carry a valid workspace.");
             return;
           }
-          const replace2 = !ownContent || window.confirm(
-            "This link carries a workspace. Load it? Your current documents in this browser are replaced."
-          );
+          const replace2 = !ownContent || await confirmDialog({
+            title: "Load the shared workspace?",
+            message: `The link carries ${shared.documents.length} document${shared.documents.length === 1 ? "" : "s"}. Your current documents in this browser are replaced.`,
+            confirmLabel: "Load",
+            cancelLabel: "Keep mine",
+            danger: true
+          });
           if (replace2) {
             loadShared(shared);
             showStatus("Shared workspace loaded.");

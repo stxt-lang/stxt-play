@@ -47,6 +47,14 @@ body {
 		}
 	}
 
+	// The wordmark in the identity font; "Playground" stays in the body font next to it.
+	.brand-name {
+		font-family: $font-brand;
+		font-weight: 400;
+		font-size: 1.2rem;
+		line-height: 1;
+	}
+
 	.brand-sub {
 		font-weight: 400;
 		opacity: 0.9;

@@ -17,7 +17,7 @@ export interface ConfirmOptions {
 	confirmLabel: string;
 	/** Label of the cancelling button; "Cancel" by default. */
 	cancelLabel?: string;
-	/** Destructive action: the confirm button is red and the initial focus is on Cancel. */
+	/** Destructive action: the initial focus goes to Cancel, so Enter does not lose anything. */
 	danger?: boolean;
 }
 

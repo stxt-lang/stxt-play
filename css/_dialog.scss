@@ -4,8 +4,6 @@
 // is transparent and fills the viewport, so a click outside the panel lands on it (that is how
 // dialog.ts detects "click outside = cancel"); the visible card is .play-dialog-panel.
 
-$danger: #c0392b;
-
 .play-dialog {
 	position: fixed;
 	inset: 0;
@@ -119,17 +117,16 @@ $danger: #c0392b;
 		}
 	}
 
+	// "Danger" (delete, reset, replace) shares the primary look on purpose: this is a playground,
+	// not a working editor, and a red button reads as more of a threat than losing an example
+	// deserves. What still marks the destructive case is the initial focus on Cancel.
 	&.play-dialog-danger {
-		border-color: $danger;
-		background: $danger;
+		border-color: $color1;
+		background: $color1;
 		color: #fff;
 
 		&:hover {
-			background: #a93226;
-		}
-
-		&:focus-visible {
-			outline-color: $danger;
+			background: #095f95;
 		}
 	}
 }

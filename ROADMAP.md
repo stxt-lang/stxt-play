@@ -199,7 +199,8 @@ cabecera se pliega en dos filas.
 - [x] **Diálogos propios en vez de `window.confirm`/`prompt`** (2026-08-16, idea del `TODO.md`
       de `../stxt`): `src/ui/dialog.ts` sobre el `<dialog>` nativo (`showModal`) con estilo en
       `css/_dialog.scss`; `confirmDialog` para borrar, resetear y cargar un workspace
-      compartido (botones con nombre, variante `danger`, foco inicial en *Cancel*, Escape y clic
+      compartido (botones con nombre, variante `danger` = foco inicial en *Cancel*, sin rojo —es un
+      playground—, Escape y clic
       fuera cancelan) y `linkDialog` como fallback de *Share* sin portapapeles (URL seleccionada
       + *Copy*). Comprobado en Chrome headless. También en la **0.2.1**.
 

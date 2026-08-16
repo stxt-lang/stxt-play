@@ -1,9 +1,11 @@
 import {
 	ConditionalValidator,
+	InlineNode,
 	Node,
 	Parser,
 	SchemaValidator,
 	StringUtils,
+	TextNode,
 } from "@stxt-lang/core";
 import { CompletionResult, computeCompletions } from "./completion";
 import { Diagnostic } from "./Diagnostic";
@@ -40,7 +42,7 @@ export interface DocumentAnalysis {
 	/** Lines that are comments. */
 	commentLines: Set<number>;
 	/** For each text line of a block, the BLOCK node it belongs to. */
-	textLineByLineNumber: Map<number, Node>;
+	textLineByLineNumber: Map<number, TextNode>;
 	/**
 	 * Grammars this document defines, in document order. Empty for plain documents; non-empty
 	 * marks the document as a schema/template in the document list, where its namespace — not a
@@ -58,7 +60,7 @@ interface ParsedDocument {
 	tokens: StxtToken[];
 	nodeByLine: Map<number, Node>;
 	commentLines: Set<number>;
-	textLineByLineNumber: Map<number, Node>;
+	textLineByLineNumber: Map<number, TextNode>;
 	syntaxDiagnostics: Diagnostic[];
 	grammarRoots: Node[];
 }
@@ -276,7 +278,9 @@ export class Analyzer {
 			commentLines: parsed.commentLines,
 			textLineByLineNumber: parsed.textLineByLineNumber,
 			grammars: parsed.grammarRoots.map((root) => ({
-				namespace: StringUtils.lowerCase(root.getValue().trim()),
+				// A grammar root is `Name (@stxt.schema): namespace`; a block form is a broken grammar
+				// the registry reports on its own, and declares no namespace here.
+				namespace: root instanceof InlineNode ? StringUtils.lowerCase(root.getValue().trim()) : "",
 				kind: grammarKindOf(root),
 				line: root.getLine() - 1,
 			})),
@@ -299,7 +303,7 @@ export class Analyzer {
 		const hasGrammarSources = Array.from(this.parsed.values()).some((p) => p.grammarRoots.length > 0);
 
 		const walk = (node: Node): void => {
-			if (!node.isTextNode()) {
+			if (node instanceof InlineNode) {
 				node.getChildren().forEach(walk);
 			}
 

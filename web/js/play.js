@@ -56,39 +56,6 @@
     }
   });
 
-  // node_modules/@stxt-lang/core/out/exceptions/RuntimeException.js
-  var require_RuntimeException = __commonJS({
-    "node_modules/@stxt-lang/core/out/exceptions/RuntimeException.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.RuntimeException = void 0;
-      var RuntimeException = class _RuntimeException extends Error {
-        /**
-         * Creates an error with an error code and a message.
-         *
-         * @param code error code in UPPERCASE.
-         * @param message descriptive message.
-         */
-        constructor(code, message) {
-          super(message);
-          this.name = "RuntimeException";
-          this.code = code;
-          Object.setPrototypeOf(this, _RuntimeException.prototype);
-        }
-        /** @returns the error code in UPPERCASE. */
-        getCode() {
-          return this.code;
-        }
-        /** @returns a readable representation of the error, with its code. */
-        toString() {
-          const message = this.message;
-          return `${this.name}[${this.code}]${message ? `: ${message}` : ""}`;
-        }
-      };
-      exports.RuntimeException = RuntimeException;
-    }
-  });
-
   // node_modules/@stxt-lang/core/out/core/NamespaceValidator.js
   var require_NamespaceValidator = __commonJS({
     "node_modules/@stxt-lang/core/out/core/NamespaceValidator.js"(exports) {
@@ -217,159 +184,401 @@
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Node = void 0;
       var ParseException_1 = require_ParseException();
-      var RuntimeException_1 = require_RuntimeException();
       var NamespaceValidator_1 = require_NamespaceValidator();
       var StringUtils_1 = require_StringUtils();
-      var Node5 = class {
+      var Node5 = class _Node {
         /**
-         * Creates a node with its full position in the document. This is the constructor the
-         * {@link Parser} uses while parsing.
+         * Common initialisation, for the two concrete forms.
          *
-         * @param line line number of the document where the node opens.
-         * @param level indentation level of the node (0 for root nodes).
          * @param name name of the node.
-         * @param namespace namespace of the node, or null/undefined if it has none.
-         * @param textNode true if it is a text block node (BLOCK); false if it is INLINE.
-         * @param value inline value of the node (INLINE node), ignored when it is BLOCK.
-         * @throws ParseException if the name or the namespace are not valid.
+         * @param namespace namespace the node declares, or null/undefined/empty if it declares none.
+         * @param line source line, or {@link Node.NO_LINE}.
+         * @throws ParseException with code `INVALID_NODE_NAME` if the name is not a valid STXT node
+         *         name, or if the namespace does not have a valid format.
          */
-        constructor(line, level, name2, namespace, textNode, value) {
-          this.textLines = [];
-          this.children = [];
-          this.level = level;
+        constructor(name2, namespace, line) {
+          this.parent = null;
           this.line = line;
-          this.name = StringUtils_1.StringUtils.compactSpaces(name2);
-          this.normalizedName = StringUtils_1.StringUtils.normalize(name2);
-          this.namespace = StringUtils_1.StringUtils.lowerCase(namespace);
-          this.value = (value ?? "").trim();
-          this.textNode = textNode;
-          NamespaceValidator_1.NamespaceValidator.validateNamespaceFormat(this.namespace, line);
-          if (this.value.length > 0 && this.isTextNode()) {
-            throw new RuntimeException_1.RuntimeException("INLINE_VALUE_NOT_VALID", "Not empty value with textNode");
-          }
-          if (!StringUtils_1.StringUtils.isValidNodeName(this.name)) {
-            throw new ParseException_1.ParseException(line, "INVALID_NODE_NAME", `Node name not valid: ${name2}`);
-          }
+          this.setName(name2);
+          this.setNamespace(namespace);
         }
-        /**
-         * Appends a text line to a BLOCK node.
-         *
-         * @param line text line to append to a BLOCK node ({@link Node.isTextNode}).
-         */
-        addTextLine(line) {
-          this.textLines.push(line);
-        }
+        // ----------------------------------------------------------------
+        // Name
+        // ----------------------------------------------------------------
         /** @returns the original name of the node as it appears in the document (with spaces compacted). */
         getName() {
           return this.name;
         }
-        /** @returns the canonical name of the node, used to compare/look up by structural identity. */
-        getNormalizedName() {
-          return this.normalizedName;
+        /**
+         * Renames the node. The canonical name is recomputed.
+         *
+         * @param name new name of the node.
+         * @throws ParseException with code `INVALID_NODE_NAME` if it is not a valid STXT node name.
+         */
+        setName(name2) {
+          const compacted = StringUtils_1.StringUtils.compactSpaces(name2);
+          if (!StringUtils_1.StringUtils.isValidNodeName(compacted)) {
+            throw new ParseException_1.ParseException(this.line, "INVALID_NODE_NAME", `Node name not valid: ${name2}`);
+          }
+          this.name = compacted;
+          this.canonicalName = StringUtils_1.StringUtils.normalize(name2);
         }
-        /** @returns the canonical name prefixed by its namespace (`namespace:name`), or just the name when there is no namespace. */
-        getQualifiedName() {
-          return this.namespace.length === 0 ? this.normalizedName : `${this.namespace}:${this.normalizedName}`;
-        }
-        /** @returns the effective namespace of the node (its own or inherited from the parent), lower-cased, or the empty string if it has none. */
-        getNamespace() {
-          return this.namespace;
-        }
-        /** @returns the children of the node in order of appearance, as a read-only view. */
-        getChildren() {
-          return this.children;
+        /** @returns the canonical name of the node (STXT-SPEC §4.3), used to compare/look up by structural identity. */
+        getCanonicalName() {
+          return this.canonicalName;
         }
         /**
-         * Appends an already closed child to this node.
-         *
-         * @param node already closed child to append at the end of this node's list of children.
+         * @returns the canonical name of the node.
+         * @deprecated since 0.7.0, use {@link Node.getCanonicalName}; "canonical name" is the term of
+         *             the specifications. To be removed in a later version.
          */
-        addChild(node) {
-          this.children.push(node);
+        getNormalizedName() {
+          return this.canonicalName;
         }
-        /** @returns the inline value of the node (INLINE node), or the empty string if it is a BLOCK node. */
-        getValue() {
-          return this.value;
+        /** @returns the canonical name prefixed by the effective namespace (`namespace:name`), or just the canonical name when there is no namespace. */
+        getQualifiedName() {
+          const namespace = this.getNamespace();
+          return namespace.length === 0 ? this.canonicalName : `${namespace}:${this.canonicalName}`;
         }
-        /** @returns the text lines of a BLOCK node ({@link Node.isTextNode}), in order of appearance. */
-        getTextLines() {
-          return this.textLines;
+        // ----------------------------------------------------------------
+        // Namespace
+        // ----------------------------------------------------------------
+        /** @returns the namespace this node declares itself, lower-cased, or the empty string if it declares none (and so inherits the parent's). */
+        getDeclaredNamespace() {
+          return this.declaredNamespace;
         }
-        /** @returns the line number of the document where this node was opened. */
+        /**
+         * Sets the namespace this node declares. The empty string (or null/undefined) means "none":
+         * the node then inherits the effective namespace of its parent.
+         *
+         * @param namespace namespace to declare, or null/undefined/empty for none.
+         * @throws ParseException if the namespace does not have a valid format (STXT-SPEC §7).
+         */
+        setNamespace(namespace) {
+          const lower = StringUtils_1.StringUtils.lowerCase(namespace);
+          NamespaceValidator_1.NamespaceValidator.validateNamespaceFormat(lower, this.line);
+          this.declaredNamespace = lower;
+        }
+        /** @returns the effective namespace of the node: the one it declares or, failing that, the effective namespace of its parent; the empty string if there is none. */
+        getNamespace() {
+          if (this.declaredNamespace.length > 0) {
+            return this.declaredNamespace;
+          }
+          return this.parent ? this.parent.getNamespace() : "";
+        }
+        // ----------------------------------------------------------------
+        // Position in the source
+        // ----------------------------------------------------------------
+        /** @returns the line number of the document where this node was opened, or {@link Node.NO_LINE} if unknown. */
         getLine() {
           return this.line;
         }
-        /** @returns the indentation level of the node (0 for root nodes). */
+        /**
+         * Sets the source line of the node.
+         *
+         * @param line line number, or {@link Node.NO_LINE} if unknown.
+         */
+        setLine(line) {
+          this.line = line;
+        }
+        /** @returns the depth of the node in its tree: 0 for a root node, 1 for its children, and so on. */
         getLevel() {
-          return this.level;
+          let level = 0;
+          for (let p = this.parent; p !== null; p = p.getParent()) {
+            level++;
+          }
+          return level;
         }
-        /** @returns true if the node is a text block (BLOCK, `>>`); false if it is INLINE. */
-        isTextNode() {
-          return this.textNode;
-        }
-        /** @returns the textual content of the node: the text lines joined with '\n' if it is BLOCK, or the inline value otherwise. */
-        getText() {
-          return this.isTextNode() ? this.textLines.join("\n") : this.value;
+        // ----------------------------------------------------------------
+        // Tree
+        // ----------------------------------------------------------------
+        /** @returns the parent of this node, or null if it is a root node. */
+        getParent() {
+          return this.parent;
         }
         /**
-         * Looks up the only direct child with that name.
+         * Removes this node from its parent, if it has one. Afterwards the node is a root, and its
+         * effective namespace is the one it declares.
          *
-         * @param cname name of the child to look for.
-         * @param namespace namespace to search in; this node's own namespace when omitted.
-         * @returns the only direct child with that name, or null if there is none.
-         * @throws RuntimeException with code `AMBIGUOUS_CHILD` if there is more than one; use {@link Node.getChildrenByName} then.
+         * @returns true if the node had a parent and was detached; false if it was already a root.
          */
-        getChild(cname, namespace) {
-          const result = this.getChildrenByName(cname, namespace);
-          if (result.length > 1) {
-            throw new RuntimeException_1.RuntimeException("AMBIGUOUS_CHILD", "More than 1 child. Use getChildren");
+        detach() {
+          if (this.parent === null) {
+            return false;
           }
-          if (result.length === 0) {
-            return null;
-          }
-          return result[0];
+          return this.parent.removeChild(this);
         }
-        // Fast access methods to children
         /**
-         * Looks up every direct child with that name.
-         *
-         * @param cname name of the child to look for.
-         * @param namespace namespace to search in; this node's own namespace when omitted.
-         * @returns every direct child with that name in the given namespace, in order of appearance.
+         * Both ends of the link are kept in sync by {@link InlineNode}; nobody else calls this.
+         * @internal
          */
-        getChildrenByName(cname, namespace) {
-          const key = StringUtils_1.StringUtils.normalize(cname);
-          const targetNamespace = namespace !== void 0 ? namespace : this.namespace;
-          const result = [];
-          for (const child of this.children) {
-            if (child.getNormalizedName() === key && child.getNamespace() === targetNamespace) {
-              result.push(child);
-            }
-          }
-          return result;
+        _setParent(parent) {
+          this.parent = parent;
         }
         /** @returns a readable representation of the node, for debugging and error messages. */
         toString() {
-          let s = "Node{";
-          s += `line=${this.line}`;
-          s += `, level=${this.level}`;
-          s += `, name='${this.name}'`;
-          if (this.namespace.length > 0) {
-            s += `, ns='${this.namespace}'`;
+          let s = `${this.constructor.name}{`;
+          if (this.line !== _Node.NO_LINE) {
+            s += `line=${this.line}, `;
           }
-          s += `, text=${this.textNode}`;
-          if (!this.textNode && this.value.length > 0) {
-            s += `, value='${this.value}'`;
+          s += `name='${this.name}'`;
+          const namespace = this.getNamespace();
+          if (namespace.length > 0) {
+            s += `, ns='${namespace}'`;
           }
-          if (this.textNode) {
-            s += `, lines=${this.textLines.length}`;
-          }
-          s += `, children=${this.children.length}`;
+          s += this.describe();
           s += "}";
           return s;
         }
       };
       exports.Node = Node5;
+      Node5.NO_LINE = -1;
+    }
+  });
+
+  // node_modules/@stxt-lang/core/out/core/TextNode.js
+  var require_TextNode = __commonJS({
+    "node_modules/@stxt-lang/core/out/core/TextNode.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.TextNode = void 0;
+      var Node_1 = require_Node();
+      var TextNode4 = class _TextNode extends Node_1.Node {
+        constructor(name2, ...rest) {
+          const [namespace, text, line] = rest.length <= 1 ? [null, rest[0], Node_1.Node.NO_LINE] : [rest[0], rest[1], rest[2] ?? Node_1.Node.NO_LINE];
+          super(name2, namespace, line);
+          this.lines = [];
+          this.setText(text);
+        }
+        // ----------------------------------------------------------------
+        // Text
+        // ----------------------------------------------------------------
+        /** @returns the text lines of the node, in order, as a read-only view. */
+        getTextLines() {
+          return this.lines;
+        }
+        /**
+         * Replaces the whole text of the node.
+         *
+         * @param text new text, split into lines at every line break (LF or CRLF), or the lines
+         *        themselves; null/undefined empties the node.
+         */
+        setText(text) {
+          this.lines.length = 0;
+          if (typeof text === "string") {
+            this.lines.push(..._TextNode.splitLines(text));
+          } else if (text) {
+            this.lines.push(...text);
+          }
+        }
+        /**
+         * Replaces the whole text of the node with the given lines.
+         *
+         * @param lines new text lines; null/undefined empties the node.
+         */
+        setTextLines(lines) {
+          this.setText(lines);
+        }
+        /**
+         * Appends a text line.
+         *
+         * @param line text line to append.
+         */
+        addTextLine(line) {
+          this.lines.push(line);
+        }
+        /** Removes every text line. */
+        clearText() {
+          this.lines.length = 0;
+        }
+        getText() {
+          return this.lines.join("\n");
+        }
+        isTextNode() {
+          return true;
+        }
+        // LF or CRLF; the trailing part after the last break is a line too (possibly empty)
+        static splitLines(text) {
+          return text.split(/\r?\n/);
+        }
+        describe() {
+          return `, lines=${this.lines.length}`;
+        }
+      };
+      exports.TextNode = TextNode4;
+    }
+  });
+
+  // node_modules/@stxt-lang/core/out/exceptions/RuntimeException.js
+  var require_RuntimeException = __commonJS({
+    "node_modules/@stxt-lang/core/out/exceptions/RuntimeException.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.RuntimeException = void 0;
+      var RuntimeException = class _RuntimeException extends Error {
+        /**
+         * Creates an error with an error code and a message.
+         *
+         * @param code error code in UPPERCASE.
+         * @param message descriptive message.
+         */
+        constructor(code, message) {
+          super(message);
+          this.name = "RuntimeException";
+          this.code = code;
+          Object.setPrototypeOf(this, _RuntimeException.prototype);
+        }
+        /** @returns the error code in UPPERCASE. */
+        getCode() {
+          return this.code;
+        }
+        /** @returns a readable representation of the error, with its code. */
+        toString() {
+          const message = this.message;
+          return `${this.name}[${this.code}]${message ? `: ${message}` : ""}`;
+        }
+      };
+      exports.RuntimeException = RuntimeException;
+    }
+  });
+
+  // node_modules/@stxt-lang/core/out/core/InlineNode.js
+  var require_InlineNode = __commonJS({
+    "node_modules/@stxt-lang/core/out/core/InlineNode.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.InlineNode = void 0;
+      var Node_1 = require_Node();
+      var TextNode_1 = require_TextNode();
+      var RuntimeException_1 = require_RuntimeException();
+      var StringUtils_1 = require_StringUtils();
+      var InlineNode4 = class _InlineNode extends Node_1.Node {
+        constructor(name2, ...rest) {
+          const [namespace, value, line] = rest.length <= 1 ? [null, rest[0], Node_1.Node.NO_LINE] : [rest[0], rest[1], rest[2] ?? Node_1.Node.NO_LINE];
+          super(name2, namespace, line);
+          this.children = [];
+          this.setValue(value);
+        }
+        // ----------------------------------------------------------------
+        // Value
+        // ----------------------------------------------------------------
+        /** @returns the inline value of the node, trimmed; the empty string if it has none. */
+        getValue() {
+          return this.value;
+        }
+        /**
+         * Sets the inline value of the node.
+         *
+         * @param value new value, or null/undefined for none. It is trimmed.
+         */
+        setValue(value) {
+          this.value = (value ?? "").trim();
+        }
+        getText() {
+          return this.value;
+        }
+        isTextNode() {
+          return false;
+        }
+        // ----------------------------------------------------------------
+        // Children
+        // ----------------------------------------------------------------
+        /** @returns the children of the node in order of appearance, as a read-only view. */
+        getChildren() {
+          return this.children;
+        }
+        /**
+         * Adds a child, linking both ends: afterwards `child.getParent()` is this node. It is appended
+         * at the end unless a position is given.
+         *
+         * @param child node to add; it must not have a parent yet.
+         * @param index position where to insert it (0 = first); at the end when omitted.
+         * @throws RuntimeException with code `NODE_ALREADY_ATTACHED` if the child already has a parent
+         *         (detach it first), or `NODE_CYCLE` if it is this node or one of its ancestors.
+         * @throws RangeError if the index is out of range.
+         */
+        addChild(child, index) {
+          if (child.getParent() !== null) {
+            throw new RuntimeException_1.RuntimeException("NODE_ALREADY_ATTACHED", `Node '${child.getName()}' already has a parent: detach it first`);
+          }
+          for (let p = this; p !== null; p = p.getParent()) {
+            if (p === child) {
+              throw new RuntimeException_1.RuntimeException("NODE_CYCLE", `Node '${child.getName()}' cannot be a child of itself or of one of its descendants`);
+            }
+          }
+          const at = index ?? this.children.length;
+          if (!Number.isInteger(at) || at < 0 || at > this.children.length) {
+            throw new RangeError(`Index ${index} out of range [0, ${this.children.length}]`);
+          }
+          this.children.splice(at, 0, child);
+          child._setParent(this);
+        }
+        /**
+         * Removes a direct child, unlinking both ends: afterwards `child.getParent()` is null and the
+         * child is a root on its own.
+         *
+         * @param child the child to remove.
+         * @returns true if it was a direct child of this node and has been removed; false otherwise.
+         */
+        removeChild(child) {
+          if (child.getParent() !== this) {
+            return false;
+          }
+          const i = this.children.indexOf(child);
+          if (i === -1) {
+            return false;
+          }
+          this.children.splice(i, 1);
+          child._setParent(null);
+          return true;
+        }
+        /**
+         * Looks up the only direct child with that name.
+         *
+         * @param cname name of the child to look for.
+         * @param namespace effective namespace to search in; this node's own effective namespace when omitted.
+         * @returns the only direct child with that name, or null if there is none.
+         * @throws RuntimeException with code `AMBIGUOUS_CHILD` if there is more than one; use {@link InlineNode.getChildrenByName} then.
+         */
+        getChild(cname, namespace) {
+          const result = this.getChildrenByName(cname, namespace);
+          if (result.length > 1) {
+            throw new RuntimeException_1.RuntimeException("AMBIGUOUS_CHILD", "More than 1 child. Use getChildrenByName");
+          }
+          return result.length === 0 ? null : result[0];
+        }
+        /**
+         * Looks up every direct child with that name.
+         *
+         * @param cname name of the child to look for.
+         * @param namespace effective namespace to search in; this node's own effective namespace when omitted.
+         * @returns every direct child with that name in that namespace, in order of appearance.
+         */
+        getChildrenByName(cname, namespace) {
+          const key = StringUtils_1.StringUtils.normalize(cname);
+          const targetNamespace = namespace !== void 0 ? namespace : this.getNamespace();
+          return this.children.filter((child) => child.getCanonicalName() === key && child.getNamespace() === targetNamespace);
+        }
+        addInlineNode(name2, ...rest) {
+          const child = rest.length <= 1 ? new _InlineNode(name2, rest[0]) : new _InlineNode(name2, rest[0], rest[1]);
+          this.addChild(child);
+          return child;
+        }
+        addTextNode(name2, ...rest) {
+          const child = rest.length <= 1 ? new TextNode_1.TextNode(name2, rest[0]) : new TextNode_1.TextNode(name2, rest[0], rest[1]);
+          this.addChild(child);
+          return child;
+        }
+        describe() {
+          let s = "";
+          if (this.value.length > 0) {
+            s += `, value='${this.value}'`;
+          }
+          s += `, children=${this.children.length}`;
+          return s;
+        }
+      };
+      exports.InlineNode = InlineNode4;
     }
   });
 
@@ -575,10 +784,11 @@
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.createNode = createNode;
       var NameNamespaceParser_1 = require_NameNamespaceParser();
-      var Node_1 = require_Node();
+      var InlineNode_1 = require_InlineNode();
+      var TextNode_1 = require_TextNode();
       var ParseException_1 = require_ParseException();
       var Constants_1 = require_Constants();
-      function createNode(lineIndent, lineNumber, level, parent) {
+      function createNode(lineIndent, lineNumber) {
         const line = lineIndent.content;
         let name2;
         let value;
@@ -606,13 +816,13 @@
         if (textNode && value.trim().length > 0) {
           throw new ParseException_1.ParseException(lineNumber, "INLINE_VALUE_NOT_VALID", `Line not valid: ${line}`);
         }
-        const nameNamespace = NameNamespaceParser_1.NameNamespaceParser.parse(name2, parent ? parent.getNamespace() : null, lineNumber, line);
+        const nameNamespace = NameNamespaceParser_1.NameNamespaceParser.parse(name2, null, lineNumber, line);
         name2 = nameNamespace.getName();
         const namespace = nameNamespace.getNamespace();
         if (name2.length === 0) {
           throw new ParseException_1.ParseException(lineNumber, "INVALID_LINE", `Line not valid: ${line}`);
         }
-        return new Node_1.Node(lineNumber, level, name2, namespace, textNode, value);
+        return textNode ? new TextNode_1.TextNode(name2, namespace, null, lineNumber) : new InlineNode_1.InlineNode(name2, namespace, value, lineNumber);
       }
     }
   });
@@ -673,6 +883,7 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Parser = void 0;
+      var TextNode_1 = require_TextNode();
       var LineParser_1 = require_LineParser();
       var NodeCreator_1 = require_NodeCreator();
       var ParseResult_1 = require_ParseResult();
@@ -736,7 +947,7 @@
             lineNumber++;
             this.processLine(line, lineNumber, stack, documents, result);
           }
-          this.closeToLevel(stack, documents, 0, result);
+          this.closeToLevel(stack, 0, result);
           for (const doc2 of documents) {
             result.addNode(doc2);
           }
@@ -745,8 +956,8 @@
         processLine(lineString, lineNumber, stack, documents, result) {
           try {
             const lastNode = stack.length === 0 ? null : stack[stack.length - 1];
-            const lastLevel = lastNode ? lastNode.getLevel() : 0;
-            const lastNodeText = lastNode ? lastNode.isTextNode() : false;
+            const lastLevel = lastNode ? stack.length - 1 : 0;
+            const lastNodeText = lastNode instanceof TextNode_1.TextNode;
             const line = (0, LineParser_1.parseLine)(lineString, lastNodeText, lastLevel, lineNumber);
             if (line.isComment) {
               this.observers.forEach((observer) => {
@@ -756,18 +967,24 @@
             }
             const currentLevel = line.level;
             if (line.isBlock) {
-              lastNode.addTextLine(line.content);
+              const textNode = lastNode;
+              textNode.addTextLine(line.content);
               this.observers.forEach((observer) => {
-                observer.onTextLine(lastNode, lineNumber, lineString, line);
+                observer.onTextLine(textNode, lineNumber, lineString, line);
               });
               return;
             }
             if (line.isEmpty()) {
               return;
             }
-            this.closeToLevel(stack, documents, currentLevel, result);
+            this.closeToLevel(stack, currentLevel, result);
             const parent = stack.length === 0 ? null : stack[stack.length - 1];
-            const node = (0, NodeCreator_1.createNode)(line, lineNumber, currentLevel, parent);
+            const node = (0, NodeCreator_1.createNode)(line, lineNumber);
+            if (parent === null) {
+              documents.push(node);
+            } else {
+              parent.addChild(node);
+            }
             this.observers.forEach((observer) => {
               observer.onCreate(node, lineString);
             });
@@ -785,7 +1002,7 @@
             result.addError(new ParseException_1.ParseException(line, unknownErrorCode, String(e)));
           }
         }
-        closeToLevel(stack, documents, targetLevel, result) {
+        closeToLevel(stack, targetLevel, result) {
           while (stack.length > targetLevel) {
             const completed = stack.pop();
             this.validators.forEach((validator) => {
@@ -798,11 +1015,6 @@
                 this.handleError(e, completed.getLine(), result, "VALIDATION_ERROR", "UNKNOWN_VALIDATION_ERROR");
               }
             });
-            if (stack.length === 0) {
-              documents.push(completed);
-            } else {
-              stack[stack.length - 1].addChild(completed);
-            }
             this.observers.forEach((observer) => {
               observer.onFinish(completed);
             });
@@ -885,7 +1097,7 @@
          * @throws ValidationException with code `NODE_DEF_ALREADY_DEFINED` if there already was a node definition with the same name.
          */
         addNodeDefinition(nodeDefinition) {
-          const qname = nodeDefinition.getNormalizedName();
+          const qname = nodeDefinition.getCanonicalName();
           if (this.nodes.has(qname)) {
             throw new ValidationException_1.ValidationException(0, "NODE_DEF_ALREADY_DEFINED", `Exists a previous node definition with: ${qname}`);
           }
@@ -958,13 +1170,14 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.TEXT = void 0;
+      var InlineNode_1 = require_InlineNode();
       var ValidationException_1 = require_ValidationException();
       exports.TEXT = {
         getName() {
           return "TEXT";
         },
         validate(nodeDef, node) {
-          if (node.getChildren().length > 0) {
+          if (node instanceof InlineNode_1.InlineNode && node.getChildren().length > 0) {
             throw new ValidationException_1.ValidationException(node.getLine(), "NOT_ALLOWED_CHILDREN_TEXT", `Not allowed children nodes in node ${node.getQualifiedName()}`);
           }
         }
@@ -1022,7 +1235,7 @@
           if (n.isTextNode()) {
             throw new ValidationException_1.ValidationException(n.getLine(), "NOT_ALLOWED_TEXT", `Not allowed text in node ${n.getQualifiedName()}`);
           }
-          const url = n.getValue();
+          const url = n.getText();
           try {
             const parsed = new globalThis.URL(url);
             const ok = !!parsed.protocol && !!parsed.hostname;
@@ -1120,9 +1333,10 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.binaryValue = binaryValue;
+      var TextNode_1 = require_TextNode();
       function binaryValue(node) {
-        if (!node.isTextNode()) {
-          return node.getValue();
+        if (!(node instanceof TextNode_1.TextNode)) {
+          return node.getText();
         }
         return node.getTextLines().map((line) => line.trim()).join("");
       }
@@ -1228,7 +1442,7 @@
           return "GROUP";
         },
         validate(nodeDef, node) {
-          if (node.getValue().length > 0 || node.isTextNode()) {
+          if (node.isTextNode() || node.getText().length > 0) {
             throw new ValidationException_1.ValidationException(node.getLine(), "INVALID_VALUE", `Node '${node.getName()}' has to be empty`);
           }
         }
@@ -1251,7 +1465,7 @@
           if (node.isTextNode()) {
             throw new ValidationException_1.ValidationException(node.getLine(), "NOT_ALLOWED_TEXT", `Not allowed text in node ${node.getQualifiedName()}`);
           }
-          const value = node.getValue();
+          const value = node.getText();
           const allowed = nodeDef.getValues();
           if (!nodeDef.isAllowedValue(value)) {
             throw new ValidationException_1.ValidationException(node.getLine(), "INVALID_VALUE", `The value '${value}' not allowed. Only: ${Array.from(allowed).join(", ")}`);
@@ -1267,13 +1481,14 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.MARKDOWN = void 0;
+      var InlineNode_1 = require_InlineNode();
       var ValidationException_1 = require_ValidationException();
       exports.MARKDOWN = {
         getName() {
           return "MARKDOWN";
         },
         validate(nodeDef, node) {
-          if (node.getChildren().length > 0) {
+          if (node instanceof InlineNode_1.InlineNode && node.getChildren().length > 0) {
             throw new ValidationException_1.ValidationException(node.getLine(), "NOT_ALLOWED_CHILDREN_TEXT", `Not allowed children nodes in node ${node.getQualifiedName()}`);
           }
         }
@@ -1369,6 +1584,7 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.SchemaValidator = void 0;
+      var InlineNode_1 = require_InlineNode();
       var ValidationException_1 = require_ValidationException();
       var TypeRegistry_1 = require_TypeRegistry();
       var SchemaValidator3 = class _SchemaValidator {
@@ -1397,7 +1613,7 @@
             return errors;
           }
           errors.push(...this.validateAgainstSchema(node, schema));
-          if (this.recursiveValidation) {
+          if (this.recursiveValidation && node instanceof InlineNode_1.InlineNode) {
             for (const childNode of node.getChildren()) {
               errors.push(...this.validate(childNode));
             }
@@ -1413,9 +1629,9 @@
          */
         validateAgainstSchema(node, schema) {
           const errors = [];
-          const schemaNode = schema.getNodeDefinition(node.getNormalizedName());
+          const schemaNode = schema.getNodeDefinition(node.getCanonicalName());
           if (!schemaNode) {
-            const error = `NOT EXIST NODE ${node.getNormalizedName()} for namespace ${schema.getNamespace()}`;
+            const error = `NOT EXIST NODE ${node.getCanonicalName()} for namespace ${schema.getNamespace()}`;
             errors.push(new ValidationException_1.ValidationException(node.getLine(), "NODE_NOT_EXIST_IN_SCHEMA", error));
             return errors;
           }
@@ -1424,11 +1640,15 @@
           errors.push(..._SchemaValidator.validateCount(schemaNode, node));
           return errors;
         }
+        // The children of a node for the purposes of the content model: a text node has none
+        static childrenOf(node) {
+          return node instanceof InlineNode_1.InlineNode ? node.getChildren() : [];
+        }
         // Closed content model (STXT-SCHEMA-SPEC, section 6): only the direct children declared
         // in the definition of the parent are allowed; with no Children, nothing is
         static validateChildrenDeclared(nodeDef, node) {
           const errors = [];
-          for (const child of node.getChildren()) {
+          for (const child of _SchemaValidator.childrenOf(node)) {
             if (!nodeDef.getChildren().has(child.getQualifiedName())) {
               errors.push(new ValidationException_1.ValidationException(child.getLine(), "CHILD_NOT_DECLARED", `Child '${child.getQualifiedName()}' not declared in node '${node.getQualifiedName()}'`));
             }
@@ -1460,7 +1680,7 @@
           const errors = [];
           const count = /* @__PURE__ */ new Map();
           const childrenByType = /* @__PURE__ */ new Map();
-          for (const child of node.getChildren()) {
+          for (const child of _SchemaValidator.childrenOf(node)) {
             const childName = child.getQualifiedName();
             count.set(childName, (count.get(childName) ?? 0) + 1);
             if (!childrenByType.has(childName)) {
@@ -1528,6 +1748,13 @@
           return this.name;
         }
         /** @returns the canonical name of the node. */
+        getCanonicalName() {
+          return this.normalizedName;
+        }
+        /**
+         * @returns the canonical name of the node.
+         * @deprecated since 0.7.0, use getCanonicalName().
+         */
         getNormalizedName() {
           return this.normalizedName;
         }
@@ -1649,6 +1876,13 @@
           return this.name;
         }
         /** @returns the canonical name of the expected child. */
+        getCanonicalName() {
+          return this.normalizedName;
+        }
+        /**
+         * @returns the canonical name of the expected child.
+         * @deprecated since 0.7.0, use getCanonicalName().
+         */
         getNormalizedName() {
           return this.normalizedName;
         }
@@ -1692,31 +1926,30 @@
       var Schema_1 = require_Schema();
       var NodeDefinition_1 = require_NodeDefinition();
       var ChildDefinition_1 = require_ChildDefinition();
+      var InlineNode_1 = require_InlineNode();
       var ValidationException_1 = require_ValidationException();
       var RuntimeException_1 = require_RuntimeException();
       var NameNamespaceParser_1 = require_NameNamespaceParser();
       var TypeRegistry_1 = require_TypeRegistry();
       function transformNodeToSchema2(node) {
-        const nodeName = node.getNormalizedName();
+        const nodeName = node.getCanonicalName();
         const namespaceSchema = node.getNamespace();
         if (nodeName !== "schema" || namespaceSchema !== Schema_1.Schema.SCHEMA_NAMESPACE) {
           throw new ValidationException_1.ValidationException(node.getLine(), "NOT_STXT_SCHEMA", `Expected schema(${Schema_1.Schema.SCHEMA_NAMESPACE}) but got ${nodeName}(${namespaceSchema})`);
         }
-        const descrip = node.getChild("description")?.getText();
-        const schema = new Schema_1.Schema(node.getValue(), node.getLine(), descrip);
+        const root = inline(node);
+        const descrip = root.getChild("description")?.getText();
+        const schema = new Schema_1.Schema(root.getValue(), root.getLine(), descrip);
         const allNames = /* @__PURE__ */ new Set();
-        for (const n of node.getChildrenByName("node")) {
+        for (const n of root.getChildrenByName("node")) {
           const schNode = createFrom(n, schema.getNamespace());
           schema.addNodeDefinition(schNode);
-          allNames.add(schNode.getNormalizedName());
+          allNames.add(schNode.getCanonicalName());
         }
         for (const schNode of schema.getNodes().values()) {
           for (const schChild of schNode.getChildren().values()) {
             if (schChild.getNamespace() === schema.getNamespace()) {
-              const childNorm = schChild.getNormalizedName?.();
-              if (!childNorm) {
-                throw new RuntimeException_1.RuntimeException("CHILD_DEFINITION_API_MISMATCH", "ChildDefinition.getNormalizedName() is missing in TypeScript version. Add it to ChildDefinition.");
-              }
+              const childNorm = schChild.getCanonicalName();
               if (!allNames.has(childNorm)) {
                 throw new ValidationException_1.ValidationException(0, "CHILD_NOT_DEFINED", `Child ${childNorm} not defined in ${schema.getNamespace()}`);
               }
@@ -1725,12 +1958,19 @@
         }
         return schema;
       }
-      function createFrom(n, namespace) {
+      function inline(node) {
+        if (node instanceof InlineNode_1.InlineNode) {
+          return node;
+        }
+        throw new ValidationException_1.ValidationException(node.getLine(), "INVALID_SCHEMA", `Node '${node.getName()}' must be inline in a schema`);
+      }
+      function createFrom(node, namespace) {
+        const n = inline(node);
         const name2 = n.getValue();
         let type = "INLINE";
         const typeNode = n.getChild("type");
         if (typeNode) {
-          type = typeNode.getValue();
+          type = typeNode.getText();
         }
         const description = n.getChild("description")?.getText();
         const result = new NodeDefinition_1.NodeDefinition(name2, type, n.getLine(), description);
@@ -1739,7 +1979,7 @@
           if (!TypeRegistry_1.TypeRegistry.admitsChildren(type)) {
             throw new ValidationException_1.ValidationException(children.getLine(), "CHILDREN_NOT_ALLOWED_FOR_TYPE", `Type ${type} does not allow children (node ${name2})`);
           }
-          for (const child of children.getChildrenByName("child")) {
+          for (const child of inline(children).getChildrenByName("child")) {
             putChildToSchemaNode(result, child, namespace);
           }
         }
@@ -1752,9 +1992,9 @@
             throw new RuntimeException_1.RuntimeException("INVALID_SIZE_VALUES", `Unexpected number of values: ${valuesNodes.length}`);
           }
           const valuesNode = valuesNodes[0];
-          const values = valuesNode.getChildrenByName("value");
+          const values = inline(valuesNode).getChildrenByName("value");
           for (const v of values) {
-            result.addValue(v.getValue(), v.getLine());
+            result.addValue(v.getText(), v.getLine());
           }
           valuesNodes = values;
         }
@@ -1763,7 +2003,8 @@
         }
         return result;
       }
-      function putChildToSchemaNode(schemaNode, child, defNamespace) {
+      function putChildToSchemaNode(schemaNode, childNode, defNamespace) {
+        const child = inline(childNode);
         const ns = NameNamespaceParser_1.NameNamespaceParser.parse(child.getValue(), defNamespace, child.getLine(), child.getValue());
         const name2 = ns.getName();
         const namespace = ns.getNamespace();
@@ -1780,7 +2021,7 @@
         if (!n) {
           return null;
         }
-        const raw = n.getValue();
+        const raw = n.getText();
         const parsed = Number.parseInt(raw, 10);
         if (Number.isNaN(parsed)) {
           throw new ValidationException_1.ValidationException(node.getLine(), "INVALID_INTEGER", `Integer not valid: ${raw}`);
@@ -1799,7 +2040,6 @@
       var Schema_1 = require_Schema();
       var Parser_1 = require_Parser();
       var ValidationException_1 = require_ValidationException();
-      var RuntimeException_1 = require_RuntimeException();
       var SchemaParser_1 = require_SchemaParser();
       var SchemaProviderMeta = class _SchemaProviderMeta {
         /**
@@ -1818,13 +2058,17 @@
         /**
          * Serves the meta-schema of the schema language.
          *
+         * Follows the {@link SchemaProvider} contract: providers never throw "not found". Any
+         * namespace other than `@stxt.schema` yields `null`, so that this provider can sit at
+         * the end of a fallback chain (it is the default parent of {@link SchemaProviderMemory})
+         * and the {@link SchemaValidator} is the only one reporting `SCHEMA_NOT_FOUND`.
+         *
          * @param namespace namespace whose schema is wanted; only `@stxt.schema` is served.
-         * @returns the meta-schema of the schema language.
-         * @throws RuntimeException with code `RESOURCE_NOT_FOUND` if any other namespace is asked for.
+         * @returns the meta-schema of the schema language, or `null` for any other namespace.
          */
         getSchema(namespace) {
           if (namespace !== Schema_1.Schema.SCHEMA_NAMESPACE) {
-            throw new RuntimeException_1.RuntimeException("RESOURCE_NOT_FOUND", `Not found '${namespace}' in namespace: ${Schema_1.Schema.SCHEMA_NAMESPACE}`);
+            return null;
           }
           if (!this.meta) {
             throw new ValidationException_1.ValidationException(0, "META_SCHEMA_NOT_AVAILABLE", "Meta schema not available");
@@ -2049,6 +2293,7 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.transformTemplateNodeToSchema = transformTemplateNodeToSchema2;
+      var InlineNode_1 = require_InlineNode();
       var Parser_1 = require_Parser();
       var ValidationException_1 = require_ValidationException();
       var ChildDefinition_1 = require_ChildDefinition();
@@ -2059,8 +2304,8 @@
       var ParseException_1 = require_ParseException();
       var TypeRegistry_1 = require_TypeRegistry();
       function transformTemplateNodeToSchema2(node) {
-        const result = new Schema_1.Schema(node.getValue(), node.getLine(), void 0);
-        const structure = node.getChild("structure");
+        const result = new Schema_1.Schema(node.getText(), node.getLine(), void 0);
+        const structure = node instanceof InlineNode_1.InlineNode ? node.getChild("structure") : null;
         if (!structure) {
           throw new ValidationException_1.ValidationException(node.getLine(), "TEMPLATE_STRUCTURE_REQUIRED", "Template must define 'Structure >>'");
         }
@@ -2100,7 +2345,7 @@
         return result;
       }
       function addToSchema(schema, node) {
-        if (node.isTextNode()) {
+        if (!(node instanceof InlineNode_1.InlineNode)) {
           throw new ValidationException_1.ValidationException(node.getLine(), "INVALID_CHILD_LINE", "Template Structure lines must use ':'");
         }
         let namespace = node.getNamespace();
@@ -2152,11 +2397,11 @@
             throw new ValidationException_1.ValidationException(node.getLine(), "NODE_DEFINED_MULTIPLE_TIMES", `Multiple node reference must start with @: ${node.getName()}`);
           }
           const reference = type.substring(1).trim();
-          const explicitType = referenceType(reference, node.getNormalizedName());
+          const explicitType = referenceType(reference, node.getCanonicalName());
           if (explicitType) {
             throw new ValidationException_1.ValidationException(node.getLine(), "REFERENCE_WITH_TYPE_NOT_ALLOWED", `Reference '@${node.getName()}' can not declare a type: ${explicitType}`);
           }
-          if (StringUtils_1.StringUtils.normalize(reference) !== node.getNormalizedName()) {
+          if (StringUtils_1.StringUtils.normalize(reference) !== node.getCanonicalName()) {
             throw new ValidationException_1.ValidationException(node.getLine(), "NODE_REFERENCE_NOT_VALID", `Reference must be '@${node.getName()}', not '${reference}'`);
           }
           const values = cl.getValues();
@@ -2173,6 +2418,9 @@
           throw new ValidationException_1.ValidationException(node.getLine(), "CHILDREN_NOT_ALLOWED_FOR_TYPE", `Type ${schemaNode.getType()} does not allow children (node ${node.getName()})`);
         }
         for (const child of childrenNode) {
+          if (!(child instanceof InlineNode_1.InlineNode)) {
+            throw new ValidationException_1.ValidationException(child.getLine(), "INVALID_CHILD_LINE", "Template Structure lines must use ':'");
+          }
           cl = ChildLineParser_1.ChildLineParser.parse(child.getValue(), child.getLine());
           const childName = child.getName();
           let childNamespace = child.getNamespace();
@@ -2205,7 +2453,7 @@
           if (namespace !== schema.getNamespace()) {
             throw new ValidationException_1.ValidationException(node.getLine(), "EXTERNAL_DESCRIPTION_NOT_ALLOWED", "Not allowed description in external namespaces");
           }
-          if (node.getChildren().length > 0) {
+          if (node instanceof InlineNode_1.InlineNode && node.getChildren().length > 0) {
             throw new ValidationException_1.ValidationException(node.getLine(), "CHILDREN_DESCRIPTION_NOT_ALLOWED", "Not allowed children in description");
           }
           const nodeDef = schema.getNodeDefinition(node.getName());
@@ -2229,7 +2477,6 @@
       exports.MetaTemplateSchemaProvider = void 0;
       var Parser_1 = require_Parser();
       var ValidationException_1 = require_ValidationException();
-      var RuntimeException_1 = require_RuntimeException();
       var TemplateParser_1 = require_TemplateParser();
       var MetaTemplateSchemaProvider = class _MetaTemplateSchemaProvider {
         /**
@@ -2248,13 +2495,16 @@
         /**
          * Serves the meta-schema of the template language.
          *
+         * Follows the {@link SchemaProvider} contract: providers never throw "not found". Any
+         * namespace other than `@stxt.template` yields `null`; only the `SchemaValidator`
+         * reports `SCHEMA_NOT_FOUND`.
+         *
          * @param namespace namespace whose schema is wanted; only `@stxt.template` is served.
-         * @returns the meta-schema of the template language.
-         * @throws RuntimeException with code `RESOURCE_NOT_FOUND` if any other namespace is asked for.
+         * @returns the meta-schema of the template language, or `null` for any other namespace.
          */
         getSchema(namespace) {
           if (namespace !== "@stxt.template") {
-            throw new RuntimeException_1.RuntimeException("RESOURCE_NOT_FOUND", `Not found '${namespace}' in namespace: @stxt.template`);
+            return null;
           }
           if (!this.meta) {
             throw new ValidationException_1.ValidationException(0, "META_SCHEMA_NOT_AVAILABLE", "Meta schema not available");
@@ -2400,6 +2650,8 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.NodeWriter = exports.IndentStyle = void 0;
+      var InlineNode_1 = require_InlineNode();
+      var TextNode_1 = require_TextNode();
       var IndentStyle;
       (function(IndentStyle2) {
         IndentStyle2["TABS"] = "TABS";
@@ -2417,7 +2669,7 @@
          */
         static toSTXT(node, style = IndentStyle.TABS) {
           const out = [];
-          _NodeWriter.writeNode(out, node, 0, style, "");
+          _NodeWriter.writeNode(out, node, 0, style);
           return out.join("");
         }
         /**
@@ -2433,33 +2685,33 @@
             if (i > 0) {
               out.push("\n");
             }
-            _NodeWriter.writeNode(out, docs[i], 0, style, "");
+            _NodeWriter.writeNode(out, docs[i], 0, style);
           }
           return out.join("");
         }
-        static writeNode(out, n, depth, style, parentNs) {
+        static writeNode(out, n, depth, style) {
           _NodeWriter.indent(out, depth, style);
-          const ns = n.getNamespace();
+          const ns = n.getDeclaredNamespace();
           out.push(n.getName());
-          if (ns.length > 0 && ns !== parentNs) {
+          if (ns.length > 0) {
             out.push(" (", ns, ")");
           }
-          if (n.isTextNode()) {
+          if (n instanceof TextNode_1.TextNode) {
             out.push(" >>\n");
             for (const line of n.getTextLines()) {
               _NodeWriter.indent(out, depth + 1, style);
               out.push(line, "\n");
             }
-          } else {
+          } else if (n instanceof InlineNode_1.InlineNode) {
             out.push(":");
             const value = n.getValue();
             if (value.length > 0) {
               out.push(" ", value);
             }
             out.push("\n");
-          }
-          for (const child of n.getChildren()) {
-            _NodeWriter.writeNode(out, child, depth + 1, style, ns);
+            for (const child of n.getChildren()) {
+              _NodeWriter.writeNode(out, child, depth + 1, style);
+            }
           }
         }
         static indent(out, depth, style) {
@@ -2479,6 +2731,7 @@
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.toCanonicalTree = toCanonicalTree;
       exports.toCanonicalJson = toCanonicalJson;
+      var TextNode_1 = require_TextNode();
       function toCanonicalTree(nodes) {
         return nodes.map((node) => toCanonicalNode(node));
       }
@@ -2486,22 +2739,23 @@
         return JSON.stringify(toCanonicalTree(nodes), null, 2);
       }
       function toCanonicalNode(node) {
-        if (node.isTextNode()) {
+        if (node instanceof TextNode_1.TextNode) {
           return {
             name: node.getName(),
-            canonicalName: node.getNormalizedName(),
+            canonicalName: node.getCanonicalName(),
             namespace: node.getNamespace(),
             form: "block",
             lines: [...node.getTextLines()]
           };
         }
+        const inline = node;
         return {
-          name: node.getName(),
-          canonicalName: node.getNormalizedName(),
-          namespace: node.getNamespace(),
+          name: inline.getName(),
+          canonicalName: inline.getCanonicalName(),
+          namespace: inline.getNamespace(),
           form: "inline",
-          value: node.getValue(),
-          children: node.getChildren().map((child) => toCanonicalNode(child))
+          value: inline.getValue(),
+          children: inline.getChildren().map((child) => toCanonicalNode(child))
         };
       }
     }
@@ -2858,10 +3112,18 @@
     "node_modules/@stxt-lang/core/out/all.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.DiscoveryError = exports.DiscoveryResult = exports.DiscoveryResolver = exports.transformTemplateNodeToSchema = exports.toCanonicalJson = exports.toCanonicalTree = exports.IndentStyle = exports.NodeWriter = exports.ConditionalValidator = exports.UnifiedSchemaProvider = exports.transformNodeToSchema = exports.ChildDefinition = exports.NodeDefinition = exports.SchemaValidator = exports.Schema = exports.ValidationException = exports.ParseException = exports.StringUtils = exports.parseLine = exports.Constants = exports.Line = exports.ParseResult = exports.Parser = exports.Node = void 0;
+      exports.DiscoveryError = exports.DiscoveryResult = exports.DiscoveryResolver = exports.transformTemplateNodeToSchema = exports.toCanonicalJson = exports.toCanonicalTree = exports.IndentStyle = exports.NodeWriter = exports.ConditionalValidator = exports.UnifiedSchemaProvider = exports.transformNodeToSchema = exports.ChildDefinition = exports.NodeDefinition = exports.SchemaValidator = exports.Schema = exports.ValidationException = exports.ParseException = exports.StringUtils = exports.parseLine = exports.Constants = exports.Line = exports.ParseResult = exports.Parser = exports.TextNode = exports.InlineNode = exports.Node = void 0;
       var Node_1 = require_Node();
       Object.defineProperty(exports, "Node", { enumerable: true, get: function() {
         return Node_1.Node;
+      } });
+      var InlineNode_1 = require_InlineNode();
+      Object.defineProperty(exports, "InlineNode", { enumerable: true, get: function() {
+        return InlineNode_1.InlineNode;
+      } });
+      var TextNode_1 = require_TextNode();
+      Object.defineProperty(exports, "TextNode", { enumerable: true, get: function() {
+        return TextNode_1.TextNode;
       } });
       var Parser_1 = require_Parser();
       Object.defineProperty(exports, "Parser", { enumerable: true, get: function() {
@@ -17111,7 +17373,7 @@
   }
 
   // src/analysis/Analyzer.ts
-  var import_core4 = __toESM(require_all());
+  var import_core5 = __toESM(require_all());
 
   // src/analysis/completion.ts
   var import_core = __toESM(require_all());
@@ -17148,7 +17410,7 @@
     for (let search = line - 1; search >= 0; search--) {
       const node = analysis.nodeByLine.get(search);
       if (node?.getLevel() === level - 1) {
-        return node;
+        return node instanceof import_core.InlineNode ? node : void 0;
       }
     }
     return void 0;
@@ -17230,11 +17492,11 @@
     for (const definition of schema.getNodes().values()) {
       for (const child of definition.getChildren().values()) {
         if (child.getNamespace() === schema.getNamespace()) {
-          referenced.add(child.getNormalizedName());
+          referenced.add(child.getCanonicalName());
         }
       }
     }
-    const roots = Array.from(schema.getNodes().values()).filter((d) => !referenced.has(d.getNormalizedName()));
+    const roots = Array.from(schema.getNodes().values()).filter((d) => !referenced.has(d.getCanonicalName()));
     return roots.length > 0 ? roots : Array.from(schema.getNodes().values());
   }
   function findRootLevelSuggestions(registry, prefix) {
@@ -17246,7 +17508,7 @@
         if (!matches(definition.getName(), normalizedPrefix)) {
           continue;
         }
-        const key = `${schema.getNamespace()}:${definition.getNormalizedName()}`;
+        const key = `${schema.getNamespace()}:${definition.getCanonicalName()}`;
         if (seen.has(key)) {
           continue;
         }
@@ -17397,6 +17659,7 @@
   };
 
   // src/analysis/nodeInfo.ts
+  var import_core3 = __toESM(require_all());
   function describeNodeAtLine(analysis, registry, line) {
     const node = analysis.nodeByLine.get(line);
     if (!node) {
@@ -17404,15 +17667,15 @@
     }
     const info = {
       name: node.getName(),
-      canonicalName: node.getNormalizedName(),
+      canonicalName: node.getCanonicalName(),
       namespace: node.getNamespace(),
       kind: node.isTextNode() ? "block" : "inline",
       level: node.getLevel()
     };
-    if (node.isTextNode()) {
-      info.textLines = node.getText().length === 0 ? 0 : node.getText().split("\n").length;
-    } else {
+    if (node instanceof import_core3.InlineNode) {
       info.value = node.getValue();
+    } else {
+      info.textLines = node.getText().length === 0 ? 0 : node.getText().split("\n").length;
     }
     if (node.getNamespace()) {
       const schema = registry.getSchema(node.getNamespace());
@@ -17481,7 +17744,7 @@
   }
 
   // src/analysis/TokenGeneratorObserver.ts
-  var import_core3 = __toESM(require_all());
+  var import_core4 = __toESM(require_all());
   var TokenGeneratorObserver = class _TokenGeneratorObserver {
     constructor() {
       this.tokens = [];
@@ -17515,7 +17778,7 @@
       if (node.getNamespace() !== "@stxt.template") {
         return false;
       }
-      const normalizedName = node.getNormalizedName();
+      const normalizedName = node.getCanonicalName();
       return normalizedName === "structure" || normalizedName === "description";
     }
     parseTemplateContent(node) {
@@ -17524,7 +17787,7 @@
         if (!content2 || content2.trim() === "") {
           return;
         }
-        const parser = new import_core3.Parser();
+        const parser = new import_core4.Parser();
         const innerObserver = new _TokenGeneratorObserver();
         parser.registerObserver(innerObserver);
         parser.parseResult(content2);
@@ -17722,7 +17985,7 @@
     /** Parses a document once, collecting tokens, line maps and syntax errors. */
     static parseDocument(text) {
       const observer = new TokenGeneratorObserver();
-      const parser = new import_core4.Parser();
+      const parser = new import_core5.Parser();
       parser.registerObserver(observer);
       const result = parser.parseResult(text);
       const roots = result.getNodes();
@@ -17786,7 +18049,9 @@
         commentLines: parsed.commentLines,
         textLineByLineNumber: parsed.textLineByLineNumber,
         grammars: parsed.grammarRoots.map((root) => ({
-          namespace: import_core4.StringUtils.lowerCase(root.getValue().trim()),
+          // A grammar root is `Name (@stxt.schema): namespace`; a block form is a broken grammar
+          // the registry reports on its own, and declares no namespace here.
+          namespace: root instanceof import_core5.InlineNode ? import_core5.StringUtils.lowerCase(root.getValue().trim()) : "",
           kind: grammarKindOf(root),
           line: root.getLine() - 1
         })),
@@ -17800,10 +18065,10 @@
      */
     validateRoots(roots) {
       const diagnostics = [];
-      const validator = new import_core4.ConditionalValidator(new import_core4.SchemaValidator(this.registry));
+      const validator = new import_core5.ConditionalValidator(new import_core5.SchemaValidator(this.registry));
       const hasGrammarSources = Array.from(this.parsed.values()).some((p) => p.grammarRoots.length > 0);
       const walk = (node) => {
-        if (!node.isTextNode()) {
+        if (node instanceof import_core5.InlineNode) {
           node.getChildren().forEach(walk);
         }
         try {

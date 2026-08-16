@@ -1,3 +1,4 @@
+import { InlineNode } from "@stxt-lang/core";
 import { DocumentAnalysis } from "./Analyzer";
 import { GrammarRegistry } from "./GrammarRegistry";
 
@@ -52,15 +53,15 @@ export function describeNodeAtLine(analysis: DocumentAnalysis, registry: Grammar
 
 	const info: NodeInfo = {
 		name: node.getName(),
-		canonicalName: node.getNormalizedName(),
+		canonicalName: node.getCanonicalName(),
 		namespace: node.getNamespace(),
 		kind: node.isTextNode() ? "block" : "inline",
 		level: node.getLevel(),
 	};
-	if (node.isTextNode()) {
-		info.textLines = node.getText().length === 0 ? 0 : node.getText().split("\n").length;
-	} else {
+	if (node instanceof InlineNode) {
 		info.value = node.getValue();
+	} else {
+		info.textLines = node.getText().length === 0 ? 0 : node.getText().split("\n").length;
 	}
 
 	if (node.getNamespace()) {

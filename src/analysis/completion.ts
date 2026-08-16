@@ -1,4 +1,4 @@
-import { ChildDefinition, Constants, Node, NodeDefinition, parseLine, Schema, StringUtils } from "@stxt-lang/core";
+import { ChildDefinition, Constants, InlineNode, Node, NodeDefinition, parseLine, Schema, StringUtils } from "@stxt-lang/core";
 import { DocumentAnalysis } from "./Analyzer";
 import { GrammarRegistry } from "./GrammarRegistry";
 
@@ -98,12 +98,16 @@ function getLastNode(analysis: DocumentAnalysis, line: number): Node | undefined
 	return undefined;
 }
 
-/** The nearest node before the given line whose level is `level - 1`: the would-be parent. */
-function getParentNode(analysis: DocumentAnalysis, line: number, level: number): Node | undefined {
+/**
+ * The nearest node before the given line whose level is `level - 1`: the would-be parent. Only an
+ * inline node can have children: when that node is a text block, the line is inside its text and
+ * there is no parent to suggest for.
+ */
+function getParentNode(analysis: DocumentAnalysis, line: number, level: number): InlineNode | undefined {
 	for (let search = line - 1; search >= 0; search--) {
 		const node = analysis.nodeByLine.get(search);
 		if (node?.getLevel() === level - 1) {
-			return node;
+			return node instanceof InlineNode ? node : undefined;
 		}
 	}
 	return undefined;
@@ -192,7 +196,7 @@ function isBlockChild(registry: GrammarRegistry, child: ChildDefinition): boolea
 }
 
 /** The children the grammar declares for a parent, minus those already at their maximum. */
-export function findSuggestionsByParent(registry: GrammarRegistry, parent: Node, prefix: string): CompletionSuggestion[] {
+export function findSuggestionsByParent(registry: GrammarRegistry, parent: InlineNode, prefix: string): CompletionSuggestion[] {
 	const definition = registry.getSchema(parent.getNamespace())?.getNodeDefinition(parent.getName());
 	if (!definition) {
 		return [];
@@ -220,11 +224,11 @@ function getRootNodeDefinitions(schema: Schema): NodeDefinition[] {
 	for (const definition of schema.getNodes().values()) {
 		for (const child of definition.getChildren().values()) {
 			if (child.getNamespace() === schema.getNamespace()) {
-				referenced.add(child.getNormalizedName());
+				referenced.add(child.getCanonicalName());
 			}
 		}
 	}
-	const roots = Array.from(schema.getNodes().values()).filter((d) => !referenced.has(d.getNormalizedName()));
+	const roots = Array.from(schema.getNodes().values()).filter((d) => !referenced.has(d.getCanonicalName()));
 	// A grammar where every node is referenced (recursion everywhere): offer them all
 	return roots.length > 0 ? roots : Array.from(schema.getNodes().values());
 }
@@ -240,7 +244,7 @@ export function findRootLevelSuggestions(registry: GrammarRegistry, prefix: stri
 			if (!matches(definition.getName(), normalizedPrefix)) {
 				continue;
 			}
-			const key = `${schema.getNamespace()}:${definition.getNormalizedName()}`;
+			const key = `${schema.getNamespace()}:${definition.getCanonicalName()}`;
 			if (seen.has(key)) {
 				continue;
 			}

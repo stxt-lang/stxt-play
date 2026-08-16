@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import { toCanonicalJson } from "@stxt-lang/core";
+import { InlineNode, toCanonicalJson } from "@stxt-lang/core";
 import { Analyzer, applyIndentChanges, SPACES_UNIT, TAB_UNIT } from "../src/analysis";
 
 /** Tabs everywhere, with the traps: relative indentation inside a block, comments, blank lines. */
@@ -68,7 +68,10 @@ describe("Re-indentation between tabs and spaces", () => {
 		analyzer.setDocument("a", TABBED);
 		analyzer.setDocument("b", reindent(TABBED, SPACES_UNIT));
 		const dump = (id: string) => toCanonicalJson(analyzer.getAnalysis(id)?.roots ?? []);
-		const textOf = (id: string) => analyzer.getAnalysis(id)?.roots[0].getChildren().find((c) => c.getName() === "Code")?.getText();
+		const textOf = (id: string) => {
+			const root = analyzer.getAnalysis(id)?.roots[0];
+			return root instanceof InlineNode ? root.getChild("Code")?.getText() : undefined;
+		};
 		assert.strictEqual(textOf("a"), textOf("b"), "the block text is byte-identical");
 		assert.strictEqual(analyzer.getAnalysis("b")?.diagnostics.length, 0);
 		assert.strictEqual(dump("a"), dump("b"));

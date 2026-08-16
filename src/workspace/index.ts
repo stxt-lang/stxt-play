@@ -11,7 +11,18 @@ export {
 	WorkspaceListener,
 	WorkspaceSnapshot,
 } from "./Workspace";
-export { decodeShare, encodeShare, SHARE_PARAM, sharePayloadOf } from "./share";
+export {
+	decodeOpen,
+	decodeShare,
+	encodeOpen,
+	encodeShare,
+	isOpenLink,
+	OPEN_PARAM,
+	OPEN_TITLE_PARAM,
+	OpenLinkDocument,
+	SHARE_PARAM,
+	sharePayloadOf,
+} from "./share";
 export {
 	clearWorkspace,
 	DEFAULT_SETTINGS,

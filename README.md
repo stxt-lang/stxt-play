@@ -57,6 +57,20 @@ the next visit. Nothing leaves your machine. **Share** puts the whole workspace,
 URL fragment — the link carries the documents, no server involved — and **↺ Reset** brings back the
 example documents (see `seed/`).
 
+### Opening a document from a link
+
+Any site can hand a snippet to the playground: `https://play.stxt.dev/#d=<payload>` opens it as
+a new document, **added** to whatever workspace the browser already has (nothing is replaced,
+nothing is asked), and selects it. `<payload>` is the base64url (no padding) of the raw-deflate
+of the UTF-8 text; an optional `&t=<title>` (form-encoded) names the document. This is what the
+*Open in the playground* buttons of the code blocks on [stxt.dev](https://stxt.dev) use. Opening
+the same link twice selects the existing document instead of adding a copy. In Node:
+
+```js
+const payload = require("node:zlib").deflateRawSync(Buffer.from(text, "utf8")).toString("base64url");
+const url = `https://play.stxt.dev/#d=${payload}&t=${encodeURIComponent(title)}`;
+```
+
 ## Beyond the playground
 
 The editor is not meant to be single-use. Two follow-ups shape the design:
@@ -85,7 +99,7 @@ repository, with no build step in between.
 css/            SCSS sources         → compiled into web/css/
 src/            TypeScript sources   → bundled into web/js/
 src/analysis/   the analysis core: tokens, diagnostics, workspace grammars, completion, node info (no DOM, no editor)
-src/workspace/  the workspace model, its localStorage persistence and share links (no DOM either)
+src/workspace/  the workspace model, its localStorage persistence, share and open links (no DOM either)
 seed/           the example documents and grammars, bundled as text
 src/editor/     the CodeMirror layer: decorations from tokens, completion, hover, editor setup
 src/ui/         the document list and the problems panel

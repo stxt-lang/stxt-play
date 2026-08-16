@@ -8,9 +8,11 @@ import { SEED_DOCUMENTS } from "./seed";
 import { createDocumentList, DocumentListEntry, DocumentListKind } from "./ui/documentList";
 import { createProblemsPanel } from "./ui/problemsPanel";
 import {
+	decodeOpen,
 	decodeShare,
 	encodeShare,
 	IndentMode,
+	isOpenLink,
 	KeyValueStorage,
 	loadSettings,
 	loadWorkspace,
@@ -468,11 +470,43 @@ function main(): void {
 		loadSeed();
 	}
 
+	/** Forgets the fragment: a link is consumed once, so a reload must not act on it again. */
+	const consumeFragment = (): void => {
+		history.replaceState(null, "", `${location.pathname}${location.search}`);
+	};
+
+	/** First title among "title", "title (2)", "title (3)"… not taken by any document. */
+	const freeTitle = (title: string): string => {
+		const titles = new Set(workspace.getDocuments().map((document) => document.title));
+		let candidate = title;
+		for (let n = 2; titles.has(candidate); n++) {
+			candidate = `${title} (${n})`;
+		}
+		return candidate;
+	};
+
+	/**
+	 * Adds a document that came in an open link and selects it. Nothing is replaced and nothing
+	 * is asked: the link carries one document, not a workspace. If the same text is already in
+	 * the workspace, that document is selected instead, so opening a link twice does not
+	 * duplicate it.
+	 */
+	const openLinked = (text: string, title: string | undefined): void => {
+		const existing = workspace.getDocuments().find((document) => document.text === text);
+		if (existing) {
+			workspace.setActive(existing.id);
+			showStatus("The document of the link was already in the workspace.");
+			return;
+		}
+		const added = workspace.addDocument(text, title ? freeTitle(title) : undefined);
+		workspace.setActive(added.id);
+		showStatus("Document opened from the link.");
+	};
+
 	const payload = sharePayloadOf(location.hash);
 	if (payload) {
 		void decodeShare(payload).then((shared) => {
-			// The link is consumed either way: a reload must not ask again
-			history.replaceState(null, "", `${location.pathname}${location.search}`);
+			consumeFragment();
 			if (!shared || shared.documents.length === 0) {
 				showStatus("The link does not carry a valid workspace.");
 				return;
@@ -483,6 +517,15 @@ function main(): void {
 				loadShared(shared);
 				showStatus("Shared workspace loaded.");
 			}
+		});
+	} else if (isOpenLink(location.hash)) {
+		void decodeOpen(location.hash).then((linked) => {
+			consumeFragment();
+			if (!linked) {
+				showStatus("The link does not carry a valid document.");
+				return;
+			}
+			openLinked(linked.text, linked.title);
 		});
 	}
 }

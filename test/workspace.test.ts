@@ -1,8 +1,11 @@
 import * as assert from "assert";
 import {
+	decodeOpen,
 	decodeShare,
 	DEFAULT_SETTINGS,
+	encodeOpen,
 	encodeShare,
+	isOpenLink,
 	sharePayloadOf,
 	KeyValueStorage,
 	loadSettings,
@@ -259,5 +262,44 @@ describe("Share links", () => {
 		assert.strictEqual(await decodeShare(""), undefined);
 		assert.strictEqual(sharePayloadOf(""), undefined);
 		assert.strictEqual(sharePayloadOf("#other=1"), undefined);
+	});
+});
+
+describe("Open links", () => {
+	const text = "Recipe (com.example.cooking): Pa amb tomàquet\n\tServes: 2\n\tNotes >>\n\t\t# not a comment\n";
+
+	it("round-trips one document with its title through the fragment", async () => {
+		const fragment = await encodeOpen(text, "STXT Tutorial");
+		assert.ok(fragment.startsWith("d="), `starts with the document parameter: ${fragment}`);
+		assert.ok(fragment.includes("&t=STXT+Tutorial"), `carries the title: ${fragment}`);
+		assert.ok(isOpenLink(`#${fragment}`));
+		assert.deepStrictEqual(await decodeOpen(`#${fragment}`), { text, title: "STXT Tutorial" });
+		assert.deepStrictEqual(await decodeOpen(fragment), { text, title: "STXT Tutorial" }, "with or without #");
+	});
+
+	it("carries no title when none is given, or when it is blank", async () => {
+		assert.deepStrictEqual(await decodeOpen(await encodeOpen(text)), { text });
+		assert.deepStrictEqual(await decodeOpen(await encodeOpen(text, "  ")), { text });
+		assert.strictEqual((await encodeOpen(text)).includes("&t="), false);
+	});
+
+	it("uses only the base64url alphabet for the payload", async () => {
+		const fragment = await encodeOpen(text);
+		assert.ok(/^d=[A-Za-z0-9_-]+$/.test(fragment), fragment);
+	});
+
+	it("reads nothing from garbage, from an empty payload or from other fragments", async () => {
+		assert.strictEqual(await decodeOpen("#d=not-a-payload"), undefined);
+		assert.strictEqual(await decodeOpen("#d="), undefined);
+		assert.strictEqual(await decodeOpen("#w=abc"), undefined);
+		assert.strictEqual(await decodeOpen(""), undefined);
+		assert.strictEqual(isOpenLink("#d="), false);
+		assert.strictEqual(isOpenLink("#w=abc"), false);
+		assert.strictEqual(isOpenLink(""), false);
+	});
+
+	it("does not mistake an open link for a share link", async () => {
+		const fragment = await encodeOpen(text);
+		assert.strictEqual(sharePayloadOf(`#${fragment}`), undefined);
 	});
 });

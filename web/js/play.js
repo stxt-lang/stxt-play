@@ -24591,6 +24591,8 @@ ${indentation}${unit}` : suggestion.text
 
   // src/workspace/share.ts
   var SHARE_PARAM = "w";
+  var OPEN_PARAM = "d";
+  var OPEN_TITLE_PARAM = "t";
   function toBase64Url(bytes) {
     let binary = "";
     for (const byte of bytes) {
@@ -24625,9 +24627,31 @@ ${indentation}${unit}` : suggestion.text
     }
   }
   function sharePayloadOf(hash) {
-    const params = new URLSearchParams(hash.replace(/^#/, ""));
-    const payload = params.get(SHARE_PARAM);
-    return payload && payload.length > 0 ? payload : void 0;
+    return nonEmpty(fragmentParams(hash).get(SHARE_PARAM));
+  }
+  async function decodeOpen(hash) {
+    const params = fragmentParams(hash);
+    const payload = nonEmpty(params.get(OPEN_PARAM));
+    if (!payload) {
+      return void 0;
+    }
+    try {
+      const bytes = await pipe(fromBase64Url(payload), new DecompressionStream("deflate-raw"));
+      const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      const title = nonEmpty(params.get(OPEN_TITLE_PARAM)?.trim());
+      return title === void 0 ? { text } : { text, title };
+    } catch {
+      return void 0;
+    }
+  }
+  function isOpenLink(hash) {
+    return nonEmpty(fragmentParams(hash).get(OPEN_PARAM)) !== void 0;
+  }
+  function fragmentParams(hash) {
+    return new URLSearchParams(hash.replace(/^#/, ""));
+  }
+  function nonEmpty(value) {
+    return value && value.length > 0 ? value : void 0;
   }
 
   // src/index.ts
@@ -24974,10 +24998,32 @@ ${indentation}${unit}` : suggestion.text
     } else {
       loadSeed();
     }
+    const consumeFragment = () => {
+      history.replaceState(null, "", `${location.pathname}${location.search}`);
+    };
+    const freeTitle = (title) => {
+      const titles = new Set(workspace.getDocuments().map((document2) => document2.title));
+      let candidate = title;
+      for (let n = 2; titles.has(candidate); n++) {
+        candidate = `${title} (${n})`;
+      }
+      return candidate;
+    };
+    const openLinked = (text, title) => {
+      const existing = workspace.getDocuments().find((document2) => document2.text === text);
+      if (existing) {
+        workspace.setActive(existing.id);
+        showStatus("The document of the link was already in the workspace.");
+        return;
+      }
+      const added = workspace.addDocument(text, title ? freeTitle(title) : void 0);
+      workspace.setActive(added.id);
+      showStatus("Document opened from the link.");
+    };
     const payload = sharePayloadOf(location.hash);
     if (payload) {
       void decodeShare(payload).then((shared) => {
-        history.replaceState(null, "", `${location.pathname}${location.search}`);
+        consumeFragment();
         if (!shared || shared.documents.length === 0) {
           showStatus("The link does not carry a valid workspace.");
           return;
@@ -24989,6 +25035,15 @@ ${indentation}${unit}` : suggestion.text
           loadShared(shared);
           showStatus("Shared workspace loaded.");
         }
+      });
+    } else if (isOpenLink(location.hash)) {
+      void decodeOpen(location.hash).then((linked) => {
+        consumeFragment();
+        if (!linked) {
+          showStatus("The link does not carry a valid document.");
+          return;
+        }
+        openLinked(linked.text, linked.title);
       });
     }
   }

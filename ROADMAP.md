@@ -182,6 +182,19 @@ cabecera se pliega en dos filas.
       anterior/siguiente; la plantilla `dev.stxt.website` declara ahora `Url: (?) URL`).
       Verificado generando a un directorio de pruebas; **`stxt-dev` lo regenera el usuario**.
 
+### Después de «terminado»
+
+- [x] **Enlaces de apertura** (2026-08-16, punto 1 del `ROADMAP.md` de `../stxt`): `#d=` +
+      base64url del deflate-raw del texto UTF-8 de **un** documento, con `&t=` opcional para el
+      título (`encodeOpen`/`decodeOpen`/`isOpenLink` en `src/workspace/share.ts`, con tests). Al
+      abrirlo se **añade** el documento al workspace que tenga el navegador y se selecciona, sin
+      preguntar ni sustituir nada; si ya hay uno con el mismo texto se selecciona ese; si el
+      título ya existe se sufija ` (2)`, ` (3)`…; el fragmento se retira al consumirlo. Es lo que
+      usan los botones *Abrir en el playground* de los bloques de código de `stxt.dev`
+      (generados por `../stxt-cms`) y queda documentado en el README como forma pública de pasar
+      un snippet al playground. Un `#w=` sigue mandando sobre un `#d=` si vinieran los dos.
+      Sale en la **0.2.1**.
+
 **El playground está terminado** según este plan. Lo que venga —ideas nuevas— entra por el
 `TODO.md` de `../stxt` y, si cuaja, como fase nueva aquí.
 

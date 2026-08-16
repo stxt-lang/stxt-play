@@ -503,31 +503,47 @@ function main(): void {
 		showStatus("Document opened from the link.");
 	};
 
-	const payload = sharePayloadOf(location.hash);
-	if (payload) {
-		void decodeShare(payload).then((shared) => {
-			consumeFragment();
-			if (!shared || shared.documents.length === 0) {
-				showStatus("The link does not carry a valid workspace.");
-				return;
-			}
-			const replace = !stored || window.confirm(
-				"This link carries a workspace. Load it? Your current documents in this browser are replaced.");
-			if (replace) {
-				loadShared(shared);
-				showStatus("Shared workspace loaded.");
-			}
-		});
-	} else if (isOpenLink(location.hash)) {
-		void decodeOpen(location.hash).then((linked) => {
-			consumeFragment();
-			if (!linked) {
-				showStatus("The link does not carry a valid document.");
-				return;
-			}
-			openLinked(linked.text, linked.title);
-		});
-	}
+	/**
+	 * Acts on the fragment of the current URL: a share link (`#w=`) or an open link (`#d=`).
+	 * Runs at start and again on every `hashchange`, because a page that reuses this tab
+	 * (the "Open in the playground" links of stxt.dev share a window name) only changes the
+	 * fragment, and the browser does not reload on that. `consumeFragment` uses
+	 * `replaceState`, which fires no `hashchange`, so there is no loop.
+	 *
+	 * @param ownContent whether the workspace holds the user's own documents (as opposed to the
+	 * seed): a share link then asks before replacing them.
+	 */
+	const handleFragment = (ownContent: boolean): void => {
+		const payload = sharePayloadOf(location.hash);
+		if (payload) {
+			void decodeShare(payload).then((shared) => {
+				consumeFragment();
+				if (!shared || shared.documents.length === 0) {
+					showStatus("The link does not carry a valid workspace.");
+					return;
+				}
+				const replace = !ownContent || window.confirm(
+					"This link carries a workspace. Load it? Your current documents in this browser are replaced.");
+				if (replace) {
+					loadShared(shared);
+					showStatus("Shared workspace loaded.");
+				}
+			});
+		} else if (isOpenLink(location.hash)) {
+			void decodeOpen(location.hash).then((linked) => {
+				consumeFragment();
+				if (!linked) {
+					showStatus("The link does not carry a valid document.");
+					return;
+				}
+				openLinked(linked.text, linked.title);
+			});
+		}
+	};
+
+	handleFragment(stored !== undefined);
+	// Once running, whatever is in the workspace is the user's: a later share link always asks
+	window.addEventListener("hashchange", () => handleFragment(true));
 }
 
 document.addEventListener("DOMContentLoaded", main);

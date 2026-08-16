@@ -192,8 +192,10 @@ cabecera se pliega en dos filas.
       título ya existe se sufija ` (2)`, ` (3)`…; el fragmento se retira al consumirlo. Es lo que
       usan los botones *Abrir en el playground* de los bloques de código de `stxt.dev`
       (generados por `../stxt-cms`) y queda documentado en el README como forma pública de pasar
-      un snippet al playground. Un `#w=` sigue mandando sobre un `#d=` si vinieran los dos.
-      Sale en la **0.2.1**.
+      un snippet al playground. Un `#w=` sigue mandando sobre un `#d=` si vinieran los dos. El
+      fragmento se atiende al arrancar y en cada `hashchange`, porque esos enlaces del portal
+      llevan `target="stxt-play"` y reutilizan una pestaña que ya había retirado su fragmento
+      (solo cambia el hash, no recarga). Sale en la **0.2.1**.
 
 **El playground está terminado** según este plan. Lo que venga —ideas nuevas— entra por el
 `TODO.md` de `../stxt` y, si cuaja, como fase nueva aquí.

@@ -24968,8 +24968,8 @@ ${indentation}${unit}` : suggestion.text
       }
     });
     shareButton.addEventListener("click", () => {
-      void encodeShare(workspace.toSnapshot()).then(async (payload2) => {
-        const url = `${location.origin}${location.pathname}#${SHARE_PARAM}=${payload2}`;
+      void encodeShare(workspace.toSnapshot()).then(async (payload) => {
+        const url = `${location.origin}${location.pathname}#${SHARE_PARAM}=${payload}`;
         try {
           await navigator.clipboard.writeText(url);
           showStatus("Link copied to the clipboard.");
@@ -25020,32 +25020,36 @@ ${indentation}${unit}` : suggestion.text
       workspace.setActive(added.id);
       showStatus("Document opened from the link.");
     };
-    const payload = sharePayloadOf(location.hash);
-    if (payload) {
-      void decodeShare(payload).then((shared) => {
-        consumeFragment();
-        if (!shared || shared.documents.length === 0) {
-          showStatus("The link does not carry a valid workspace.");
-          return;
-        }
-        const replace2 = !stored || window.confirm(
-          "This link carries a workspace. Load it? Your current documents in this browser are replaced."
-        );
-        if (replace2) {
-          loadShared(shared);
-          showStatus("Shared workspace loaded.");
-        }
-      });
-    } else if (isOpenLink(location.hash)) {
-      void decodeOpen(location.hash).then((linked) => {
-        consumeFragment();
-        if (!linked) {
-          showStatus("The link does not carry a valid document.");
-          return;
-        }
-        openLinked(linked.text, linked.title);
-      });
-    }
+    const handleFragment = (ownContent) => {
+      const payload = sharePayloadOf(location.hash);
+      if (payload) {
+        void decodeShare(payload).then((shared) => {
+          consumeFragment();
+          if (!shared || shared.documents.length === 0) {
+            showStatus("The link does not carry a valid workspace.");
+            return;
+          }
+          const replace2 = !ownContent || window.confirm(
+            "This link carries a workspace. Load it? Your current documents in this browser are replaced."
+          );
+          if (replace2) {
+            loadShared(shared);
+            showStatus("Shared workspace loaded.");
+          }
+        });
+      } else if (isOpenLink(location.hash)) {
+        void decodeOpen(location.hash).then((linked) => {
+          consumeFragment();
+          if (!linked) {
+            showStatus("The link does not carry a valid document.");
+            return;
+          }
+          openLinked(linked.text, linked.title);
+        });
+      }
+    };
+    handleFragment(stored !== void 0);
+    window.addEventListener("hashchange", () => handleFragment(true));
   }
   document.addEventListener("DOMContentLoaded", main);
 })();

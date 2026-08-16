@@ -64,7 +64,9 @@ a new document, **added** to whatever workspace the browser already has (nothing
 nothing is asked), and selects it. `<payload>` is the base64url (no padding) of the raw-deflate
 of the UTF-8 text; an optional `&t=<title>` (form-encoded) names the document. This is what the
 *Open in the playground* buttons of the code blocks on [stxt.dev](https://stxt.dev) use. Opening
-the same link twice selects the existing document instead of adding a copy. In Node:
+the same link twice selects the existing document instead of adding a copy, and a tab that is
+already running picks the link up on `hashchange`, so a site may reuse one playground tab with
+a named `target` (the fragment is cleared once consumed). In Node:
 
 ```js
 const payload = require("node:zlib").deflateRawSync(Buffer.from(text, "utf8")).toString("base64url");

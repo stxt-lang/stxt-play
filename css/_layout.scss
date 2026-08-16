@@ -21,11 +21,14 @@ body {
 	background: $color4;
 }
 
+// Same height, brand size and horizontal padding as the portal's header (stxt-cms,
+// scss/_header.scss: 52px, wordmark 1.45rem, subtitle 0.9rem), so both bars read as one.
 .topbar {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 	gap: 1rem;
-	padding: 0.5rem 1rem;
+	min-height: 52px;
+	padding: 0 1.25rem;
 	background: $color1;
 	color: #fff;
 
@@ -51,13 +54,14 @@ body {
 	.brand-name {
 		font-family: $font-brand;
 		font-weight: 400;
-		font-size: 1.2rem;
+		font-size: 1.45rem;
 		line-height: 1;
 	}
 
 	.brand-sub {
 		font-weight: 400;
-		opacity: 0.9;
+		font-size: 0.9rem;
+		opacity: 0.85;
 	}
 
 	.topbar-button {
@@ -239,6 +243,7 @@ body {
 	.topbar {
 		flex-wrap: wrap;
 		gap: 0.5rem 0.75rem;
+		padding: 0.4rem 1rem;
 
 		.doc-title {
 			flex-basis: 100%;

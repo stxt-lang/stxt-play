@@ -151,7 +151,17 @@ corpus de `../stxt-web`: `email.stxt`, la plantilla `com.example.docs` y el esqu
 `com.acme.book`, así hay un `S` y varias `T` en la lista; el `README.md` de `seed/` dice de dónde
 sale cada uno). esbuild los empaqueta como texto (`--loader:.stxt=text`, declaración en
 `src/stxt-text.d.ts`) y `src/seed.ts` solo los lista con sus títulos; `test/seed.test.ts` los lee
-del disco y comprueba que el conjunto parsea y valida limpio y que van con tabuladores. El botón
+del disco y comprueba que el conjunto parsea y valida limpio y que van con tabuladores.
+*Rehecha el 2026-08-17 (0.2.2, apartado *Playground* del `TODO.md` de `../stxt`): **doce
+ficheros, todos escritos para el playground** —tres recetas + la plantilla
+`stxt.play.cooking`, tres libros + el esquema `stxt.play.library`, y tres
+configuraciones de servidor + la plantilla `stxt.play.config` (STXT como datos: BOOLEAN,
+NATURAL, URL, ENUM)—; se retiran las
+copias del corpus porque sus namespaces (`com.example.docs`, `com.acme.book`) los define también
+el portal y chocaban (`DISCOVERY_DUPLICATE_NAMESPACE`) con los ejemplos abiertos desde `stxt.dev`.
+La familia `stxt.play.*` queda reservada para la semilla (regla en la ficha de `stxt-web`);
+`test/seed.test.ts` lo comprueba, y se verificó importando los 228 bloques `Code` del portal
+junto a la semilla sin un solo diagnóstico en ella.* El botón
 **↺ Reset** de la barra lateral los restaura, con confirmación. Favicons copiados de
 `../stxt-cms/static` (misma identidad que el portal); la marca enlaza a `stxt.dev` y la cabecera
 lleva *Reference* (`stxt.dev/stxt-core-ref`) y *GitHub*. **Share** copia al portapapeles una URL

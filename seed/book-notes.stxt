@@ -1,0 +1,18 @@
+# Optional nodes can be left out: this book has no Chapters and no Website.
+# Try removing Title, which the schema requires, or writing a Published date the wrong way round.
+Book (stxt.play.library):
+	Title: Notes on Indentation
+	Authors:
+		Author: Mar Vidal
+		Author: Pau Ferrer
+	ISBN: 978-84-000-0001-7
+	Publisher: Example Press
+	Published: 2025-11-03
+	Pages: 96
+	Language: es
+	Summary >>
+		Essays on why the *shape* of a text on the page is the first thing
+		both people and parsers read:
+
+		* one level, one tab;
+		* one node, one line.

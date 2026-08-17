@@ -1,0 +1,18 @@
+# Welcome to the STXT playground.
+# Everything runs in your browser: edit the document and watch the analysis react.
+# The template "stxt.play.cooking" in the list on the left validates this document.
+# Try adding a node it does not declare, or press Ctrl+Space on a new line to see what fits.
+Recipe (stxt.play.cooking): Pancakes
+	Serves: 4
+	Minutes: 20
+	Difficulty: Easy
+	Ingredients:
+		Ingredient: 200 g flour
+		Ingredient: 2 eggs
+		Ingredient: 300 ml milk
+		Ingredient: A pinch of salt and a little butter
+	Steps >>
+		Whisk the flour, eggs, milk and salt into a smooth batter.
+		Melt a little butter in a hot pan and pour in a ladle of batter.
+		Cook until bubbles appear, flip, and cook the other side.
+		Everything in this block is literal text: # : >> are not parsed.

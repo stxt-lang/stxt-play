@@ -1,0 +1,15 @@
+# A template describes the shape of the documents of a namespace, written the way those
+# documents are written: cardinality and type in parentheses after each node name.
+# Grammars are listed by their namespace, not by a title. The three recipes follow this one.
+Template (@stxt.template): stxt.play.cooking
+	Structure >>
+		Recipe (stxt.play.cooking):
+			Serves: (?) NATURAL
+			Minutes: (?) NATURAL
+			Difficulty: (?) ENUM [Easy, Medium, Hard]
+			Tags: (?)
+				Tag: (*)
+			Ingredients: (1)
+				Ingredient: (+)
+			Steps: (1) TEXT
+			Notes: (?) MARKDOWN

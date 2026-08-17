@@ -1,0 +1,25 @@
+# Optional nodes may be present or not: this recipe has Tags and Notes, the previous one had neither.
+# Notes is a MARKDOWN block; Steps is plain TEXT. Both are literal text for the parser.
+Recipe (stxt.play.cooking): Spaghetti bolognese
+	Serves: 4
+	Minutes: 45
+	Difficulty: Easy
+	Tags:
+		Tag: Pasta
+		Tag: Family
+		Tag: Make ahead
+	Ingredients:
+		Ingredient: 400 g spaghetti
+		Ingredient: 400 g minced beef
+		Ingredient: 1 onion
+		Ingredient: 1 carrot
+		Ingredient: 400 g crushed tomatoes
+		Ingredient: Olive oil, salt and oregano
+		Ingredient: Grated cheese
+	Steps >>
+		Fry the chopped onion and carrot in olive oil, then brown the mince.
+		Add the tomatoes, salt and oregano and simmer for half an hour.
+		Boil the pasta, drain it, mix with the sauce and top with grated cheese.
+	Notes >>
+		The sauce is **better the next day**, so make it ahead if you can.
+		Some people finish it in the oven for five minutes to melt the cheese.

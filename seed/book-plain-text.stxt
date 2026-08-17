@@ -1,0 +1,22 @@
+# Language is an ENUM in the schema: only en, es and ca are allowed. Try "fr".
+Book (stxt.play.library):
+	Title: Plain Text at Scale
+	Authors:
+		Author: Ana Ruiz
+	Publisher: Example Press
+	Published: 2024-03-21
+	Pages: 240
+	Language: ca
+	Website: https://example.com/plain-text
+	Summary >>
+		Plain text at the scale of a whole organisation: _files_, _grammars_ and _tools_.
+	Chapters:
+		Chapter: Files
+			Content >>
+				One document, one file, one namespace.
+		Chapter: Grammars
+			Content >>
+				A schema per namespace, found through .stxt/ directories.
+		Chapter: Tools
+			Content >>
+				Editors, a command line and three libraries speak the same language.

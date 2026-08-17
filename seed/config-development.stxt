@@ -1,0 +1,14 @@
+# The same language, used for data: a server configuration validated by the template
+# "stxt.play.config". Node names may have spaces (Pool Size); case and accents do not matter.
+Server (stxt.play.config): api
+	Environment: development
+	Listen:
+		Host: localhost
+		Port: 8080
+	Database:
+		Url: postgres://localhost:5432/api_dev
+		Pool Size: 2
+	Logging:
+		Level: debug
+	Notes >>
+		Local defaults. Nothing here is secret: put credentials in the environment, not in the file.

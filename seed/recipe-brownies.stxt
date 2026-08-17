@@ -1,0 +1,16 @@
+# Try changing "Medium" to "Impossible": Difficulty is an ENUM, and the template only
+# allows Easy, Medium or Hard. Or delete the Ingredients node, which is required.
+Recipe (stxt.play.cooking): Chocolate brownies
+	Serves: 8
+	Minutes: 40
+	Difficulty: Medium
+	Ingredients:
+		Ingredient: 200 g dark chocolate
+		Ingredient: 150 g butter
+		Ingredient: 3 eggs
+		Ingredient: 200 g sugar
+		Ingredient: 100 g flour
+	Steps >>
+		Melt the chocolate with the butter and let it cool a little.
+		Beat the eggs with the sugar, add the chocolate, then fold in the flour.
+		Bake at 180 °C for 25 minutes; the centre should still be slightly soft.

@@ -1,0 +1,23 @@
+# This document is validated by a schema, the other way of writing a grammar.
+# Hover over a node to see what the schema "stxt.play.library" declares for it.
+Book (stxt.play.library):
+	Title: The Semantic Text Handbook
+	Authors:
+		Author: Joan Costa
+	ISBN: 978-84-000-0000-0
+	Publisher: Example Press
+	Published: 2026-08-15
+	Pages: 180
+	Language: en
+	Website: https://stxt.dev
+	Summary >>
+		A short guide to writing documents that **people read** and **machines parse**,
+		without getting in each other's way. Summary is a MARKDOWN block: literal text
+		for the parser, Markdown for whoever renders it. See [stxt.dev](https://stxt.dev).
+	Chapters:
+		Chapter: One
+			Content >>
+				Indentation is structure.
+		Chapter: Two
+			Content >>
+				Grammars are optional.

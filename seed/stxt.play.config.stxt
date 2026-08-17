@@ -1,0 +1,20 @@
+# Configuration files are the other big use of STXT: data rather than prose. Same syntax,
+# same grammar rules; here almost every value has a type (BOOLEAN, NATURAL, URL, ENUM...).
+Template (@stxt.template): stxt.play.config
+	Structure >>
+		Server (stxt.play.config):
+			Environment: (1) ENUM [development, staging, production]
+			Listen: (1)
+				Host: (?)
+				Port: (1) NATURAL
+				Tls: (?) BOOLEAN
+			Database: (?)
+				Url: (1) URL
+				Pool Size: (?) NATURAL
+				Timeout: (?) NATURAL
+			Logging: (?)
+				Level: (?) ENUM [debug, info, warn, error]
+				File: (?)
+			Features: (?)
+				Feature: (*)
+			Notes: (?) TEXT

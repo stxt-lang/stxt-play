@@ -1373,7 +1373,9 @@
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.EMAIL = void 0;
       var regexType_1 = require_regexType();
-      exports.EMAIL = (0, regexType_1.regexType)("EMAIL", /^(?=.{1,256}$)(?=.{1,64}@.{1,255}$)(?=.{1,64}@.{1,63}\..{1,63}$)[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/, "Invalid email");
+      var ADDRESS = "(?=.{1,256}$)(?=.{1,64}@.{1,255}$)(?=.{1,64}@.{1,63}\\..{1,63}$)[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}";
+      var BRACKETED = "(?=[^>]{1,256}>$)(?=[^>]{1,64}@[^>]{1,255}>$)(?=[^>]{1,64}@[^>]{1,63}\\.[^>]{1,63}>$)[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}";
+      exports.EMAIL = (0, regexType_1.regexType)("EMAIL", new RegExp(`^(?:[^<>]*[^<>\\s]\\s*<${BRACKETED}>|${ADDRESS})$`), "Invalid email");
     }
   });
 
@@ -24019,32 +24021,79 @@ ${indentation}${unit}` : suggestion.text
     };
   }
 
-  // seed/book.stxt
-  var book_default = "# This document is validated by a schema, the other way of writing a grammar.\n# Hover over a node to see what the schema declares for it.\nBook (com.acme.book):\n	Title: The Semantic Text Handbook\n	Authors:\n		Author: Joan Costa\n	ISBN: 978-84-000-0000-0\n	Publisher: Example Press\n	Published: 2026-08-15\n	Summary >>\n		A short guide to writing documents that people read\n		and machines parse, without getting in each other's way.\n	Chapters:\n		Chapter: One\n			Content >>\n				Indentation is structure.\n		Chapter: Two\n			Content >>\n				Grammars are optional.\n";
+  // seed/recipe-pancakes.stxt
+  var recipe_pancakes_default = '# Welcome to the STXT playground.\n# Everything runs in your browser: edit the document and watch the analysis react.\n# The template "stxt.play.cooking" in the list on the left validates this document.\n# Try adding a node it does not declare, or press Ctrl+Space on a new line to see what fits.\nRecipe (stxt.play.cooking): Pancakes\n	Serves: 4\n	Minutes: 20\n	Difficulty: Easy\n	Ingredients:\n		Ingredient: 200 g flour\n		Ingredient: 2 eggs\n		Ingredient: 300 ml milk\n		Ingredient: A pinch of salt and a little butter\n	Steps >>\n		Whisk the flour, eggs, milk and salt into a smooth batter.\n		Melt a little butter in a hot pan and pour in a ladle of batter.\n		Cook until bubbles appear, flip, and cook the other side.\n		Everything in this block is literal text: # : >> are not parsed.\n';
 
-  // seed/com.acme.book.stxt
-  var com_acme_book_default = "Schema (@stxt.schema): com.acme.book\n	Node: Book\n		Type: GROUP\n		Children:\n			Child: Title\n				Min: 1\n				Max: 1\n			Child: Authors\n				Min: 1\n				Max: 1\n			Child: ISBN\n				Min: 1\n				Max: 1\n			Child: Publisher\n				Max: 1\n			Child: Published\n				Max: 1\n			Child: Summary\n				Max: 1\n			Child: Chapters\n				Max: 1\n				\n	Node: Authors\n		Children:\n			Child: Author\n				Min: 1\n				\n	Node: Chapters\n		Children:\n			Child: Chapter\n				Min: 1\n				\n	Node: Chapter\n		Children:\n			Child: Content\n				Max: 1\n				\n	Node: Title\n	Node: Author\n	Node: ISBN\n	Node: Publisher\n	Node: Published\n		Type: DATE\n	Node: Summary\n		Type: TEXT\n	Node: Content\n		Type: TEXT\n";
+  // seed/recipe-bolognese.stxt
+  var recipe_bolognese_default = "# Optional nodes may be present or not: this recipe has Tags and Notes, the previous one had neither.\n# Notes is a MARKDOWN block; Steps is plain TEXT. Both are literal text for the parser.\nRecipe (stxt.play.cooking): Spaghetti bolognese\n	Serves: 4\n	Minutes: 45\n	Difficulty: Easy\n	Tags:\n		Tag: Pasta\n		Tag: Family\n		Tag: Make ahead\n	Ingredients:\n		Ingredient: 400 g spaghetti\n		Ingredient: 400 g minced beef\n		Ingredient: 1 onion\n		Ingredient: 1 carrot\n		Ingredient: 400 g crushed tomatoes\n		Ingredient: Olive oil, salt and oregano\n		Ingredient: Grated cheese\n	Steps >>\n		Fry the chopped onion and carrot in olive oil, then brown the mince.\n		Add the tomatoes, salt and oregano and simmer for half an hour.\n		Boil the pasta, drain it, mix with the sauce and top with grated cheese.\n	Notes >>\n		The sauce is **better the next day**, so make it ahead if you can.\n		Some people finish it in the oven for five minutes to melt the cheese.\n";
 
-  // seed/com.example.cooking.stxt
-  var com_example_cooking_default = "# A template describes the shape of the documents of a namespace.\n# Grammars are listed by their namespace, not by a title.\nTemplate (@stxt.template): com.example.cooking\n	Structure >>\n		Recipe (com.example.cooking):\n			Serves: (?) NATURAL\n			Difficulty: (?) ENUM [Easy, Medium, Hard]\n			Ingredients: (1)\n				Ingredient: (+)\n			Steps: (1) TEXT\n";
+  // seed/recipe-brownies.stxt
+  var recipe_brownies_default = '# Try changing "Medium" to "Impossible": Difficulty is an ENUM, and the template only\n# allows Easy, Medium or Hard. Or delete the Ingredients node, which is required.\nRecipe (stxt.play.cooking): Chocolate brownies\n	Serves: 8\n	Minutes: 40\n	Difficulty: Medium\n	Ingredients:\n		Ingredient: 200 g dark chocolate\n		Ingredient: 150 g butter\n		Ingredient: 3 eggs\n		Ingredient: 200 g sugar\n		Ingredient: 100 g flour\n	Steps >>\n		Melt the chocolate with the butter and let it cool a little.\n		Beat the eggs with the sugar, add the chocolate, then fold in the flour.\n		Bake at 180 \xB0C for 25 minutes; the centre should still be slightly soft.\n';
 
-  // seed/com.example.docs.stxt
-  var com_example_docs_default = "Template (@stxt.template): com.example.docs\n	Structure >>\n		Email (com.example.docs):\n			From:\n			To:\n			Cc:\n			Bcc:\n			Title: (?)\n			Body    Content: (1) TEXT\n			Metadata (org.example.meta): (?) \n";
+  // seed/stxt.play.cooking.stxt
+  var stxt_play_cooking_default = "# A template describes the shape of the documents of a namespace, written the way those\n# documents are written: cardinality and type in parentheses after each node name.\n# Grammars are listed by their namespace, not by a title. The three recipes follow this one.\nTemplate (@stxt.template): stxt.play.cooking\n	Structure >>\n		Recipe (stxt.play.cooking):\n			Serves: (?) NATURAL\n			Minutes: (?) NATURAL\n			Difficulty: (?) ENUM [Easy, Medium, Hard]\n			Tags: (?)\n				Tag: (*)\n			Ingredients: (1)\n				Ingredient: (+)\n			Steps: (1) TEXT\n			Notes: (?) MARKDOWN\n";
 
-  // seed/email.stxt
-  var email_default = "Email (com.example.docs):\n	From: John Smith\n	To: Mery Adams\n	Cc: Keyla Brown\n	Title: Project report\n	Body Content >>\n		Hello Mery!!\n		The book is finished!!\n";
+  // seed/book-handbook.stxt
+  var book_handbook_default = `# This document is validated by a schema, the other way of writing a grammar.
+# Hover over a node to see what the schema "stxt.play.library" declares for it.
+Book (stxt.play.library):
+	Title: The Semantic Text Handbook
+	Authors:
+		Author: Joan Costa
+	ISBN: 978-84-000-0000-0
+	Publisher: Example Press
+	Published: 2026-08-15
+	Pages: 180
+	Language: en
+	Website: https://stxt.dev
+	Summary >>
+		A short guide to writing documents that **people read** and **machines parse**,
+		without getting in each other's way. Summary is a MARKDOWN block: literal text
+		for the parser, Markdown for whoever renders it. See [stxt.dev](https://stxt.dev).
+	Chapters:
+		Chapter: One
+			Content >>
+				Indentation is structure.
+		Chapter: Two
+			Content >>
+				Grammars are optional.
+`;
 
-  // seed/recipe.stxt
-  var recipe_default = '# Welcome to the STXT playground.\n# Everything runs in your browser: edit the document and watch the analysis react.\n# The template "com.example.cooking" in the list on the left validates this document.\n# Try adding a node it does not declare, or press Ctrl+Space on a new line to see what fits.\nRecipe (com.example.cooking): Pa amb tom\xE0quet\n	Serves: 2\n	Difficulty: Easy\n	Ingredients:\n		Ingredient: Bread\n		Ingredient: Ripe tomato\n		Ingredient: Olive oil and salt\n	Steps >>\n		Rub the tomato on the bread.\n		Add olive oil and a pinch of salt.\n		Everything in this block is literal text: # : >> are not parsed.\n';
+  // seed/book-notes.stxt
+  var book_notes_default = "# Optional nodes can be left out: this book has no Chapters and no Website.\n# Try removing Title, which the schema requires, or writing a Published date the wrong way round.\nBook (stxt.play.library):\n	Title: Notes on Indentation\n	Authors:\n		Author: Mar Vidal\n		Author: Pau Ferrer\n	ISBN: 978-84-000-0001-7\n	Publisher: Example Press\n	Published: 2025-11-03\n	Pages: 96\n	Language: es\n	Summary >>\n		Essays on why the *shape* of a text on the page is the first thing\n		both people and parsers read:\n\n		* one level, one tab;\n		* one node, one line.\n";
+
+  // seed/book-plain-text.stxt
+  var book_plain_text_default = '# Language is an ENUM in the schema: only en, es and ca are allowed. Try "fr".\nBook (stxt.play.library):\n	Title: Plain Text at Scale\n	Authors:\n		Author: Ana Ruiz\n	Publisher: Example Press\n	Published: 2024-03-21\n	Pages: 240\n	Language: ca\n	Website: https://example.com/plain-text\n	Summary >>\n		Plain text at the scale of a whole organisation: _files_, _grammars_ and _tools_.\n	Chapters:\n		Chapter: Files\n			Content >>\n				One document, one file, one namespace.\n		Chapter: Grammars\n			Content >>\n				A schema per namespace, found through .stxt/ directories.\n		Chapter: Tools\n			Content >>\n				Editors, a command line and three libraries speak the same language.\n';
+
+  // seed/stxt.play.library.stxt
+  var stxt_play_library_default = "# A schema is the other way of writing a grammar: explicit, one Node per node name, with\n# Children, Min/Max and Type. Every template compiles to a schema like this one.\nSchema (@stxt.schema): stxt.play.library\n	Node: Book\n		Type: GROUP\n		Children:\n			Child: Title\n				Min: 1\n				Max: 1\n			Child: Authors\n				Min: 1\n				Max: 1\n			Child: ISBN\n				Max: 1\n			Child: Publisher\n				Max: 1\n			Child: Published\n				Max: 1\n			Child: Pages\n				Max: 1\n			Child: Language\n				Max: 1\n			Child: Website\n				Max: 1\n			Child: Summary\n				Max: 1\n			Child: Chapters\n				Max: 1\n	Node: Authors\n		Children:\n			Child: Author\n				Min: 1\n	Node: Chapters\n		Children:\n			Child: Chapter\n				Min: 1\n	Node: Chapter\n		Children:\n			Child: Content\n				Max: 1\n	Node: Title\n	Node: Author\n	Node: ISBN\n	Node: Publisher\n	Node: Published\n		Type: DATE\n	Node: Pages\n		Type: NATURAL\n	Node: Language\n		Type: ENUM\n		Values:\n			Value: en\n			Value: es\n			Value: ca\n	Node: Website\n		Type: URL\n	Node: Summary\n		Type: MARKDOWN\n	Node: Content\n		Type: TEXT\n";
+
+  // seed/config-development.stxt
+  var config_development_default = '# The same language, used for data: a server configuration validated by the template\n# "stxt.play.config". Node names may have spaces (Pool Size); case and accents do not matter.\nServer (stxt.play.config): api\n	Environment: development\n	Listen:\n		Host: localhost\n		Port: 8080\n	Database:\n		Url: postgres://localhost:5432/api_dev\n		Pool Size: 2\n	Logging:\n		Level: debug\n	Notes >>\n		Local defaults. Nothing here is secret: put credentials in the environment, not in the file.\n';
+
+  // seed/config-staging.stxt
+  var config_staging_default = '# Try "Port: eighty" (Port is a NATURAL) or "Tls: yes" (a BOOLEAN is true or false).\nServer (stxt.play.config): api\n	Environment: staging\n	Listen:\n		Host: 0.0.0.0\n		Port: 8443\n		Tls: true\n	Database:\n		Url: postgres://db.staging.example.com:5432/api\n		Pool Size: 10\n		Timeout: 30\n	Logging:\n		Level: info\n		File: /var/log/api/staging.log\n	Features:\n		Feature: new-search\n		Feature: dark-mode\n';
+
+  // seed/config-production.stxt
+  var config_production_default = '# Only Environment and Listen are required: this file leaves Logging out and it still validates.\n# Environment is an ENUM: try "prod".\nServer (stxt.play.config): api\n	Environment: production\n	Listen:\n		Host: 0.0.0.0\n		Port: 443\n		Tls: true\n	Database:\n		Url: postgres://db.example.com:5432/api\n		Pool Size: 50\n		Timeout: 10\n	Features:\n		Feature: dark-mode\n	Notes >>\n		Rolled out on 2026-08-01. Feature flags are removed here once they are on everywhere.\n';
+
+  // seed/stxt.play.config.stxt
+  var stxt_play_config_default = "# Configuration files are the other big use of STXT: data rather than prose. Same syntax,\n# same grammar rules; here almost every value has a type (BOOLEAN, NATURAL, URL, ENUM...).\nTemplate (@stxt.template): stxt.play.config\n	Structure >>\n		Server (stxt.play.config):\n			Environment: (1) ENUM [development, staging, production]\n			Listen: (1)\n				Host: (?)\n				Port: (1) NATURAL\n				Tls: (?) BOOLEAN\n			Database: (?)\n				Url: (1) URL\n				Pool Size: (?) NATURAL\n				Timeout: (?) NATURAL\n			Logging: (?)\n				Level: (?) ENUM [debug, info, warn, error]\n				File: (?)\n			Features: (?)\n				Feature: (*)\n			Notes: (?) TEXT\n";
 
   // src/seed.ts
   var SEED_DOCUMENTS = [
-    { title: "Recipe", text: recipe_default },
-    { title: "Recipe template", text: com_example_cooking_default },
-    { title: "Email", text: email_default },
-    { title: "Docs template", text: com_example_docs_default },
-    { title: "Book", text: book_default },
-    { title: "Book schema", text: com_acme_book_default }
+    { title: "Pancakes", text: recipe_pancakes_default },
+    { title: "Spaghetti bolognese", text: recipe_bolognese_default },
+    { title: "Chocolate brownies", text: recipe_brownies_default },
+    { title: "Cooking template", text: stxt_play_cooking_default },
+    { title: "The Semantic Text Handbook", text: book_handbook_default },
+    { title: "Notes on Indentation", text: book_notes_default },
+    { title: "Plain Text at Scale", text: book_plain_text_default },
+    { title: "Library schema", text: stxt_play_library_default },
+    { title: "Server: development", text: config_development_default },
+    { title: "Server: staging", text: config_staging_default },
+    { title: "Server: production", text: config_production_default },
+    { title: "Config template", text: stxt_play_config_default }
   ];
 
   // src/ui/documentList.ts

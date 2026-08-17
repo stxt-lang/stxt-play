@@ -1,0 +1,17 @@
+# Try "Port: eighty" (Port is a NATURAL) or "Tls: yes" (a BOOLEAN is true or false).
+Server (stxt.play.config): api
+	Environment: staging
+	Listen:
+		Host: 0.0.0.0
+		Port: 8443
+		Tls: true
+	Database:
+		Url: postgres://db.staging.example.com:5432/api
+		Pool Size: 10
+		Timeout: 30
+	Logging:
+		Level: info
+		File: /var/log/api/staging.log
+	Features:
+		Feature: new-search
+		Feature: dark-mode

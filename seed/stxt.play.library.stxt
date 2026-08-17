@@ -1,4 +1,6 @@
-Schema (@stxt.schema): com.acme.book
+# A schema is the other way of writing a grammar: explicit, one Node per node name, with
+# Children, Min/Max and Type. Every template compiles to a schema like this one.
+Schema (@stxt.schema): stxt.play.library
 	Node: Book
 		Type: GROUP
 		Children:
@@ -9,39 +11,50 @@ Schema (@stxt.schema): com.acme.book
 				Min: 1
 				Max: 1
 			Child: ISBN
-				Min: 1
 				Max: 1
 			Child: Publisher
 				Max: 1
 			Child: Published
 				Max: 1
+			Child: Pages
+				Max: 1
+			Child: Language
+				Max: 1
+			Child: Website
+				Max: 1
 			Child: Summary
 				Max: 1
 			Child: Chapters
 				Max: 1
-				
 	Node: Authors
 		Children:
 			Child: Author
 				Min: 1
-				
 	Node: Chapters
 		Children:
 			Child: Chapter
 				Min: 1
-				
 	Node: Chapter
 		Children:
 			Child: Content
 				Max: 1
-				
 	Node: Title
 	Node: Author
 	Node: ISBN
 	Node: Publisher
 	Node: Published
 		Type: DATE
+	Node: Pages
+		Type: NATURAL
+	Node: Language
+		Type: ENUM
+		Values:
+			Value: en
+			Value: es
+			Value: ca
+	Node: Website
+		Type: URL
 	Node: Summary
-		Type: TEXT
+		Type: MARKDOWN
 	Node: Content
 		Type: TEXT

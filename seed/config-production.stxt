@@ -1,0 +1,16 @@
+# Only Environment and Listen are required: this file leaves Logging out and it still validates.
+# Environment is an ENUM: try "prod".
+Server (stxt.play.config): api
+	Environment: production
+	Listen:
+		Host: 0.0.0.0
+		Port: 443
+		Tls: true
+	Database:
+		Url: postgres://db.example.com:5432/api
+		Pool Size: 50
+		Timeout: 10
+	Features:
+		Feature: dark-mode
+	Notes >>
+		Rolled out on 2026-08-01. Feature flags are removed here once they are on everywhere.

@@ -19,4 +19,5 @@ export {
 	TEMPLATE_NAMESPACE,
 } from "./GrammarRegistry";
 export { STXT_TOKEN_TYPES, StxtToken, StxtTokenType } from "./Tokens";
+export { MARKDOWN_TOKEN_TYPES, MarkdownSpan, MarkdownState, MarkdownTokenType, newMarkdownState, tokenizeMarkdownLine } from "./MarkdownTokenizer";
 export { TokenGeneratorObserver } from "./TokenGeneratorObserver";

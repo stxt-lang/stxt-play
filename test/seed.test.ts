@@ -41,6 +41,20 @@ describe("Seed workspace", () => {
 		assert.deepStrictEqual(namespaces.sort(), ["stxt.play.config", "stxt.play.cooking", "stxt.play.library"]);
 	});
 
+	it("shows Markdown highlighting: the recipes' Notes and the books' Summary are MARKDOWN blocks", () => {
+		const analyzer = new Analyzer();
+		const files = fs.readdirSync(SEED_DIR).filter((name) => name.endsWith(".stxt")).sort();
+		for (const file of files) {
+			analyzer.setDocument(file, fs.readFileSync(path.join(SEED_DIR, file), "utf8"));
+		}
+		const markdownTypes = (file: string) =>
+			new Set(analyzer.getAnalysis(file)!.tokens.filter((t) => t.type.startsWith("markdown")).map((t) => t.type));
+
+		assert.ok(markdownTypes("recipe-bolognese.stxt").has("markdownBold"), "the bolognese Notes have bold text");
+		assert.ok(markdownTypes("book-handbook.stxt").has("markdownLink"), "the handbook Summary has a link");
+		assert.strictEqual(markdownTypes("config-development.stxt").size, 0, "the config Notes are TEXT, not Markdown");
+	});
+
 	it("uses tabs for indentation, like every .stxt file of the ecosystem", () => {
 		for (const file of fs.readdirSync(SEED_DIR).filter((name) => name.endsWith(".stxt"))) {
 			const text = fs.readFileSync(path.join(SEED_DIR, file), "utf8");

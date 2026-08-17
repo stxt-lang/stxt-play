@@ -214,6 +214,19 @@ cabecera se pliega en dos filas.
       fuera cancelan) y `linkDialog` como fallback de *Share* sin portapapeles (URL seleccionada
       + *Copy*). Comprobado en Chrome headless. También en la **0.2.1**.
 
+- [x] **Markdown con estilo en los bloques `MARKDOWN`** (2026-08-17, punto 1 de la segunda
+      edición del `ROADMAP.md` de `../stxt`): las líneas de un bloque `>>` cuyo nodo la gramática
+      del workspace declara `MARKDOWN` (STXT-SCHEMA-SPEC 9.7) se colorean como Markdown
+      —encabezados, cercas de código, marcadores de lista y cita, código inline, negrita,
+      cursiva, enlaces e imágenes—; los `TEXT` y los bloques sin gramática, como antes.
+      `src/analysis/MarkdownTokenizer.ts` es **copia byte a byte** del de `../stxt-vscode`
+      (tokenizador de línea, sin dependencias); los tokens `markdown*` los añade el `Analyzer`
+      al componer el análisis —no al parsear, porque dependen de las gramáticas del workspace,
+      que cambian sin que cambie el documento— y `highlight.ts` los traduce a clases
+      `.stxt-tok-md-*` de `css/_editor.scss`. Se ve en las *Notes* de las recetas y en el
+      *Summary* de los libros de la semilla. Tests en `test/markdown.test.ts` y en la semilla.
+      Sale en la **0.2.3**.
+
 **El playground está terminado** según este plan. Lo que venga —ideas nuevas— entra por el
 `TODO.md` de `../stxt` y, si cuaja, como fase nueva aquí.
 

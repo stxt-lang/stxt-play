@@ -10,7 +10,9 @@ a real editor, not a form or a viewer.
 
 ## What it should do
 
-- **Edit one or several STXT documents** at once, with syntax highlighting.
+- **Edit one or several STXT documents** at once, with syntax highlighting. The content of blocks
+  a grammar of the workspace declares as `MARKDOWN` is highlighted as Markdown (headings,
+  emphasis, code, lists, quotes, links); `TEXT` blocks stay plain.
 - **Edit and insert grammars** — `@stxt.schema` and `@stxt.template` — alongside the documents they
   validate.
 - **Show syntax errors as you type**, and schema validation errors next to them.

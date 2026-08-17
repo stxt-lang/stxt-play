@@ -1,6 +1,7 @@
 import {
 	ConditionalValidator,
 	InlineNode,
+	Line,
 	Node,
 	Parser,
 	SchemaValidator,
@@ -10,6 +11,7 @@ import {
 import { CompletionResult, computeCompletions } from "./completion";
 import { Diagnostic } from "./Diagnostic";
 import { GrammarRegistry, grammarKindOf, isGrammarRoot } from "./GrammarRegistry";
+import { MarkdownState, newMarkdownState, tokenizeMarkdownLine } from "./MarkdownTokenizer";
 import { describeNodeAtLine, NodeInfo } from "./nodeInfo";
 import { computeIndentChanges, IndentChange } from "./reindent";
 import { StxtToken } from "./Tokens";
@@ -17,6 +19,9 @@ import { TokenGeneratorObserver } from "./TokenGeneratorObserver";
 
 /** Code SchemaValidator emits when it cannot resolve the schema of a namespace. */
 const SCHEMA_NOT_FOUND = "SCHEMA_NOT_FOUND";
+
+/** Schema type whose block content is coloured as Markdown (STXT-SCHEMA-SPEC 9.7). */
+const MARKDOWN = "MARKDOWN";
 
 /** Kind of grammar a root node defines. */
 export type GrammarKind = "schema" | "template";
@@ -33,7 +38,10 @@ export interface GrammarInfo {
 
 /** Everything the analysis knows about one document. All line numbers are 0-based. */
 export interface DocumentAnalysis {
-	/** Semantic tokens for highlighting. */
+	/**
+	 * Semantic tokens for highlighting, in document order: those of the language, plus the
+	 * Markdown ones of the blocks the workspace grammars declare as `MARKDOWN`.
+	 */
 	tokens: StxtToken[];
 	/** Root nodes of the document, as far as it parsed. */
 	roots: Node[];
@@ -61,6 +69,7 @@ interface ParsedDocument {
 	nodeByLine: Map<number, Node>;
 	commentLines: Set<number>;
 	textLineByLineNumber: Map<number, TextNode>;
+	blockLineByLineNumber: Map<number, Line>;
 	syntaxDiagnostics: Diagnostic[];
 	grammarRoots: Node[];
 }
@@ -223,6 +232,7 @@ export class Analyzer {
 			nodeByLine: observer.getNodeByLine(),
 			commentLines: observer.getCommentLines(),
 			textLineByLineNumber: observer.getTextLineByLineNumber(),
+			blockLineByLineNumber: observer.getBlockLineByLineNumber(),
 			syntaxDiagnostics,
 			grammarRoots: roots.filter(isGrammarRoot),
 		};
@@ -272,7 +282,7 @@ export class Analyzer {
 		diagnostics.sort((a, b) => a.line - b.line);
 
 		return {
-			tokens: parsed.tokens,
+			tokens: this.withMarkdownTokens(parsed),
 			roots: parsed.roots,
 			nodeByLine: parsed.nodeByLine,
 			commentLines: parsed.commentLines,
@@ -286,6 +296,50 @@ export class Analyzer {
 			})),
 			diagnostics,
 		};
+	}
+
+	/**
+	 * The tokens of the language plus those of the MARKDOWN blocks, sorted in document order.
+	 *
+	 * The Markdown ones are computed here and not while parsing because they depend on the
+	 * workspace grammars, which change without the document changing; the parse products are
+	 * cached per text, the analysis is recomposed whenever a grammar changes.
+	 */
+	private withMarkdownTokens(parsed: ParsedDocument): StxtToken[] {
+		const tokens = [...parsed.tokens];
+		let current: TextNode | undefined;
+		let state: MarkdownState | null = null;
+
+		// Map iteration follows insertion order, that is, document order
+		for (const [lineIndex, line] of parsed.blockLineByLineNumber) {
+			const node = parsed.textLineByLineNumber.get(lineIndex);
+			if (node !== current) {
+				current = node;
+				state = node && this.isMarkdown(node) ? newMarkdownState() : null;
+			}
+			if (!state) {
+				continue;
+			}
+			// The content starts right after the character that completed the block indentation
+			const offset = line.indentLength + 1;
+			for (const span of tokenizeMarkdownLine(line.content, state)) {
+				tokens.push({ line: lineIndex, startChar: offset + span.startChar, length: span.length, type: span.type });
+			}
+		}
+
+		return tokens.sort((a, b) => a.line - b.line || a.startChar - b.startChar);
+	}
+
+	/** @returns whether the grammar of the node's namespace declares it as MARKDOWN. */
+	private isMarkdown(node: TextNode): boolean {
+		if (!node.getNamespace()) {
+			return false;
+		}
+		try {
+			return this.registry.getSchema(node.getNamespace())?.getNodeDefinition(node.getName())?.getType() === MARKDOWN;
+		} catch {
+			return false;
+		}
 	}
 
 	/**

@@ -6,13 +6,16 @@
  * decorations themselves.
  */
 
-/** Every token type the analysis can emit. */
+import { MARKDOWN_TOKEN_TYPES } from "./MarkdownTokenizer";
+
+/** Every token type the analysis can emit: those of the language, plus those of MARKDOWN blocks. */
 export const STXT_TOKEN_TYPES = [
 	"comment",
 	"namespace",
 	"property",
 	"macro",
 	"string",
+	...MARKDOWN_TOKEN_TYPES,
 ] as const;
 
 /** One of the token type names of {@link STXT_TOKEN_TYPES}. */

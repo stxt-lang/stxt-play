@@ -22,6 +22,14 @@ const MARKS: Record<StxtTokenType, Decoration> = {
 	property: Decoration.mark({ class: "stxt-tok-property" }),
 	macro: Decoration.mark({ class: "stxt-tok-macro" }),
 	string: Decoration.mark({ class: "stxt-tok-string" }),
+	// Content of MARKDOWN blocks
+	markdownHeading: Decoration.mark({ class: "stxt-tok-md-heading" }),
+	markdownBold: Decoration.mark({ class: "stxt-tok-md-bold" }),
+	markdownItalic: Decoration.mark({ class: "stxt-tok-md-italic" }),
+	markdownCode: Decoration.mark({ class: "stxt-tok-md-code" }),
+	markdownList: Decoration.mark({ class: "stxt-tok-md-list" }),
+	markdownQuote: Decoration.mark({ class: "stxt-tok-md-quote" }),
+	markdownLink: Decoration.mark({ class: "stxt-tok-md-link" }),
 };
 
 /** Turns analysis tokens (0-based lines and columns) into decoration ranges of the document. */
@@ -42,7 +50,7 @@ function buildDecorations(tokens: StxtToken[], doc: Text): DecorationSet {
 		ranges.push(MARKS[token.type].range(from, to));
 	}
 
-	// Template content tokens are appended out of order: let Decoration.set sort them
+	// The analysis sorts its tokens, but let Decoration.set sort them anyway, to be safe
 	return Decoration.set(ranges, true);
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "@stxt-lang/play",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "Web playground for STXT, an indentation-based structured-text format.",
   "scripts": {

@@ -13,12 +13,15 @@ export class TokenGeneratorObserver implements Observer {
 	private nodeByLine = new Map<number, Node>();
 	private commentLines = new Set<number>();
 	private textLineByLineNumber = new Map<number, TextNode>();
+	private blockLineByLineNumber = new Map<number, Line>();
 	private templateNodeByLine = new Map<number, Line>();
 
 	onTextLine(node: TextNode, lineNumber: number, lineString: string, line: Line): void {
-		// Remember the parent node of every text line. lineNumber is 1-based.
+		// Remember the parent node of every text line, and the line itself split into
+		// indentation and content (the Markdown colouring needs both). lineNumber is 1-based.
 		const lineIndex = lineNumber - 1;
 		this.textLineByLineNumber.set(lineIndex, node);
+		this.blockLineByLineNumber.set(lineIndex, line);
 
 		// Remember the raw lines of template content nodes, to colour them later
 		if (this.isTemplateContentNode(node)) {
@@ -122,6 +125,11 @@ export class TokenGeneratorObserver implements Observer {
 
 	getTextLineByLineNumber(): Map<number, TextNode> {
 		return this.textLineByLineNumber;
+	}
+
+	/** @returns every text line of a block, by 0-based line, split into indentation and content. */
+	getBlockLineByLineNumber(): Map<number, Line> {
+		return this.blockLineByLineNumber;
 	}
 
 	private generateTokensForNode(node: Node, lineIndex: number, line: string): void {

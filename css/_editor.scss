@@ -57,6 +57,41 @@
 	color: $stxt-value;
 }
 
+// Content of blocks the workspace grammars declare as MARKDOWN (.stxt-tok-md-*): the same
+// constructs the VS Code extension colours, styled here the way a Markdown editor would.
+.stxt-tok-md-heading {
+	color: $stxt-node;
+	font-weight: 700;
+}
+
+.stxt-tok-md-bold {
+	font-weight: 700;
+}
+
+.stxt-tok-md-italic {
+	font-style: italic;
+}
+
+.stxt-tok-md-code {
+	color: $stxt-value;
+	background: rgba($color1, 0.06);
+	border-radius: 3px;
+}
+
+.stxt-tok-md-list {
+	color: $stxt-block;
+	font-weight: 700;
+}
+
+.stxt-tok-md-quote {
+	color: $stxt-muted;
+}
+
+.stxt-tok-md-link {
+	color: $stxt-namespace;
+	text-decoration: underline;
+}
+
 // Autocompletion popup (CodeMirror's, restyled with the palette)
 .cm-tooltip.cm-tooltip-autocomplete {
 	border: 1px solid $color3;

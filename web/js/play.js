@@ -607,7 +607,7 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Line = void 0;
-      var Line3 = class {
+      var Line4 = class {
         /**
          * Creates a line already split into indentation and content.
          *
@@ -629,7 +629,7 @@
           return this.content.trim() === "";
         }
       };
-      exports.Line = Line3;
+      exports.Line = Line4;
     }
   });
 
@@ -17660,6 +17660,83 @@
     }
   };
 
+  // src/analysis/MarkdownTokenizer.ts
+  var MARKDOWN_TOKEN_TYPES = [
+    "markdownHeading",
+    "markdownBold",
+    "markdownItalic",
+    "markdownCode",
+    "markdownList",
+    "markdownQuote",
+    "markdownLink"
+  ];
+  function newMarkdownState() {
+    return { fence: null };
+  }
+  var FENCE = /^\s*(`{3,}|~{3,})/;
+  var HEADING = /^\s*#{1,6}(?=\s|$)/;
+  var QUOTE = /^\s*(?:>[ \t]?)+/;
+  var LIST = /^(\s*)([-*+]|\d{1,9}[.)])(?:\s+|$)/;
+  var INLINE = new RegExp([
+    "(?<escape>\\\\[\\\\`*_\\[\\]()<>#!~-])",
+    "(?<code>(?<fence>`+)(?!`)[\\s\\S]*?(?<!`)\\k<fence>(?!`))",
+    "(?<link>!?\\[[^\\]]*\\]\\([^)]*\\)|<(?:https?://|mailto:)[^>\\s]+>)",
+    "(?<bold>\\*\\*\\*(?=\\S)[^*]+?(?<=\\S)\\*\\*\\*|\\*\\*(?=\\S)(?:[^*]|\\*(?!\\*))+?(?<=\\S)\\*\\*|(?<![\\p{L}\\p{N}_])__(?=\\S)(?:[^_]|_(?!_))+?(?<=\\S)__(?![\\p{L}\\p{N}_]))",
+    "(?<italic>\\*(?=[^\\s*])[^*]*?(?<=[^\\s*])\\*|(?<![\\p{L}\\p{N}_])_(?=[^\\s_])[^_]*?(?<=[^\\s_])_(?![\\p{L}\\p{N}_]))"
+  ].join("|"), "gu");
+  function tokenizeMarkdownLine(content2, state) {
+    const spans = [];
+    const fence = FENCE.exec(content2);
+    if (state.fence !== null) {
+      if (fence && fence[1][0] === state.fence[0] && fence[1].length >= state.fence.length && content2.slice(fence[0].length).trim() === "") {
+        state.fence = null;
+      }
+      pushWholeLine(spans, content2, "markdownCode");
+      return spans;
+    }
+    if (fence) {
+      state.fence = fence[1];
+      pushWholeLine(spans, content2, "markdownCode");
+      return spans;
+    }
+    let pos = 0;
+    const quote = QUOTE.exec(content2);
+    if (quote) {
+      const start = quote[0].search(/\S/);
+      spans.push({ startChar: start, length: quote[0].trimEnd().length - start, type: "markdownQuote" });
+      pos = quote[0].length;
+    }
+    const rest = content2.slice(pos);
+    if (HEADING.test(rest)) {
+      pushWholeLine(spans, rest, "markdownHeading", pos);
+      return spans;
+    }
+    const list = LIST.exec(rest);
+    if (list) {
+      spans.push({ startChar: pos + list[1].length, length: list[2].length, type: "markdownList" });
+      pos += list[0].length;
+    }
+    tokenizeInline(spans, content2.slice(pos), pos);
+    return spans;
+  }
+  function pushWholeLine(spans, content2, type, offset = 0) {
+    const start = content2.search(/\S/);
+    if (start !== -1) {
+      spans.push({ startChar: offset + start, length: content2.trimEnd().length - start, type });
+    }
+  }
+  function tokenizeInline(spans, text, offset) {
+    INLINE.lastIndex = 0;
+    let match;
+    while ((match = INLINE.exec(text)) !== null) {
+      const groups = match.groups ?? {};
+      const type = groups.code !== void 0 ? "markdownCode" : groups.link !== void 0 ? "markdownLink" : groups.bold !== void 0 ? "markdownBold" : groups.italic !== void 0 ? "markdownItalic" : void 0;
+      if (type !== void 0) {
+        spans.push({ startChar: offset + match.index, length: match[0].length, type });
+      }
+    }
+  }
+
   // src/analysis/nodeInfo.ts
   var import_core3 = __toESM(require_all());
   function describeNodeAtLine(analysis, registry, line) {
@@ -17753,11 +17830,13 @@
       this.nodeByLine = /* @__PURE__ */ new Map();
       this.commentLines = /* @__PURE__ */ new Set();
       this.textLineByLineNumber = /* @__PURE__ */ new Map();
+      this.blockLineByLineNumber = /* @__PURE__ */ new Map();
       this.templateNodeByLine = /* @__PURE__ */ new Map();
     }
     onTextLine(node, lineNumber, lineString, line) {
       const lineIndex = lineNumber - 1;
       this.textLineByLineNumber.set(lineIndex, node);
+      this.blockLineByLineNumber.set(lineIndex, line);
       if (this.isTemplateContentNode(node)) {
         this.templateNodeByLine.set(lineNumber, line);
       }
@@ -17834,6 +17913,10 @@
     getTextLineByLineNumber() {
       return this.textLineByLineNumber;
     }
+    /** @returns every text line of a block, by 0-based line, split into indentation and content. */
+    getBlockLineByLineNumber() {
+      return this.blockLineByLineNumber;
+    }
     generateTokensForNode(node, lineIndex, line) {
       if (node.isTextNode()) {
         const sepIndx = line.indexOf(">>");
@@ -17877,6 +17960,7 @@
 
   // src/analysis/Analyzer.ts
   var SCHEMA_NOT_FOUND = "SCHEMA_NOT_FOUND";
+  var MARKDOWN = "MARKDOWN";
   var Analyzer = class _Analyzer {
     constructor() {
       this.parsed = /* @__PURE__ */ new Map();
@@ -18005,6 +18089,7 @@
         nodeByLine: observer.getNodeByLine(),
         commentLines: observer.getCommentLines(),
         textLineByLineNumber: observer.getTextLineByLineNumber(),
+        blockLineByLineNumber: observer.getBlockLineByLineNumber(),
         syntaxDiagnostics,
         grammarRoots: roots.filter(isGrammarRoot)
       };
@@ -18045,7 +18130,7 @@
       }
       diagnostics.sort((a, b) => a.line - b.line);
       return {
-        tokens: parsed.tokens,
+        tokens: this.withMarkdownTokens(parsed),
         roots: parsed.roots,
         nodeByLine: parsed.nodeByLine,
         commentLines: parsed.commentLines,
@@ -18059,6 +18144,44 @@
         })),
         diagnostics
       };
+    }
+    /**
+     * The tokens of the language plus those of the MARKDOWN blocks, sorted in document order.
+     *
+     * The Markdown ones are computed here and not while parsing because they depend on the
+     * workspace grammars, which change without the document changing; the parse products are
+     * cached per text, the analysis is recomposed whenever a grammar changes.
+     */
+    withMarkdownTokens(parsed) {
+      const tokens = [...parsed.tokens];
+      let current;
+      let state = null;
+      for (const [lineIndex, line] of parsed.blockLineByLineNumber) {
+        const node = parsed.textLineByLineNumber.get(lineIndex);
+        if (node !== current) {
+          current = node;
+          state = node && this.isMarkdown(node) ? newMarkdownState() : null;
+        }
+        if (!state) {
+          continue;
+        }
+        const offset = line.indentLength + 1;
+        for (const span of tokenizeMarkdownLine(line.content, state)) {
+          tokens.push({ line: lineIndex, startChar: offset + span.startChar, length: span.length, type: span.type });
+        }
+      }
+      return tokens.sort((a, b) => a.line - b.line || a.startChar - b.startChar);
+    }
+    /** @returns whether the grammar of the node's namespace declares it as MARKDOWN. */
+    isMarkdown(node) {
+      if (!node.getNamespace()) {
+        return false;
+      }
+      try {
+        return this.registry.getSchema(node.getNamespace())?.getNodeDefinition(node.getName())?.getType() === MARKDOWN;
+      } catch {
+        return false;
+      }
     }
     /**
      * Validates every node of a document against the workspace grammars, replicating the parser:
@@ -18101,6 +18224,16 @@
     }
   };
 
+  // src/analysis/Tokens.ts
+  var STXT_TOKEN_TYPES = [
+    "comment",
+    "namespace",
+    "property",
+    "macro",
+    "string",
+    ...MARKDOWN_TOKEN_TYPES
+  ];
+
   // src/editor/highlight.ts
   var setTokensEffect = StateEffect.define();
   var MARKS = {
@@ -18108,7 +18241,15 @@
     namespace: Decoration.mark({ class: "stxt-tok-namespace" }),
     property: Decoration.mark({ class: "stxt-tok-property" }),
     macro: Decoration.mark({ class: "stxt-tok-macro" }),
-    string: Decoration.mark({ class: "stxt-tok-string" })
+    string: Decoration.mark({ class: "stxt-tok-string" }),
+    // Content of MARKDOWN blocks
+    markdownHeading: Decoration.mark({ class: "stxt-tok-md-heading" }),
+    markdownBold: Decoration.mark({ class: "stxt-tok-md-bold" }),
+    markdownItalic: Decoration.mark({ class: "stxt-tok-md-italic" }),
+    markdownCode: Decoration.mark({ class: "stxt-tok-md-code" }),
+    markdownList: Decoration.mark({ class: "stxt-tok-md-list" }),
+    markdownQuote: Decoration.mark({ class: "stxt-tok-md-quote" }),
+    markdownLink: Decoration.mark({ class: "stxt-tok-md-link" })
   };
   function buildDecorations(tokens, doc2) {
     const ranges = [];

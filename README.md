@@ -5,8 +5,8 @@ in the browser, with its grammar next to it, and see errors as you type. Think V
 a real editor, not a form or a viewer.
 
 > **Live at [play.stxt.dev](https://play.stxt.dev).** Every phase of `ROADMAP.md` is done: analysis
-> core, editor, multi-document workspace, header switches, autocompletion and hover, seed content,
-> reset, share links, publication.
+> core, editor, multi-document workspace, header switches, autocompletion, hover and go to
+> definition, seed content, reset, share links, publication.
 
 ## What it should do
 
@@ -21,6 +21,10 @@ a real editor, not a form or a viewer.
   children the grammar declares for the enclosing node, and `ENUM` values. Type, or press
   Ctrl+Space.
 - **Hover** over a node to see what the parse and its grammar know about it.
+- **Go to definition**: Ctrl+Click (Cmd+Click on macOS) on a node name, or Ctrl+B / Cmd+B with the
+  cursor on it, opens the grammar of the workspace that defines its namespace, on the line that
+  declares the node — `Node: Name` in a schema, the node's own line inside `Structure >>` in a
+  template. On the namespace itself it opens the grammar root. (F12 is left to the browser.)
 
 ## The interface
 
@@ -102,10 +106,10 @@ repository, with no build step in between.
 ```
 css/            SCSS sources         → compiled into web/css/
 src/            TypeScript sources   → bundled into web/js/
-src/analysis/   the analysis core: tokens, diagnostics, workspace grammars, completion, node info (no DOM, no editor)
+src/analysis/   the analysis core: tokens, diagnostics, workspace grammars, completion, node info, definitions (no DOM, no editor)
 src/workspace/  the workspace model, its localStorage persistence, share and open links (no DOM either)
 seed/           the example documents and grammars, bundled as text
-src/editor/     the CodeMirror layer: decorations from tokens, completion, hover, editor setup
+src/editor/     the CodeMirror layer: decorations from tokens, completion, hover, go to definition, editor setup
 src/ui/         the document list and the problems panel
 test/           mocha tests of the analysis core and the workspace
 web/            exactly what gets served, committed as is

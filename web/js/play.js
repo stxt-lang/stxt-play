@@ -91,7 +91,7 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.StringUtils = void 0;
-      var StringUtils4 = class {
+      var StringUtils5 = class {
         constructor() {
         }
         // Used for name>> nodes
@@ -172,8 +172,8 @@
           return s;
         }
       };
-      exports.StringUtils = StringUtils4;
-      StringUtils4.NODE_NAME = /^[\p{L}\p{Nd}\-_ ]+$/u;
+      exports.StringUtils = StringUtils5;
+      StringUtils5.NODE_NAME = /^[\p{L}\p{Nd}\-_ ]+$/u;
     }
   });
 
@@ -186,7 +186,7 @@
       var ParseException_1 = require_ParseException();
       var NamespaceValidator_1 = require_NamespaceValidator();
       var StringUtils_1 = require_StringUtils();
-      var Node5 = class _Node {
+      var Node6 = class _Node {
         /**
          * Common initialisation, for the two concrete forms.
          *
@@ -331,8 +331,8 @@
           return s;
         }
       };
-      exports.Node = Node5;
-      Node5.NO_LINE = -1;
+      exports.Node = Node6;
+      Node6.NO_LINE = -1;
     }
   });
 
@@ -343,7 +343,7 @@
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.TextNode = void 0;
       var Node_1 = require_Node();
-      var TextNode4 = class _TextNode extends Node_1.Node {
+      var TextNode5 = class _TextNode extends Node_1.Node {
         constructor(name2, ...rest) {
           const [namespace, text, line] = rest.length <= 1 ? [null, rest[0], Node_1.Node.NO_LINE] : [rest[0], rest[1], rest[2] ?? Node_1.Node.NO_LINE];
           super(name2, namespace, line);
@@ -405,7 +405,7 @@
           return `, lines=${this.lines.length}`;
         }
       };
-      exports.TextNode = TextNode4;
+      exports.TextNode = TextNode5;
     }
   });
 
@@ -452,7 +452,7 @@
       var TextNode_1 = require_TextNode();
       var RuntimeException_1 = require_RuntimeException();
       var StringUtils_1 = require_StringUtils();
-      var InlineNode4 = class _InlineNode extends Node_1.Node {
+      var InlineNode5 = class _InlineNode extends Node_1.Node {
         constructor(name2, ...rest) {
           const [namespace, value, line] = rest.length <= 1 ? [null, rest[0], Node_1.Node.NO_LINE] : [rest[0], rest[1], rest[2] ?? Node_1.Node.NO_LINE];
           super(name2, namespace, line);
@@ -578,7 +578,7 @@
           return s;
         }
       };
-      exports.InlineNode = InlineNode4;
+      exports.InlineNode = InlineNode5;
     }
   });
 
@@ -888,7 +888,7 @@
       var NodeCreator_1 = require_NodeCreator();
       var ParseResult_1 = require_ParseResult();
       var ParseException_1 = require_ParseException();
-      var Parser4 = class {
+      var Parser5 = class {
         constructor() {
           this.observers = [];
           this.validators = [];
@@ -1024,7 +1024,7 @@
           return content2.charCodeAt(0) === 65279 ? content2.slice(1) : content2;
         }
       };
-      exports.Parser = Parser4;
+      exports.Parser = Parser5;
     }
   });
 
@@ -17375,7 +17375,7 @@
   }
 
   // src/analysis/Analyzer.ts
-  var import_core5 = __toESM(require_all());
+  var import_core6 = __toESM(require_all());
 
   // src/analysis/completion.ts
   var import_core = __toESM(require_all());
@@ -17535,6 +17535,9 @@
     return suggestions;
   }
 
+  // src/analysis/definition.ts
+  var import_core3 = __toESM(require_all());
+
   // src/analysis/GrammarRegistry.ts
   var import_core2 = __toESM(require_all());
   var SCHEMA_NAMESPACE = "@stxt.schema";
@@ -17553,6 +17556,7 @@
       /** Empty unified provider, used only for the meta-schemas it serves built-in. */
       this.metas = new import_core2.UnifiedSchemaProvider();
       this.schemas = /* @__PURE__ */ new Map();
+      this.definitions = /* @__PURE__ */ new Map();
       this.conflicted = /* @__PURE__ */ new Set();
       this.issues = [];
     }
@@ -17567,6 +17571,7 @@
      */
     load(sources) {
       this.schemas.clear();
+      this.definitions.clear();
       this.conflicted.clear();
       this.issues = [];
       const owners = /* @__PURE__ */ new Map();
@@ -17586,6 +17591,7 @@
             list.push({ documentId, line: root.getLine() - 1 });
             owners.set(key, list);
             this.schemas.set(key, schema);
+            this.definitions.set(key, { documentId, root });
           } catch (e) {
             this.issues.push(_GrammarRegistry.toIssue(documentId, root, e));
           }
@@ -17595,6 +17601,7 @@
         if (list.length > 1) {
           this.conflicted.add(key);
           this.schemas.delete(key);
+          this.definitions.delete(key);
           for (const owner of list) {
             this.issues.push({
               documentId: owner.documentId,
@@ -17622,6 +17629,16 @@
         return void 0;
       }
       return this.schemas.get(key);
+    }
+    /**
+     * Where a namespace is defined, for "go to definition". The two reserved namespaces are
+     * built-in and have no document; a conflicted namespace has no active definition.
+     *
+     * @param namespace namespace whose definition is wanted.
+     * @returns the document and grammar root, or undefined if the workspace does not define it.
+     */
+    getDefinition(namespace) {
+      return this.definitions.get(import_core2.StringUtils.lowerCase(namespace));
     }
     /** @returns the problems found while loading, in workspace order. */
     getIssues() {
@@ -17659,6 +17676,90 @@
       };
     }
   };
+
+  // src/analysis/definition.ts
+  function findDefinition(analysis, registry, line, character) {
+    const node = analysis.nodeByLine.get(line);
+    if (!node) {
+      return void 0;
+    }
+    const headTokens = analysis.tokens.filter((token) => token.line === line && token.type !== "string");
+    if (headTokens.length === 0) {
+      return void 0;
+    }
+    const headEnd = Math.max(...headTokens.map((token) => token.startChar + token.length));
+    if (character > headEnd) {
+      return void 0;
+    }
+    const namespace = node.getNamespace();
+    if (!namespace) {
+      return void 0;
+    }
+    const definition = registry.getDefinition(namespace);
+    if (!definition) {
+      return void 0;
+    }
+    const onNamespace = headTokens.some(
+      (token) => token.type === "namespace" && character >= token.startChar && character <= token.startChar + token.length
+    );
+    const rootLine = definition.root.getLine() - 1;
+    return {
+      documentId: definition.documentId,
+      line: onNamespace ? rootLine : definitionLine(definition.root, node.getName(), namespace) ?? rootLine
+    };
+  }
+  function definitionLine(root, nodeName, namespace) {
+    if (!(root instanceof import_core3.InlineNode)) {
+      return void 0;
+    }
+    const wanted = import_core3.StringUtils.normalize(nodeName);
+    if (root.getNamespace() === SCHEMA_NAMESPACE) {
+      for (const child of root.getChildren()) {
+        if (child instanceof import_core3.InlineNode && child.getCanonicalName() === "node" && import_core3.StringUtils.normalize(child.getValue()) === wanted) {
+          return child.getLine() - 1;
+        }
+      }
+    } else if (root.getNamespace() === TEMPLATE_NAMESPACE) {
+      for (const child of root.getChildren()) {
+        if (child instanceof import_core3.TextNode && child.getCanonicalName() === "structure") {
+          const inner = findNode(parseStructure(child.getText()), wanted, namespace);
+          if (inner) {
+            return child.getLine() + inner.getLine() - 1;
+          }
+        }
+      }
+    }
+    return void 0;
+  }
+  function parseStructure(text) {
+    try {
+      return new import_core3.Parser().parseResult(text).getNodes();
+    } catch {
+      return [];
+    }
+  }
+  function findNode(nodes, canonicalName, namespace) {
+    const target = import_core3.StringUtils.lowerCase(namespace);
+    let byNameOnly;
+    const walk = (list) => {
+      for (const node of list) {
+        if (node.getCanonicalName() === canonicalName) {
+          if (import_core3.StringUtils.lowerCase(node.getNamespace()) === target) {
+            return node;
+          }
+          byNameOnly ??= node;
+        }
+        if (node instanceof import_core3.InlineNode) {
+          const found = walk(node.getChildren());
+          if (found) {
+            return found;
+          }
+        }
+      }
+      return void 0;
+    };
+    return walk(nodes) ?? byNameOnly;
+  }
 
   // src/analysis/MarkdownTokenizer.ts
   var MARKDOWN_TOKEN_TYPES = [
@@ -17738,7 +17839,7 @@
   }
 
   // src/analysis/nodeInfo.ts
-  var import_core3 = __toESM(require_all());
+  var import_core4 = __toESM(require_all());
   function describeNodeAtLine(analysis, registry, line) {
     const node = analysis.nodeByLine.get(line);
     if (!node) {
@@ -17751,7 +17852,7 @@
       kind: node.isTextNode() ? "block" : "inline",
       level: node.getLevel()
     };
-    if (node instanceof import_core3.InlineNode) {
+    if (node instanceof import_core4.InlineNode) {
       info.value = node.getValue();
     } else {
       info.textLines = node.getText().length === 0 ? 0 : node.getText().split("\n").length;
@@ -17823,7 +17924,7 @@
   }
 
   // src/analysis/TokenGeneratorObserver.ts
-  var import_core4 = __toESM(require_all());
+  var import_core5 = __toESM(require_all());
   var TokenGeneratorObserver = class _TokenGeneratorObserver {
     constructor() {
       this.tokens = [];
@@ -17868,7 +17969,7 @@
         if (!content2 || content2.trim() === "") {
           return;
         }
-        const parser = new import_core4.Parser();
+        const parser = new import_core5.Parser();
         const innerObserver = new _TokenGeneratorObserver();
         parser.registerObserver(innerObserver);
         parser.parseResult(content2);
@@ -18068,10 +18169,23 @@
       const analysis = this.analyses.get(id);
       return analysis ? describeNodeAtLine(analysis, this.registry, line) : void 0;
     }
+    /**
+     * Where the node at a position of a document is defined, for "go to definition" (see
+     * `definition.ts`).
+     *
+     * @param id identifier of the document.
+     * @param line 0-based line of the position.
+     * @param character 0-based column of the position.
+     * @returns the workspace document and line of the definition, or undefined if there is none.
+     */
+    findDefinition(id, line, character) {
+      const analysis = this.analyses.get(id);
+      return analysis ? findDefinition(analysis, this.registry, line, character) : void 0;
+    }
     /** Parses a document once, collecting tokens, line maps and syntax errors. */
     static parseDocument(text) {
       const observer = new TokenGeneratorObserver();
-      const parser = new import_core5.Parser();
+      const parser = new import_core6.Parser();
       parser.registerObserver(observer);
       const result = parser.parseResult(text);
       const roots = result.getNodes();
@@ -18138,7 +18252,7 @@
         grammars: parsed.grammarRoots.map((root) => ({
           // A grammar root is `Name (@stxt.schema): namespace`; a block form is a broken grammar
           // the registry reports on its own, and declares no namespace here.
-          namespace: root instanceof import_core5.InlineNode ? import_core5.StringUtils.lowerCase(root.getValue().trim()) : "",
+          namespace: root instanceof import_core6.InlineNode ? import_core6.StringUtils.lowerCase(root.getValue().trim()) : "",
           kind: grammarKindOf(root),
           line: root.getLine() - 1
         })),
@@ -18190,10 +18304,10 @@
      */
     validateRoots(roots) {
       const diagnostics = [];
-      const validator = new import_core5.ConditionalValidator(new import_core5.SchemaValidator(this.registry));
+      const validator = new import_core6.ConditionalValidator(new import_core6.SchemaValidator(this.registry));
       const hasGrammarSources = Array.from(this.parsed.values()).some((p) => p.grammarRoots.length > 0);
       const walk = (node) => {
-        if (node instanceof import_core5.InlineNode) {
+        if (node instanceof import_core6.InlineNode) {
           node.getChildren().forEach(walk);
         }
         try {
@@ -19821,7 +19935,7 @@
       return result;
     }
   };
-  var Parser3 = class {
+  var Parser4 = class {
     /**
     Start a parse, returning a [partial parse](#common.PartialParse)
     object. [`fragments`](#common.TreeFragment) can be passed in to
@@ -20798,7 +20912,7 @@
     promise resolves.
     */
     static getSkippingParser(until) {
-      return new class extends Parser3 {
+      return new class extends Parser4 {
         createParse(input, fragments, ranges) {
           let from = ranges[0].from, to = ranges[ranges.length - 1].to;
           let parser = {
@@ -24004,6 +24118,30 @@ ${indentation}${unit}` : suggestion.text
     return autocompletion({ override: [source], icons: true });
   }
 
+  // src/editor/definition.ts
+  function stxtGoToDefinition(goTo) {
+    const goToAt = (view, pos) => {
+      const line = view.state.doc.lineAt(pos);
+      return goTo(line.number - 1, pos - line.from);
+    };
+    return [
+      keymap.of([{ key: "Mod-b", run: (view) => goToAt(view, view.state.selection.main.head) }]),
+      EditorView.domEventHandlers({
+        mousedown(event, view) {
+          if (!(event.ctrlKey || event.metaKey) || event.button !== 0) {
+            return false;
+          }
+          const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+          if (pos === null || !goToAt(view, pos)) {
+            return false;
+          }
+          event.preventDefault();
+          return true;
+        }
+      })
+    ];
+  }
+
   // src/editor/hover.ts
   function stxtHover(describe) {
     return hoverTooltip((view, pos) => {
@@ -24131,6 +24269,7 @@ ${indentation}${unit}` : suggestion.text
       highlightField,
       stxtCompletion(config.completions),
       stxtHover(config.describeNode),
+      stxtGoToDefinition(config.goToDefinition),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           onDocChanged(update.view);
@@ -24163,7 +24302,7 @@ ${indentation}${unit}` : suggestion.text
   }
 
   // seed/recipe-pancakes.stxt
-  var recipe_pancakes_default = '# Welcome to the STXT playground.\n# Everything runs in your browser: edit the document and watch the analysis react.\n# The template "stxt.play.cooking" in the list on the left validates this document.\n# Try adding a node it does not declare, or press Ctrl+Space on a new line to see what fits.\nRecipe (stxt.play.cooking): Pancakes\n	Serves: 4\n	Minutes: 20\n	Difficulty: Easy\n	Ingredients:\n		Ingredient: 200 g flour\n		Ingredient: 2 eggs\n		Ingredient: 300 ml milk\n		Ingredient: A pinch of salt and a little butter\n	Steps >>\n		Whisk the flour, eggs, milk and salt into a smooth batter.\n		Melt a little butter in a hot pan and pour in a ladle of batter.\n		Cook until bubbles appear, flip, and cook the other side.\n		Everything in this block is literal text: # : >> are not parsed.\n';
+  var recipe_pancakes_default = '# Welcome to the STXT playground.\n# Everything runs in your browser: edit the document and watch the analysis react.\n# The template "stxt.play.cooking" in the list on the left validates this document.\n# Try adding a node it does not declare, or press Ctrl+Space on a new line to see what fits.\n# Ctrl+Click a node name (Cmd+Click on macOS) to jump to where the template declares it.\nRecipe (stxt.play.cooking): Pancakes\n	Serves: 4\n	Minutes: 20\n	Difficulty: Easy\n	Ingredients:\n		Ingredient: 200 g flour\n		Ingredient: 2 eggs\n		Ingredient: 300 ml milk\n		Ingredient: A pinch of salt and a little butter\n	Steps >>\n		Whisk the flour, eggs, milk and salt into a smooth batter.\n		Melt a little butter in a hot pan and pour in a ladle of batter.\n		Cook until bubbles appear, flip, and cook the other side.\n		Everything in this block is literal text: # : >> are not parsed.\n';
 
   // seed/recipe-bolognese.stxt
   var recipe_bolognese_default = "# Optional nodes may be present or not: this recipe has Tags and Notes, the previous one had neither.\n# Notes is a MARKDOWN block; Steps is plain TEXT. Both are literal text for the parser.\nRecipe (stxt.play.cooking): Spaghetti bolognese\n	Serves: 4\n	Minutes: 45\n	Difficulty: Easy\n	Tags:\n		Tag: Pasta\n		Tag: Family\n		Tag: Make ahead\n	Ingredients:\n		Ingredient: 400 g spaghetti\n		Ingredient: 400 g minced beef\n		Ingredient: 1 onion\n		Ingredient: 1 carrot\n		Ingredient: 400 g crushed tomatoes\n		Ingredient: Olive oil, salt and oregano\n		Ingredient: Grated cheese\n	Steps >>\n		Fry the chopped onion and carrot in olive oil, then brown the mince.\n		Add the tomatoes, salt and oregano and simmer for half an hour.\n		Boil the pasta, drain it, mix with the sauce and top with grated cheese.\n	Notes >>\n		The sauce is **better the next day**, so make it ahead if you can.\n		Some people finish it in the oven for five minutes to melt the cheese.\n";
@@ -25041,13 +25180,26 @@ Book (stxt.play.library):
         }
       },
       completions: (line, linePrefix) => shownId === null ? null : analyzer.getCompletions(shownId, line, linePrefix),
-      describeNode: (line) => shownId === null ? void 0 : analyzer.describeNode(shownId, line)
+      describeNode: (line) => shownId === null ? void 0 : analyzer.describeNode(shownId, line),
+      goToDefinition: (line, character) => goToDefinition(line, character)
     });
     const view = editor.view;
     const goToLine = (line) => {
       const docLine = view.state.doc.line(Math.min(line + 1, view.state.doc.lines));
       view.dispatch({ selection: { anchor: docLine.from }, scrollIntoView: true });
       view.focus();
+    };
+    const goToDefinition = (line, character) => {
+      const location2 = shownId === null ? void 0 : analyzer.findDefinition(shownId, line, character);
+      if (!location2) {
+        return false;
+      }
+      workspace.setActive(location2.documentId);
+      if (shownId !== location2.documentId) {
+        return false;
+      }
+      goToLine(location2.line);
+      return true;
     };
     const panel2 = createProblemsPanel(problemsList, problemsCount, goToLine);
     const list = createDocumentList(docList, docNew, {

@@ -45,6 +45,14 @@ export interface GrammarIssue {
 	message: string;
 }
 
+/** The active definition of a namespace: the workspace document and the root node that define it. */
+export interface GrammarDefinition {
+	/** Identifier of the document that holds the grammar. */
+	documentId: string;
+	/** The grammar root (`Name (@stxt.schema): ns` or `Name (@stxt.template): ns`), with its lines. */
+	root: Node;
+}
+
 /** @returns true when the root node defines a grammar (a schema or a template). */
 export function isGrammarRoot(node: Node): boolean {
 	const namespace = node.getNamespace();
@@ -77,6 +85,7 @@ export class GrammarRegistry implements SchemaProvider {
 	private readonly metas = new UnifiedSchemaProvider();
 
 	private readonly schemas = new Map<string, Schema>();
+	private readonly definitions = new Map<string, GrammarDefinition>();
 	private readonly conflicted = new Set<string>();
 	private issues: GrammarIssue[] = [];
 
@@ -91,6 +100,7 @@ export class GrammarRegistry implements SchemaProvider {
 	 */
 	load(sources: GrammarSource[]): void {
 		this.schemas.clear();
+		this.definitions.clear();
 		this.conflicted.clear();
 		this.issues = [];
 
@@ -121,6 +131,7 @@ export class GrammarRegistry implements SchemaProvider {
 					owners.set(key, list);
 
 					this.schemas.set(key, schema);
+					this.definitions.set(key, { documentId, root });
 				} catch (e: unknown) {
 					this.issues.push(GrammarRegistry.toIssue(documentId, root, e));
 				}
@@ -131,6 +142,7 @@ export class GrammarRegistry implements SchemaProvider {
 			if (list.length > 1) {
 				this.conflicted.add(key);
 				this.schemas.delete(key);
+				this.definitions.delete(key);
 
 				for (const owner of list) {
 					this.issues.push({
@@ -161,6 +173,17 @@ export class GrammarRegistry implements SchemaProvider {
 			return undefined;
 		}
 		return this.schemas.get(key);
+	}
+
+	/**
+	 * Where a namespace is defined, for "go to definition". The two reserved namespaces are
+	 * built-in and have no document; a conflicted namespace has no active definition.
+	 *
+	 * @param namespace namespace whose definition is wanted.
+	 * @returns the document and grammar root, or undefined if the workspace does not define it.
+	 */
+	getDefinition(namespace: string): GrammarDefinition | undefined {
+		return this.definitions.get(StringUtils.lowerCase(namespace));
 	}
 
 	/** @returns the problems found while loading, in workspace order. */

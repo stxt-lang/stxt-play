@@ -12,6 +12,7 @@ import {
 } from "@codemirror/view";
 import { IndentMode } from "../workspace";
 import { CompletionProvider, stxtCompletion } from "./completion";
+import { DefinitionNavigator, stxtGoToDefinition } from "./definition";
 import { highlightField } from "./highlight";
 import { NodeInfoProvider, stxtHover } from "./hover";
 
@@ -27,6 +28,8 @@ export interface StxtEditorConfig {
 	completions: CompletionProvider;
 	/** Description of the node at a line of the document in the view, for the hover. */
 	describeNode: NodeInfoProvider;
+	/** Goes to the definition of the node at a position of the document in the view. */
+	goToDefinition: DefinitionNavigator;
 }
 
 /** The STXT editor: one view, and a factory for the state of every workspace document. */
@@ -88,7 +91,8 @@ const insertIndentUnit: Command = (view) => {
  *   dedents; the unit is a tab by default and four spaces when the header says so.
  * - Highlighting comes from {@link highlightField}, fed by the analysis — never from a grammar.
  * - The lint gutter marks the lines with diagnostics; the app pushes them with `setDiagnostics`.
- * - Autocompletion and hover ask the analysis through the two providers of the config.
+ * - Autocompletion, hover and "go to definition" ask the analysis through the providers of the
+ *   config.
  *
  * @param config the editor configuration (the parent element is not used here).
  */
@@ -110,6 +114,7 @@ export function createStxtExtensions(config: Omit<StxtEditorConfig, "parent">): 
 		highlightField,
 		stxtCompletion(config.completions),
 		stxtHover(config.describeNode),
+		stxtGoToDefinition(config.goToDefinition),
 		EditorView.updateListener.of((update) => {
 			if (update.docChanged) {
 				onDocChanged(update.view);

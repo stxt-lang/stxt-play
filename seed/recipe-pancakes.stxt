@@ -2,6 +2,7 @@
 # Everything runs in your browser: edit the document and watch the analysis react.
 # The template "stxt.play.cooking" in the list on the left validates this document.
 # Try adding a node it does not declare, or press Ctrl+Space on a new line to see what fits.
+# Ctrl+Click a node name (Cmd+Click on macOS) to jump to where the template declares it.
 Recipe (stxt.play.cooking): Pancakes
 	Serves: 4
 	Minutes: 20

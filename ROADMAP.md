@@ -227,6 +227,19 @@ cabecera se pliega en dos filas.
       *Summary* de los libros de la semilla. Tests en `test/markdown.test.ts` y en la semilla.
       Sale en la **0.2.3**.
 
+- [x] **Ir a la definición** (2026-08-17, punto 1 de la segunda edición del `ROADMAP.md` de
+      `../stxt`, ya renumerada): igual que en VS Code —Ctrl+Click (Cmd+Click en macOS) sobre el
+      nombre de un nodo, o Ctrl+B / Cmd+B con el cursor en él— abre la gramática del workspace
+      que define su namespace, en la línea del `Node:` (esquema) o del propio nodo dentro de
+      `Structure >>` (plantilla); sobre el namespace, en la raíz de la gramática. Sin gramática,
+      namespace en conflicto, `@stxt.*` o sobre el valor, no hace nada. F12 no se ata porque el
+      navegador lo reserva para sus herramientas de desarrollo. `src/analysis/definition.ts`
+      (`findDefinition`, portado del `DefinitionProvider` de `../stxt-vscode` pero sobre el nodo
+      raíz ya parseado que ahora guarda `GrammarRegistry.getDefinition`), `Analyzer.findDefinition`
+      y `src/editor/definition.ts` (keymap + `mousedown` con Ctrl/Meta); la app activa el documento
+      destino y mueve el cursor. Tests en `test/definition.test.ts`; comprobado en Chrome headless.
+      Sale en la **0.2.4**.
+
 **El playground está terminado** según este plan. Lo que venga —ideas nuevas— entra por el
 `TODO.md` de `../stxt` y, si cuaja, como fase nueva aquí.
 

@@ -182,6 +182,7 @@ function main(): void {
 		},
 		completions: (line, linePrefix) => (shownId === null ? null : analyzer.getCompletions(shownId, line, linePrefix)),
 		describeNode: (line) => (shownId === null ? undefined : analyzer.describeNode(shownId, line)),
+		goToDefinition: (line, character) => goToDefinition(line, character),
 	});
 	const view = editor.view;
 
@@ -189,6 +190,24 @@ function main(): void {
 		const docLine = view.state.doc.line(Math.min(line + 1, view.state.doc.lines));
 		view.dispatch({ selection: { anchor: docLine.from }, scrollIntoView: true });
 		view.focus();
+	};
+
+	/**
+	 * "Go to definition" from a position of the shown document: the analysis says which
+	 * workspace document and line define the node; activating that document puts it in the view
+	 * (through the workspace event), and then the cursor goes to the line.
+	 */
+	const goToDefinition = (line: number, character: number): boolean => {
+		const location = shownId === null ? undefined : analyzer.findDefinition(shownId, line, character);
+		if (!location) {
+			return false;
+		}
+		workspace.setActive(location.documentId);
+		if (shownId !== location.documentId) {
+			return false;
+		}
+		goToLine(location.line);
+		return true;
 	};
 
 	// --- Rendering ----------------------------------------------------------------------------

@@ -9,6 +9,7 @@ import {
 	TextNode,
 } from "@stxt-lang/core";
 import { CompletionResult, computeCompletions } from "./completion";
+import { DefinitionLocation, findDefinition } from "./definition";
 import { Diagnostic } from "./Diagnostic";
 import { GrammarRegistry, grammarKindOf, isGrammarRoot } from "./GrammarRegistry";
 import { MarkdownState, newMarkdownState, tokenizeMarkdownLine } from "./MarkdownTokenizer";
@@ -205,6 +206,20 @@ export class Analyzer {
 	describeNode(id: string, line: number): NodeInfo | undefined {
 		const analysis = this.analyses.get(id);
 		return analysis ? describeNodeAtLine(analysis, this.registry, line) : undefined;
+	}
+
+	/**
+	 * Where the node at a position of a document is defined, for "go to definition" (see
+	 * `definition.ts`).
+	 *
+	 * @param id identifier of the document.
+	 * @param line 0-based line of the position.
+	 * @param character 0-based column of the position.
+	 * @returns the workspace document and line of the definition, or undefined if there is none.
+	 */
+	findDefinition(id: string, line: number, character: number): DefinitionLocation | undefined {
+		const analysis = this.analyses.get(id);
+		return analysis ? findDefinition(analysis, this.registry, line, character) : undefined;
 	}
 
 	/** Parses a document once, collecting tokens, line maps and syntax errors. */

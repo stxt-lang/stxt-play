@@ -150,7 +150,7 @@
          */
         static isValidNodeName(input) {
           const nfc = this.compactSpaces(input).normalize("NFC");
-          return this.NODE_NAME.test(nfc) && this.normalize(nfc).length > 0;
+          return this.NODE_NAME.test(nfc) && this.NODE_NAME_LETTER_OR_DIGIT.test(nfc);
         }
         // Used for the normalized name of the nodes (STXT-SPEC 4.3): NFC + lower case,
         // keeping diacritics and non-Latin alphabets (IDN model)
@@ -173,7 +173,8 @@
         }
       };
       exports.StringUtils = StringUtils5;
-      StringUtils5.NODE_NAME = /^[\p{L}\p{Nd}\-_ ]+$/u;
+      StringUtils5.NODE_NAME = /^[\p{L}\p{Nd}\p{Mn}\p{Mc}\-_ ]+$/u;
+      StringUtils5.NODE_NAME_LETTER_OR_DIGIT = /[\p{L}\p{Nd}]/u;
     }
   });
 
@@ -960,6 +961,9 @@
             const lastNodeText = lastNode instanceof TextNode_1.TextNode;
             const line = (0, LineParser_1.parseLine)(lineString, lastNodeText, lastLevel, lineNumber);
             if (line.isComment) {
+              if (lastNodeText) {
+                this.closeToLevel(stack, stack.length - 1, result);
+              }
               this.observers.forEach((observer) => {
                 observer.onComment(lineNumber, lineString);
               });
@@ -1609,6 +1613,14 @@
         validate(node) {
           const errors = [];
           const namespace = node.getNamespace();
+          if (namespace === "") {
+            if (this.recursiveValidation && node instanceof InlineNode_1.InlineNode) {
+              for (const childNode of node.getChildren()) {
+                errors.push(...this.validate(childNode));
+              }
+            }
+            return errors;
+          }
           const schema = this.schemaProvider.getSchema(namespace);
           if (!schema) {
             errors.push(new ValidationException_1.ValidationException(node.getLine(), "SCHEMA_NOT_FOUND", `Not found schema: ${namespace}`));

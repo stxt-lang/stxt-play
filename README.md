@@ -60,8 +60,8 @@ about.
 
 The workspace lives in the browser: it is saved to `localStorage` as you type and comes back on
 the next visit. Nothing leaves your machine. **Share** puts the whole workspace, compressed, in the
-URL fragment — the link carries the documents, no server involved — and **↺ Reset** brings back the
-example documents (see `seed/`).
+URL fragment — the link carries the documents, no server involved — **↺ Reset** brings back the
+example documents (see `seed/`), and **Clear** (the bin icon) removes them all and leaves a single empty one.
 
 ### Opening a document from a link
 

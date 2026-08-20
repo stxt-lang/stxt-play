@@ -25125,9 +25125,10 @@ Book (stxt.play.library):
     const indentSpaces = document.getElementById("indent-spaces");
     const validationToggle = document.getElementById("validation-toggle");
     const docReset = document.getElementById("doc-reset");
+    const docClear = document.getElementById("doc-clear");
     const shareButton = document.getElementById("share");
     const status = document.getElementById("status");
-    if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount || !indentTabs || !indentSpaces || !validationToggle || !docReset || !shareButton || !status) {
+    if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount || !indentTabs || !indentSpaces || !validationToggle || !docReset || !docClear || !shareButton || !status) {
       return;
     }
     let statusTimer;
@@ -25409,6 +25410,26 @@ Book (stxt.play.library):
         if (confirmed) {
           loadSeed();
           showStatus("Workspace reset to the examples.");
+          view.focus();
+        }
+      });
+    });
+    const clearDocuments = () => {
+      for (const document2 of workspace.getDocuments()) {
+        workspace.removeDocument(document2.id);
+      }
+      workspace.addDocument();
+    };
+    docClear.addEventListener("click", () => {
+      void confirmDialog({
+        title: "Clear the workspace?",
+        message: "Every document is removed and you start from an empty one. This cannot be undone.",
+        confirmLabel: "Clear",
+        danger: true
+      }).then((confirmed) => {
+        if (confirmed) {
+          clearDocuments();
+          showStatus("Workspace cleared.");
           view.focus();
         }
       });

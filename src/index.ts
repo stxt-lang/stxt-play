@@ -28,7 +28,7 @@ import {
 } from "./workspace";
 
 /**
- * Entry point of the playground (phase 6: seed content, reset, share links, finish).
+ * Entry point of the playground (phase 6: seed content, reset and clear, share links, finish).
  *
  * The wiring keeps a single flow of data: the workspace model is the source of truth for the
  * documents, the analyzer mirrors it (one cached parse per document), and everything visible —
@@ -112,10 +112,12 @@ function main(): void {
 	const indentSpaces = document.getElementById("indent-spaces");
 	const validationToggle = document.getElementById("validation-toggle");
 	const docReset = document.getElementById("doc-reset");
+	const docClear = document.getElementById("doc-clear");
 	const shareButton = document.getElementById("share");
 	const status = document.getElementById("status");
 	if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount
-		|| !indentTabs || !indentSpaces || !validationToggle || !docReset || !shareButton || !status) {
+		|| !indentTabs || !indentSpaces || !validationToggle || !docReset || !docClear || !shareButton
+		|| !status) {
 		return;
 	}
 
@@ -433,7 +435,7 @@ function main(): void {
 		schedulePersist();
 	});
 
-	// --- Seed and reset -----------------------------------------------------------------------
+	// --- Seed, reset and clear ----------------------------------------------------------------
 
 	/** Replaces every document with the seed and activates the first one. */
 	const loadSeed = (): void => {
@@ -459,6 +461,29 @@ function main(): void {
 			if (confirmed) {
 				loadSeed();
 				showStatus("Workspace reset to the examples.");
+				view.focus();
+			}
+		});
+	});
+
+	/** Removes every document and leaves a single empty one: the playground always has something to edit. */
+	const clearDocuments = (): void => {
+		for (const document of workspace.getDocuments()) {
+			workspace.removeDocument(document.id);
+		}
+		workspace.addDocument();
+	};
+
+	docClear.addEventListener("click", () => {
+		void confirmDialog({
+			title: "Clear the workspace?",
+			message: "Every document is removed and you start from an empty one. This cannot be undone.",
+			confirmLabel: "Clear",
+			danger: true,
+		}).then((confirmed) => {
+			if (confirmed) {
+				clearDocuments();
+				showStatus("Workspace cleared.");
 				view.focus();
 			}
 		});

@@ -45,6 +45,14 @@ $warning: #9a6b00;
 		line-height: 1;
 		cursor: pointer;
 
+		// Icon buttons (clear): a stroke icon in the text colour, sized like the glyphs
+		svg {
+			width: 1rem;
+			height: 1rem;
+			display: block;
+			margin: auto;
+		}
+
 		&:hover,
 		&:focus-visible {
 			border-color: $color1;

@@ -259,14 +259,6 @@
         getCanonicalName() {
           return this.canonicalName;
         }
-        /**
-         * @returns the canonical name of the node.
-         * @deprecated since 0.7.0, use {@link Node.getCanonicalName}; "canonical name" is the term of
-         *             the specifications. To be removed in a later version.
-         */
-        getNormalizedName() {
-          return this.canonicalName;
-        }
         /** @returns the canonical name prefixed by the effective namespace (`namespace:name`), or just the canonical name when there is no namespace. */
         getQualifiedName() {
           const namespace = this.getNamespace();
@@ -653,14 +645,14 @@
          * @param content content of the line without its indentation.
          * @param isComment true if the line is a comment.
          * @param isBlock true if the line belongs to an open text block.
-         * @param indentLength number of characters the indentation took up.
+         * @param contentStart index of the first character of the content, i.e. the number of characters the indentation took up.
          */
-        constructor(level, content2, isComment, isBlock, indentLength) {
+        constructor(level, content2, isComment, isBlock, contentStart) {
           this.level = level;
           this.content = content2;
           this.isComment = isComment;
           this.isBlock = isBlock;
-          this.indentLength = indentLength;
+          this.contentStart = contentStart;
         }
         /** @returns true if the line has no content beyond blanks (space/tab only, spec 4). */
         isEmpty() {
@@ -712,7 +704,7 @@
             if (validate && sawSpace && sawTab && text.length > 0) {
               throw new ParseException_1.ParseException(numLine, "INDENTATION_MIXED", `Mixed tabs and spaces in indentation`);
             }
-            return new Line_1.Line(level, text, false, true, pointer);
+            return new Line_1.Line(level, text, false, true, pointer + 1);
           }
           pointer++;
         }
@@ -1129,6 +1121,10 @@
           this.namespace = StringUtils_1.StringUtils.lowerCase(namespace);
           this.description = description;
           NamespaceValidator_1.NamespaceValidator.validateNamespaceFormat(this.namespace, line);
+        }
+        /** @returns the description of the schema (STXT-SCHEMA-SPEC §6.1), or undefined if it has none. */
+        getDescription() {
+          return this.description;
         }
         /** @returns the node definitions, indexed by their canonical name. */
         getNodes() {
@@ -1834,7 +1830,7 @@
           this.children = /* @__PURE__ */ new Map();
           this.values = /* @__PURE__ */ new Set();
           this.name = StringUtils_1.StringUtils.compactSpaces(name2);
-          this.normalizedName = StringUtils_1.StringUtils.normalize(name2);
+          this.canonicalName = StringUtils_1.StringUtils.normalize(name2);
           this.type = type;
           this.description = description;
           if (!StringUtils_1.StringUtils.isValidNodeName(this.name)) {
@@ -1847,14 +1843,7 @@
         }
         /** @returns the canonical name of the node. */
         getCanonicalName() {
-          return this.normalizedName;
-        }
-        /**
-         * @returns the canonical name of the node.
-         * @deprecated since 0.7.0, use getCanonicalName().
-         */
-        getNormalizedName() {
-          return this.normalizedName;
+          return this.canonicalName;
         }
         /** @returns the name of the value type of this node (see {@link TypeRegistry}). */
         getType() {
@@ -1926,7 +1915,7 @@
         toJSON() {
           return {
             name: this.getName(),
-            normalizedName: this.getNormalizedName(),
+            canonicalName: this.getCanonicalName(),
             type: this.getType(),
             description: this.description,
             children: Array.from(this.getChildren().values()).map((c) => c.toJSON()),
@@ -1960,7 +1949,7 @@
          */
         constructor(name2, namespace, min, max, numLine) {
           this.name = StringUtils_1.StringUtils.compactSpaces(name2);
-          this.normalizedName = StringUtils_1.StringUtils.normalize(name2);
+          this.canonicalName = StringUtils_1.StringUtils.normalize(name2);
           this.namespace = StringUtils_1.StringUtils.lowerCase(namespace);
           this.min = min;
           this.max = max;
@@ -1975,14 +1964,7 @@
         }
         /** @returns the canonical name of the expected child. */
         getCanonicalName() {
-          return this.normalizedName;
-        }
-        /**
-         * @returns the canonical name of the expected child.
-         * @deprecated since 0.7.0, use getCanonicalName().
-         */
-        getNormalizedName() {
-          return this.normalizedName;
+          return this.canonicalName;
         }
         /** @returns the namespace of the expected child, or the empty string if it has none. */
         getNamespace() {
@@ -1998,13 +1980,13 @@
         }
         /** @returns the canonical name prefixed by its namespace, used as the key in {@link NodeDefinition.getChildren}. */
         getQualifiedName() {
-          return this.namespace.length === 0 ? this.normalizedName : `${this.namespace}:${this.normalizedName}`;
+          return this.namespace.length === 0 ? this.canonicalName : `${this.namespace}:${this.canonicalName}`;
         }
         /** @returns a plain object with the definition, so that JSON.stringify serializes it. */
         toJSON() {
           return {
             name: this.getName(),
-            normalizedName: this.getNormalizedName(),
+            canonicalName: this.getCanonicalName(),
             namespace: this.getNamespace(),
             min: this.getMin(),
             max: this.getMax()
@@ -2252,6 +2234,85 @@
     }
   });
 
+  // node_modules/@stxt-lang/core/out/schema/SchemaProviderMemory.js
+  var require_SchemaProviderMemory = __commonJS({
+    "node_modules/@stxt-lang/core/out/schema/SchemaProviderMemory.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.SchemaProviderMemory = void 0;
+      var Parser_1 = require_Parser();
+      var StringUtils_1 = require_StringUtils();
+      var ValidationException_1 = require_ValidationException();
+      var SchemaParser_1 = require_SchemaParser();
+      var SchemaProviderMeta_1 = require_SchemaProviderMeta();
+      var SchemaValidator_1 = require_SchemaValidator();
+      var SchemaProviderMemory = class {
+        /**
+         * Creates an empty provider.
+         *
+         * @param parent provider to fall back to when a namespace is not registered here; the
+         *        meta-schema provider when omitted.
+         */
+        constructor(parent) {
+          this.schemas = /* @__PURE__ */ new Map();
+          if (!parent) {
+            this.parentSchema = new SchemaProviderMeta_1.SchemaProviderMeta();
+          } else {
+            this.parentSchema = parent;
+          }
+        }
+        /**
+         * Resolves the schema that applies to a namespace, delegating to the parent provider when it
+         * is not registered here.
+         *
+         * @param namespace namespace whose schema is wanted.
+         * @returns the schema of the namespace, or null/undefined if neither this provider nor its parent has one.
+         */
+        getSchema(namespace) {
+          const key = StringUtils_1.StringUtils.lowerCase(namespace);
+          let result = this.schemas.get(key);
+          if (!result) {
+            result = this.parentSchema.getSchema(namespace);
+          }
+          return result;
+        }
+        /**
+         * Parses a schema document, validates it against the meta-schema and registers it under its
+         * own namespace.
+         *
+         * @param txt text of the `@stxt.schema` document.
+         * @throws ParseException or ValidationException if the document is not a valid schema; in
+         *         particular `SCHEMA_MULTIPLE_ROOTS` if it does not hold exactly one root node.
+         */
+        addSchema(txt) {
+          const parser = new Parser_1.Parser();
+          const nodes = parser.parse(txt);
+          if (nodes.length !== 1) {
+            throw new ValidationException_1.ValidationException(0, "SCHEMA_MULTIPLE_ROOTS", `A schema document must hold exactly 1 root node, got ${nodes.length}`);
+          }
+          const node = nodes[0];
+          const schemaValidator = new SchemaValidator_1.SchemaValidator(new SchemaProviderMeta_1.SchemaProviderMeta(), true);
+          const errors = schemaValidator.validate(node);
+          if (errors.length > 0) {
+            throw errors[0];
+          }
+          const schema = (0, SchemaParser_1.transformNodeToSchema)(node);
+          const key = schema.getNamespace();
+          this.schemas.set(key, schema);
+        }
+        /** Removes every schema registered in this provider (the parent one is left untouched). */
+        clear() {
+          this.schemas.clear();
+        }
+        /** @returns every schema registered in this provider, in registration order. */
+        getAllSchemas() {
+          return Array.from(this.schemas.values());
+        }
+      };
+      exports.SchemaProviderMemory = SchemaProviderMemory;
+    }
+  });
+
   // node_modules/@stxt-lang/core/out/template/ChildLine.js
   var require_ChildLine = __commonJS({
     "node_modules/@stxt-lang/core/out/template/ChildLine.js"(exports) {
@@ -2404,6 +2465,7 @@
     "node_modules/@stxt-lang/core/out/template/TemplateParser.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
+      exports.TEMPLATE_NAMESPACE = void 0;
       exports.transformTemplateNodeToSchema = transformTemplateNodeToSchema2;
       var InlineNode_1 = require_InlineNode();
       var Parser_1 = require_Parser();
@@ -2416,10 +2478,10 @@
       var ParseException_1 = require_ParseException();
       var TypeRegistry_1 = require_TypeRegistry();
       var NamespaceValidator_1 = require_NamespaceValidator();
-      var TEMPLATE_NAMESPACE2 = "@stxt.template";
+      exports.TEMPLATE_NAMESPACE = "@stxt.template";
       function transformTemplateNodeToSchema2(node) {
-        if (node.getCanonicalName() !== "template" || node.getNamespace() !== TEMPLATE_NAMESPACE2) {
-          throw new ValidationException_1.ValidationException(node.getLine(), "TEMPLATE_ROOT_NOT_VALID", `Expected template(${TEMPLATE_NAMESPACE2}) but got ${node.getCanonicalName()}(${node.getNamespace()})`);
+        if (node.getCanonicalName() !== "template" || node.getNamespace() !== exports.TEMPLATE_NAMESPACE) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "TEMPLATE_ROOT_NOT_VALID", `Expected template(${exports.TEMPLATE_NAMESPACE}) but got ${node.getCanonicalName()}(${node.getNamespace()})`);
         }
         const targetNamespace = StringUtils_1.StringUtils.lowerCase(node.getText());
         if (!targetNamespace || targetNamespace.trim().length === 0) {
@@ -2736,38 +2798,6 @@
     }
   });
 
-  // node_modules/@stxt-lang/core/out/runtime/ConditionalValidator.js
-  var require_ConditionalValidator = __commonJS({
-    "node_modules/@stxt-lang/core/out/runtime/ConditionalValidator.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.ConditionalValidator = void 0;
-      var ConditionalValidator2 = class {
-        /**
-         * Creates a validator that delegates to a schema validator.
-         *
-         * @param schemaValidator validator the namespaced nodes are handed over to.
-         */
-        constructor(schemaValidator) {
-          this.schemaValidator = schemaValidator;
-        }
-        /**
-         * Validates a node when it has a namespace, and lets it through otherwise.
-         *
-         * @param node already closed node to validate.
-         * @returns the validation errors found, or an empty array if the node is valid or has no namespace.
-         */
-        validate(node) {
-          if (node.getNamespace() !== "") {
-            return this.schemaValidator.validate(node);
-          }
-          return [];
-        }
-      };
-      exports.ConditionalValidator = ConditionalValidator2;
-    }
-  });
-
   // node_modules/@stxt-lang/core/out/runtime/NodeWriter.js
   var require_NodeWriter = __commonJS({
     "node_modules/@stxt-lang/core/out/runtime/NodeWriter.js"(exports) {
@@ -2882,6 +2912,60 @@
           children: inline.getChildren().map((child) => toCanonicalNode(child))
         };
       }
+    }
+  });
+
+  // node_modules/@stxt-lang/core/out/template/TemplateSchemaProviderMemory.js
+  var require_TemplateSchemaProviderMemory = __commonJS({
+    "node_modules/@stxt-lang/core/out/template/TemplateSchemaProviderMemory.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.TemplateSchemaProviderMemory = void 0;
+      var Parser_1 = require_Parser();
+      var SchemaValidator_1 = require_SchemaValidator();
+      var ValidationException_1 = require_ValidationException();
+      var MetaTemplateSchemaProvider_1 = require_MetaTemplateSchemaProvider();
+      var SchemaProviderMemory_1 = require_SchemaProviderMemory();
+      var TemplateParser_1 = require_TemplateParser();
+      var TemplateSchemaProviderMemory = class extends SchemaProviderMemory_1.SchemaProviderMemory {
+        /**
+         * Creates an empty provider.
+         *
+         * @param parent provider to fall back to when a namespace is not registered here; the
+         *        template meta-schema provider when omitted.
+         */
+        constructor(parent) {
+          if (!parent) {
+            parent = new MetaTemplateSchemaProvider_1.MetaTemplateSchemaProvider();
+          }
+          super(parent);
+        }
+        /**
+         * Parses a template document, validates it against the template meta-schema and registers the
+         * schema it produces.
+         *
+         * @param template text of the `@stxt.template` document.
+         * @throws ValidationException with code `TEMPLATE_MULTIPLE_ROOTS` if the document does not hold
+         *         exactly one root node, `TEMPLATE_ROOT_NOT_VALID` or `TEMPLATE_NAMESPACE_EMPTY` if that
+         *         root is not `Template (@stxt.template): ns`, or the first validation error if the
+         *         template does not validate against the template meta-schema.
+         */
+        addTemplate(template) {
+          const parser = new Parser_1.Parser();
+          const nodes = parser.parse(template);
+          if (nodes.length !== 1) {
+            throw new ValidationException_1.ValidationException(0, "TEMPLATE_MULTIPLE_ROOTS", `A template document must hold exactly 1 root node, got ${nodes.length}`);
+          }
+          const schemaValidator = new SchemaValidator_1.SchemaValidator(new MetaTemplateSchemaProvider_1.MetaTemplateSchemaProvider(), true);
+          const errors = schemaValidator.validate(nodes[0]);
+          if (errors.length > 0) {
+            throw errors[0];
+          }
+          const sch = (0, TemplateParser_1.transformTemplateNodeToSchema)(nodes[0]);
+          this.schemas.set(sch.getNamespace(), sch);
+        }
+      };
+      exports.TemplateSchemaProviderMemory = TemplateSchemaProviderMemory;
     }
   });
 
@@ -3236,7 +3320,7 @@
     "node_modules/@stxt-lang/core/out/all.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.DiscoveryError = exports.DiscoveryResult = exports.DiscoveryResolver = exports.transformTemplateNodeToSchema = exports.toCanonicalJson = exports.toCanonicalTree = exports.IndentStyle = exports.NodeWriter = exports.ConditionalValidator = exports.UnifiedSchemaProvider = exports.transformNodeToSchema = exports.ChildDefinition = exports.NodeDefinition = exports.SchemaValidator = exports.Schema = exports.ValidationException = exports.ParseException = exports.StringUtils = exports.parseLine = exports.SPEC_VERSION = exports.Constants = exports.Line = exports.ParseResult = exports.Parser = exports.TextNode = exports.InlineNode = exports.Node = void 0;
+      exports.DiscoveryError = exports.DiscoveryResult = exports.DiscoveryResolver = exports.MetaTemplateSchemaProvider = exports.TemplateSchemaProviderMemory = exports.TEMPLATE_NAMESPACE = exports.transformTemplateNodeToSchema = exports.toCanonicalJson = exports.toCanonicalTree = exports.IndentStyle = exports.NodeWriter = exports.UnifiedSchemaProvider = exports.transformNodeToSchema = exports.ChildDefinition = exports.NodeDefinition = exports.TypeRegistry = exports.SchemaProviderMeta = exports.SchemaProviderMemory = exports.SchemaValidator = exports.Schema = exports.RuntimeException = exports.ValidationException = exports.ParseException = exports.StringUtils = exports.parseLine = exports.SPEC_VERSION = exports.Constants = exports.Line = exports.ParseResult = exports.Parser = exports.TextNode = exports.InlineNode = exports.Node = void 0;
       var Node_1 = require_Node();
       Object.defineProperty(exports, "Node", { enumerable: true, get: function() {
         return Node_1.Node;
@@ -3283,6 +3367,10 @@
       Object.defineProperty(exports, "ValidationException", { enumerable: true, get: function() {
         return ValidationException_1.ValidationException;
       } });
+      var RuntimeException_1 = require_RuntimeException();
+      Object.defineProperty(exports, "RuntimeException", { enumerable: true, get: function() {
+        return RuntimeException_1.RuntimeException;
+      } });
       var Schema_1 = require_Schema();
       Object.defineProperty(exports, "Schema", { enumerable: true, get: function() {
         return Schema_1.Schema;
@@ -3290,6 +3378,18 @@
       var SchemaValidator_1 = require_SchemaValidator();
       Object.defineProperty(exports, "SchemaValidator", { enumerable: true, get: function() {
         return SchemaValidator_1.SchemaValidator;
+      } });
+      var SchemaProviderMemory_1 = require_SchemaProviderMemory();
+      Object.defineProperty(exports, "SchemaProviderMemory", { enumerable: true, get: function() {
+        return SchemaProviderMemory_1.SchemaProviderMemory;
+      } });
+      var SchemaProviderMeta_1 = require_SchemaProviderMeta();
+      Object.defineProperty(exports, "SchemaProviderMeta", { enumerable: true, get: function() {
+        return SchemaProviderMeta_1.SchemaProviderMeta;
+      } });
+      var TypeRegistry_1 = require_TypeRegistry();
+      Object.defineProperty(exports, "TypeRegistry", { enumerable: true, get: function() {
+        return TypeRegistry_1.TypeRegistry;
       } });
       var NodeDefinition_1 = require_NodeDefinition();
       Object.defineProperty(exports, "NodeDefinition", { enumerable: true, get: function() {
@@ -3306,10 +3406,6 @@
       var UnifiedSchemaProvider_1 = require_UnifiedSchemaProvider();
       Object.defineProperty(exports, "UnifiedSchemaProvider", { enumerable: true, get: function() {
         return UnifiedSchemaProvider_1.UnifiedSchemaProvider;
-      } });
-      var ConditionalValidator_1 = require_ConditionalValidator();
-      Object.defineProperty(exports, "ConditionalValidator", { enumerable: true, get: function() {
-        return ConditionalValidator_1.ConditionalValidator;
       } });
       var NodeWriter_1 = require_NodeWriter();
       Object.defineProperty(exports, "NodeWriter", { enumerable: true, get: function() {
@@ -3328,6 +3424,17 @@
       var TemplateParser_1 = require_TemplateParser();
       Object.defineProperty(exports, "transformTemplateNodeToSchema", { enumerable: true, get: function() {
         return TemplateParser_1.transformTemplateNodeToSchema;
+      } });
+      Object.defineProperty(exports, "TEMPLATE_NAMESPACE", { enumerable: true, get: function() {
+        return TemplateParser_1.TEMPLATE_NAMESPACE;
+      } });
+      var TemplateSchemaProviderMemory_1 = require_TemplateSchemaProviderMemory();
+      Object.defineProperty(exports, "TemplateSchemaProviderMemory", { enumerable: true, get: function() {
+        return TemplateSchemaProviderMemory_1.TemplateSchemaProviderMemory;
+      } });
+      var MetaTemplateSchemaProvider_1 = require_MetaTemplateSchemaProvider();
+      Object.defineProperty(exports, "MetaTemplateSchemaProvider", { enumerable: true, get: function() {
+        return MetaTemplateSchemaProvider_1.MetaTemplateSchemaProvider;
       } });
       var DiscoveryResolver_1 = require_DiscoveryResolver();
       Object.defineProperty(exports, "DiscoveryResolver", { enumerable: true, get: function() {
@@ -17555,7 +17662,7 @@
         return null;
       }
       level = parsed.level;
-      indentLength = blank ? linePrefix.length : parsed.indentLength;
+      indentLength = blank ? linePrefix.length : parsed.contentStart;
     } catch {
       return null;
     }
@@ -18102,7 +18209,7 @@
         for (const token of innerTokens) {
           const absoluteLineNumber = lineOffset + token.line + 1;
           const originalLine = this.templateNodeByLine.get(absoluteLineNumber);
-          const offset = originalLine ? originalLine.indentLength + 1 : 0;
+          const offset = originalLine ? originalLine.contentStart : 0;
           this.tokens.push({
             line: token.line + lineOffset,
             startChar: token.startChar + offset,
@@ -18402,7 +18509,7 @@
         if (!state) {
           continue;
         }
-        const offset = line.indentLength + 1;
+        const offset = line.contentStart;
         for (const span of tokenizeMarkdownLine(line.content, state)) {
           tokens.push({ line: lineIndex, startChar: offset + span.startChar, length: span.length, type: span.type });
         }
@@ -18427,7 +18534,7 @@
      */
     validateRoots(roots) {
       const diagnostics = [];
-      const validator = new import_core6.ConditionalValidator(new import_core6.SchemaValidator(this.registry));
+      const validator = new import_core6.SchemaValidator(this.registry);
       const walk = (node) => {
         if (node instanceof import_core6.InlineNode) {
           node.getChildren().forEach(walk);

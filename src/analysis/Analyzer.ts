@@ -1,5 +1,4 @@
 import {
-	ConditionalValidator,
 	InlineNode,
 	Line,
 	Node,
@@ -334,8 +333,8 @@ export class Analyzer {
 			if (!state) {
 				continue;
 			}
-			// The content starts right after the character that completed the block indentation
-			const offset = line.indentLength + 1;
+			// The content starts where the indentation ends
+			const offset = line.contentStart;
 			for (const span of tokenizeMarkdownLine(line.content, state)) {
 				tokens.push({ line: lineIndex, startChar: offset + span.startChar, length: span.length, type: span.type });
 			}
@@ -363,7 +362,7 @@ export class Analyzer {
 	 */
 	private validateRoots(roots: Node[]): Diagnostic[] {
 		const diagnostics: Diagnostic[] = [];
-		const validator = new ConditionalValidator(new SchemaValidator(this.registry));
+		const validator = new SchemaValidator(this.registry);
 
 		// Validation is on because the user switched it on, so "no grammar covers this
 		// namespace" is a finding like any other (STXT-SCHEMA-SPEC §13: SCHEMA_NOT_FOUND),

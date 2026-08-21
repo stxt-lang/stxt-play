@@ -80,10 +80,9 @@ export class TokenGeneratorObserver implements Observer {
 				// token.line is 0-based within the block; the map is keyed by absolute 1-based lines
 				const absoluteLineNumber = lineOffset + token.line + 1;
 
-				// indentLength is the index of the last indentation character,
-				// so the content starts at indentLength + 1
+				// The content starts where the indentation ends
 				const originalLine = this.templateNodeByLine.get(absoluteLineNumber);
-				const offset = originalLine ? originalLine.indentLength + 1 : 0;
+				const offset = originalLine ? originalLine.contentStart : 0;
 
 				this.tokens.push({
 					line: token.line + lineOffset,

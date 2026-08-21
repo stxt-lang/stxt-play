@@ -143,7 +143,7 @@ function getCompletionContext(linePrefix: string, lastNodeBlock: boolean, lastLe
 			return null;
 		}
 		level = parsed.level;
-		indentLength = blank ? linePrefix.length : parsed.indentLength;
+		indentLength = blank ? linePrefix.length : parsed.contentStart;
 	} catch {
 		return null;
 	}

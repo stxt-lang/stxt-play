@@ -73,7 +73,8 @@ describe("Re-indentation between tabs and spaces", () => {
 			return root instanceof InlineNode ? root.getChild("Code")?.getText() : undefined;
 		};
 		assert.strictEqual(textOf("a"), textOf("b"), "the block text is byte-identical");
-		assert.strictEqual(analyzer.getAnalysis("b")?.diagnostics.length, 0);
+		assert.deepStrictEqual(analyzer.getAnalysis("b")?.diagnostics.filter((d) => d.source === "syntax"), [],
+			"the re-indented document parses cleanly");
 		assert.strictEqual(dump("a"), dump("b"));
 	});
 

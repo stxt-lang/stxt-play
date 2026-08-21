@@ -18184,7 +18184,6 @@
   };
 
   // src/analysis/Analyzer.ts
-  var SCHEMA_NOT_FOUND = "SCHEMA_NOT_FOUND";
   var MARKDOWN = "MARKDOWN";
   var Analyzer = class _Analyzer {
     constructor() {
@@ -18429,16 +18428,12 @@
     validateRoots(roots) {
       const diagnostics = [];
       const validator = new import_core6.ConditionalValidator(new import_core6.SchemaValidator(this.registry));
-      const hasGrammarSources = Array.from(this.parsed.values()).some((p) => p.grammarRoots.length > 0);
       const walk = (node) => {
         if (node instanceof import_core6.InlineNode) {
           node.getChildren().forEach(walk);
         }
         try {
           for (const error of validator.validate(node)) {
-            if (!hasGrammarSources && error.code === SCHEMA_NOT_FOUND) {
-              continue;
-            }
             diagnostics.push({
               line: error.line > 0 ? error.line - 1 : 0,
               code: error.code,

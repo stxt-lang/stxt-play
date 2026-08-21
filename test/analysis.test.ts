@@ -46,7 +46,8 @@ describe("Analyzer: parsing products", () => {
 		assert.ok(typesAt(1).includes("string"), "the value of line 1 is a string token");
 		assert.ok(typesAt(2).includes("macro"), "the '>>' head of line 2 is a macro token");
 
-		assert.strictEqual(analysis.diagnostics.length, 0, "a clean document has no diagnostics");
+		assert.deepStrictEqual(analysis.diagnostics.filter((d) => d.source !== "validation"), [],
+			"a clean document has no syntax diagnostics (its namespace has no grammar here, which validation reports)");
 		assert.deepStrictEqual(analysis.grammars, [], "a plain document defines no grammar");
 	});
 
@@ -67,12 +68,24 @@ describe("Analyzer: parsing products", () => {
 });
 
 describe("Analyzer: validation against the workspace grammars", () => {
-	it("does not report SCHEMA_NOT_FOUND when the workspace has no grammar at all", () => {
+	it("reports SCHEMA_NOT_FOUND when the workspace has no grammar at all", () => {
 		const analyzer = new Analyzer();
 		analyzer.setDocument("doc", VALID_DOC);
 
+		const analysis = analyzer.getAnalysis("doc");
+		assert.ok(analysis);
+		assert.ok(analysis.diagnostics.some((d) => d.code === "SCHEMA_NOT_FOUND" && d.severity === "warning"),
+			"validation is on, so a namespace no grammar covers is reported even in an empty workspace");
+		assert.ok(analysis.diagnostics.every((d) => d.source === "validation"),
+			"the document itself is well-formed: only validation findings");
+	});
+
+	it("does not report SCHEMA_NOT_FOUND for a document without namespace", () => {
+		const analyzer = new Analyzer();
+		analyzer.setDocument("doc", "Root: hello\n\tChild: value\n");
+
 		assert.strictEqual(analyzer.getAnalysis("doc")?.diagnostics.length, 0,
-			"schemas are optional: a namespaced document without grammars is not wrong");
+			"STXT-SCHEMA-SPEC §5: nodes with the empty namespace are not validated");
 	});
 
 	it("validates a document against a schema of the workspace", () => {
@@ -195,16 +208,18 @@ describe("Analyzer: workspace updates", () => {
 		assert.ok(analyzer.getAnalysis("doc")?.diagnostics.some((d) => d.code === "NODE_NOT_DEFINED_IN_SCHEMA"));
 	});
 
-	it("stops validating when the last grammar leaves the workspace", () => {
+	it("reports the namespace as unresolved when the last grammar leaves the workspace", () => {
 		const analyzer = new Analyzer();
 		analyzer.setDocument("schema", DEMO_SCHEMA);
 		analyzer.setDocument("doc", UNKNOWN_ROOT_DOC);
 		assert.strictEqual(analyzer.getAnalysis("doc")?.diagnostics.length, 1);
+		assert.strictEqual(analyzer.getAnalysis("doc")?.diagnostics[0].code, "NODE_NOT_DEFINED_IN_SCHEMA");
 
 		analyzer.removeDocument("schema");
 		assert.strictEqual(analyzer.getAnalysis("schema"), undefined);
-		assert.strictEqual(analyzer.getAnalysis("doc")?.diagnostics.length, 0,
-			"without grammars there is nothing to validate against");
+		const codes = analyzer.getAnalysis("doc")?.diagnostics.map((d) => d.code);
+		assert.deepStrictEqual(codes, ["SCHEMA_NOT_FOUND"],
+			"without a grammar for its namespace the document is unvalidatable, and that is reported");
 	});
 
 	it("keeps the cached analysis when a document is set to the same text", () => {

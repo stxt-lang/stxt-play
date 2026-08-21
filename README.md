@@ -49,7 +49,10 @@ a real editor, not a form or a viewer.
 - **Errors go in a panel at the bottom**, like the *Problems* panel of VS Code, which is the
   reference; a right-hand panel would compete with the editor for width.
 - The header carries the active document's title and **two switches**: spaces/tabs, and schema
-  validation on/off. Both are remembered between visits. Switching the indentation converts the
+  validation on/off. Both are remembered between visits. With validation on, a namespace that no
+  grammar of the workspace covers is reported as `SCHEMA_NOT_FOUND` — also in a workspace with no
+  grammar at all: the switch, not the presence of unrelated grammars, decides whether a document
+  is validated. Switching the indentation converts the
   **structural** indentation of every document (levels only — comments, values and the relative
   indentation inside text blocks are left as they are), and it is undoable in each document.
 - The document list can be **reordered** by dragging rows, or with Alt+Up/Down.

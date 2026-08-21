@@ -19,7 +19,6 @@ import { StxtToken } from "./Tokens";
 import { TokenGeneratorObserver } from "./TokenGeneratorObserver";
 
 /** Code SchemaValidator emits when it cannot resolve the schema of a namespace. */
-const SCHEMA_NOT_FOUND = "SCHEMA_NOT_FOUND";
 
 /** Schema type whose block content is coloured as Markdown (STXT-SCHEMA-SPEC 9.7). */
 const MARKDOWN = "MARKDOWN";
@@ -366,10 +365,11 @@ export class Analyzer {
 		const diagnostics: Diagnostic[] = [];
 		const validator = new ConditionalValidator(new SchemaValidator(this.registry));
 
-		// STXT-SPEC: schemas are a separate, optional layer. If the workspace has no grammar at
-		// all, a namespaced document is not wrong, it just cannot be validated: reporting
-		// SCHEMA_NOT_FOUND on every node would flood the panel.
-		const hasGrammarSources = Array.from(this.parsed.values()).some((p) => p.grammarRoots.length > 0);
+		// Validation is on because the user switched it on, so "no grammar covers this
+		// namespace" is a finding like any other (STXT-SCHEMA-SPEC §13: SCHEMA_NOT_FOUND),
+		// whether the workspace has other grammars or none at all. Until 0.4.2 the code was
+		// silenced when the workspace had no grammar, which made the verdict on a document
+		// depend on whether an unrelated grammar happened to be open beside it.
 
 		const walk = (node: Node): void => {
 			if (node instanceof InlineNode) {
@@ -378,9 +378,6 @@ export class Analyzer {
 
 			try {
 				for (const error of validator.validate(node)) {
-					if (!hasGrammarSources && error.code === SCHEMA_NOT_FOUND) {
-						continue;
-					}
 					diagnostics.push({
 						line: error.line > 0 ? error.line - 1 : 0,
 						code: error.code,

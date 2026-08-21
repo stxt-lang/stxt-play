@@ -71,6 +71,15 @@
          * @param lineNumber line number, for the error message.
          * @throws ParseException with code `INVALID_NAMESPACE` if it does not match the format.
          */
+        /**
+         * Tells whether a namespace matches the format, without throwing.
+         *
+         * @param namespace already normalized namespace to check.
+         * @returns true if it matches the format; false when it is null, empty or malformed.
+         */
+        static isValid(namespace) {
+          return !!namespace && _NamespaceValidator.NAMESPACE_FORMAT.test(namespace);
+        }
         static validateNamespaceFormat(namespace, lineNumber) {
           if (!namespace) {
             return;
@@ -690,7 +699,7 @@
           if (lastNodeBlock && level > lastLevel) {
             const text = StringUtils_1.StringUtils.rightTrim(line.substring(pointer + 1));
             if (validate && sawSpace && sawTab && text.length > 0) {
-              throw new ParseException_1.ParseException(numLine, "MIXED_INDENTATION", `Mixed tabs and spaces in indentation`);
+              throw new ParseException_1.ParseException(numLine, "INDENTATION_MIXED", `Mixed tabs and spaces in indentation`);
             }
             return new Line_1.Line(level, text, false, true, pointer);
           }
@@ -703,10 +712,10 @@
           return new Line_1.Line(level, "", false, false, pointer);
         }
         if (validate && sawSpace && sawTab) {
-          throw new ParseException_1.ParseException(numLine, "MIXED_INDENTATION", `Mixed tabs and spaces in indentation`);
+          throw new ParseException_1.ParseException(numLine, "INDENTATION_MIXED", `Mixed tabs and spaces in indentation`);
         }
         if (validate && spaces > 0) {
-          throw new ParseException_1.ParseException(numLine, "INVALID_NUMBER_SPACES", `There are ${spaces} spaces before node`);
+          throw new ParseException_1.ParseException(numLine, "INDENTATION_SPACES_NOT_VALID", `There are ${spaces} spaces before node`);
         }
         if (validate && level > lastLevel + 1) {
           throw new ParseException_1.ParseException(numLine, "INDENTATION_LEVEL_NOT_VALID", `Level of indent incorrect: ${level}`);
@@ -839,7 +848,7 @@
           value = line.substring(nodeIndex + Constants_1.Constants.SEP_NODE.length);
         }
         if (textNode && StringUtils_1.StringUtils.trim(value).length > 0) {
-          throw new ParseException_1.ParseException(lineNumber, "INLINE_VALUE_NOT_VALID", `Line not valid: ${line}`);
+          throw new ParseException_1.ParseException(lineNumber, "BLOCK_VALUE_NOT_ALLOWED", `Line not valid: ${line}`);
         }
         const nameNamespace = NameNamespaceParser_1.NameNamespaceParser.parse(name2, null, lineNumber, line);
         name2 = nameNamespace.getName();
@@ -902,6 +911,31 @@
     }
   });
 
+  // node_modules/@stxt-lang/core/out/exceptions/ValidationException.js
+  var require_ValidationException = __commonJS({
+    "node_modules/@stxt-lang/core/out/exceptions/ValidationException.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.ValidationException = void 0;
+      var ParseException_1 = require_ParseException();
+      var ValidationException = class _ValidationException extends ParseException_1.ParseException {
+        /**
+         * Creates a validation error located at a line of the document.
+         *
+         * @param line line number where the error was detected.
+         * @param code error code in UPPERCASE.
+         * @param message descriptive message.
+         */
+        constructor(line, code, message) {
+          super(line, code, message);
+          this.name = "ValidationException";
+          Object.setPrototypeOf(this, _ValidationException.prototype);
+        }
+      };
+      exports.ValidationException = ValidationException;
+    }
+  });
+
   // node_modules/@stxt-lang/core/out/core/Parser.js
   var require_Parser = __commonJS({
     "node_modules/@stxt-lang/core/out/core/Parser.js"(exports) {
@@ -913,6 +947,7 @@
       var NodeCreator_1 = require_NodeCreator();
       var ParseResult_1 = require_ParseResult();
       var ParseException_1 = require_ParseException();
+      var ValidationException_1 = require_ValidationException();
       var Parser5 = class {
         constructor() {
           this.observers = [];
@@ -1021,13 +1056,17 @@
             this.handleError(e, lineNumber, result);
           }
         }
-        handleError(e, line, result, errorCode = "UNEXPECTED_ERROR", unknownErrorCode = "UNKNOWN_ERROR") {
+        /**
+         * Records an error raised while parsing or validating a line. Typed exceptions travel as they
+         * are; anything else is wrapped under the code `UNEXPECTED_ERROR` (as a ValidationException
+         * when it was raised by a validator, so that the subtype still tells the phase apart).
+         */
+        handleError(e, line, result, validating = false) {
           if (e instanceof ParseException_1.ParseException) {
             result.addError(e);
-          } else if (e instanceof Error) {
-            result.addError(new ParseException_1.ParseException(line, errorCode, e.message));
           } else {
-            result.addError(new ParseException_1.ParseException(line, unknownErrorCode, String(e)));
+            const message = e instanceof Error ? e.message : String(e);
+            result.addError(validating ? new ValidationException_1.ValidationException(line, "UNEXPECTED_ERROR", message) : new ParseException_1.ParseException(line, "UNEXPECTED_ERROR", message));
           }
         }
         closeToLevel(stack, targetLevel, result) {
@@ -1040,7 +1079,7 @@
                   result.addError(error);
                 });
               } catch (e) {
-                this.handleError(e, completed.getLine(), result, "VALIDATION_ERROR", "UNKNOWN_VALIDATION_ERROR");
+                this.handleError(e, completed.getLine(), result, true);
               }
             });
             this.observers.forEach((observer) => {
@@ -1053,31 +1092,6 @@
         }
       };
       exports.Parser = Parser5;
-    }
-  });
-
-  // node_modules/@stxt-lang/core/out/exceptions/ValidationException.js
-  var require_ValidationException = __commonJS({
-    "node_modules/@stxt-lang/core/out/exceptions/ValidationException.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.ValidationException = void 0;
-      var ParseException_1 = require_ParseException();
-      var ValidationException = class _ValidationException extends ParseException_1.ParseException {
-        /**
-         * Creates a validation error located at a line of the document.
-         *
-         * @param line line number where the error was detected.
-         * @param code error code in UPPERCASE.
-         * @param message descriptive message.
-         */
-        constructor(line, code, message) {
-          super(line, code, message);
-          this.name = "ValidationException";
-          Object.setPrototypeOf(this, _ValidationException.prototype);
-        }
-      };
-      exports.ValidationException = ValidationException;
     }
   });
 
@@ -1122,12 +1136,12 @@
          * Adds the definition of a node to this schema.
          *
          * @param nodeDefinition node definition to add.
-         * @throws ValidationException with code `NODE_DEF_ALREADY_DEFINED` if there already was a node definition with the same name.
+         * @throws ValidationException with code `NODE_DUPLICATED` if there already was a node definition with the same name.
          */
         addNodeDefinition(nodeDefinition) {
           const qname = nodeDefinition.getCanonicalName();
           if (this.nodes.has(qname)) {
-            throw new ValidationException_1.ValidationException(0, "NODE_DEF_ALREADY_DEFINED", `Exists a previous node definition with: ${qname}`);
+            throw new ValidationException_1.ValidationException(0, "NODE_DUPLICATED", `Exists a previous node definition with: ${qname}`);
           }
           this.nodes.set(qname, nodeDefinition);
         }
@@ -1165,7 +1179,7 @@
         },
         validate(nodeDef, node) {
           if (node.isTextNode()) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "NOT_ALLOWED_TEXT", `Not allowed text in node ${node.getQualifiedName()}`);
+            throw new ValidationException_1.ValidationException(node.getLine(), "BLOCK_FORM_NOT_ALLOWED", `Not allowed text in node ${node.getQualifiedName()}`);
           }
         }
       };
@@ -1206,7 +1220,7 @@
         },
         validate(nodeDef, node) {
           if (node instanceof InlineNode_1.InlineNode && node.getChildren().length > 0) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "NOT_ALLOWED_CHILDREN_TEXT", `Not allowed children nodes in node ${node.getQualifiedName()}`);
+            throw new ValidationException_1.ValidationException(node.getLine(), "CHILDREN_NOT_ALLOWED", `Not allowed children nodes in node ${node.getQualifiedName()}`);
           }
         }
       };
@@ -1225,7 +1239,7 @@
           getName: () => name2,
           validate(nodeDef, node) {
             if (node.isTextNode()) {
-              throw new ValidationException_1.ValidationException(node.getLine(), "NOT_ALLOWED_TEXT", `Not allowed text in node ${node.getQualifiedName()}`);
+              throw new ValidationException_1.ValidationException(node.getLine(), "BLOCK_FORM_NOT_ALLOWED", `Not allowed text in node ${node.getQualifiedName()}`);
             }
             const value = node.getText();
             if (!pattern.test(value)) {
@@ -1254,27 +1268,8 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.URL = void 0;
-      var ValidationException_1 = require_ValidationException();
-      exports.URL = {
-        getName() {
-          return "URL";
-        },
-        validate(ndef, n) {
-          if (n.isTextNode()) {
-            throw new ValidationException_1.ValidationException(n.getLine(), "NOT_ALLOWED_TEXT", `Not allowed text in node ${n.getQualifiedName()}`);
-          }
-          const url = n.getText();
-          try {
-            const parsed = new globalThis.URL(url);
-            const ok = !!parsed.protocol && !!parsed.hostname;
-            if (!ok) {
-              throw new ValidationException_1.ValidationException(n.getLine(), "INVALID_URL_STRUCTURE", `Invalid URL: ${url}`);
-            }
-          } catch {
-            throw new ValidationException_1.ValidationException(n.getLine(), "INVALID_VALUE", `Invalid URL: ${url}`);
-          }
-        }
-      };
+      var regexType_1 = require_regexType();
+      exports.URL = (0, regexType_1.regexType)("URL", /^[A-Za-z][A-Za-z0-9+.-]*:\/\/(?:[^ \t/?#@]+@)?(?:\[[0-9A-Fa-f:.]+\]|[^ \t/?#@:[\]]+)(?::[0-9]+)?(?:\/[^ \t?#]*)?(?:\?[^ \t#]*)?(?:#[^ \t]*)?$/, "Invalid URL");
     }
   });
 
@@ -1311,14 +1306,61 @@
     }
   });
 
+  // node_modules/@stxt-lang/core/out/schema/type/rangeType.js
+  var require_rangeType = __commonJS({
+    "node_modules/@stxt-lang/core/out/schema/type/rangeType.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.rangeType = rangeType;
+      var ValidationException_1 = require_ValidationException();
+      function rangeType(name2, pattern, inRange, error) {
+        return {
+          getName: () => name2,
+          validate(nodeDef, node) {
+            if (node.isTextNode()) {
+              throw new ValidationException_1.ValidationException(node.getLine(), "BLOCK_FORM_NOT_ALLOWED", `Not allowed text in node ${node.getQualifiedName()}`);
+            }
+            const value = node.getText();
+            const m = pattern.exec(value);
+            if (m === null || !inRange(m)) {
+              throw new ValidationException_1.ValidationException(node.getLine(), "INVALID_VALUE", `${node.getName()}: ${error} (${value})`);
+            }
+          }
+        };
+      }
+    }
+  });
+
+  // node_modules/@stxt-lang/core/out/schema/type/dateTime.js
+  var require_dateTime = __commonJS({
+    "node_modules/@stxt-lang/core/out/schema/type/dateTime.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.isValidDate = isValidDate;
+      exports.isValidTime = isValidTime;
+      function isValidDate(year, month, day) {
+        if (month < 1 || month > 12 || day < 1) {
+          return false;
+        }
+        const leap = year % 4 === 0 && year % 100 !== 0 || year % 400 === 0;
+        const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        return day <= daysInMonth[month - 1];
+      }
+      function isValidTime(hour, minute, second) {
+        return hour <= 23 && minute <= 59 && second <= 59;
+      }
+    }
+  });
+
   // node_modules/@stxt-lang/core/out/schema/type/DATE.js
   var require_DATE = __commonJS({
     "node_modules/@stxt-lang/core/out/schema/type/DATE.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.DATE = void 0;
-      var regexType_1 = require_regexType();
-      exports.DATE = (0, regexType_1.regexType)("DATE", /^\d{4}-\d{2}-\d{2}$/, "Invalid date");
+      var rangeType_1 = require_rangeType();
+      var dateTime_1 = require_dateTime();
+      exports.DATE = (0, rangeType_1.rangeType)("DATE", /^(\d{4})-(\d{2})-(\d{2})$/, (m) => (0, dateTime_1.isValidDate)(Number(m[1]), Number(m[2]), Number(m[3])), "Invalid date");
     }
   });
 
@@ -1328,8 +1370,9 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.TIME = void 0;
-      var regexType_1 = require_regexType();
-      exports.TIME = (0, regexType_1.regexType)("TIME", /^\d{2}:\d{2}:\d{2}$/, "Invalid time");
+      var rangeType_1 = require_rangeType();
+      var dateTime_1 = require_dateTime();
+      exports.TIME = (0, rangeType_1.rangeType)("TIME", /^(\d{2}):(\d{2}):(\d{2})$/, (m) => (0, dateTime_1.isValidTime)(Number(m[1]), Number(m[2]), Number(m[3])), "Invalid time");
     }
   });
 
@@ -1339,8 +1382,9 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.TIMESTAMP = void 0;
-      var regexType_1 = require_regexType();
-      exports.TIMESTAMP = (0, regexType_1.regexType)("TIMESTAMP", /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{3})?)?(Z|[+-]\d{2}:\d{2})?$/, "Invalid timestamp");
+      var rangeType_1 = require_rangeType();
+      var dateTime_1 = require_dateTime();
+      exports.TIMESTAMP = (0, rangeType_1.rangeType)("TIMESTAMP", /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-](\d{2}):(\d{2}))?$/, (m) => (0, dateTime_1.isValidDate)(Number(m[1]), Number(m[2]), Number(m[3])) && (0, dateTime_1.isValidTime)(Number(m[4]), Number(m[5]), m[6] === void 0 ? 0 : Number(m[6])) && (m[7] === void 0 || (0, dateTime_1.isValidTime)(Number(m[7]), Number(m[8]), 0)), "Invalid timestamp");
     }
   });
 
@@ -1473,7 +1517,7 @@
         },
         validate(nodeDef, node) {
           if (node.isTextNode() || node.getText().length > 0) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "INVALID_VALUE", `Node '${node.getName()}' has to be empty`);
+            throw new ValidationException_1.ValidationException(node.getLine(), "VALUE_NOT_ALLOWED", `Node '${node.getName()}' has to be empty`);
           }
         }
       };
@@ -1493,7 +1537,7 @@
         },
         validate(nodeDef, node) {
           if (node.isTextNode()) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "NOT_ALLOWED_TEXT", `Not allowed text in node ${node.getQualifiedName()}`);
+            throw new ValidationException_1.ValidationException(node.getLine(), "BLOCK_FORM_NOT_ALLOWED", `Not allowed text in node ${node.getQualifiedName()}`);
           }
           const value = node.getText();
           const allowed = nodeDef.getValues();
@@ -1519,7 +1563,7 @@
         },
         validate(nodeDef, node) {
           if (node instanceof InlineNode_1.InlineNode && node.getChildren().length > 0) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "NOT_ALLOWED_CHILDREN_TEXT", `Not allowed children nodes in node ${node.getQualifiedName()}`);
+            throw new ValidationException_1.ValidationException(node.getLine(), "CHILDREN_NOT_ALLOWED", `Not allowed children nodes in node ${node.getQualifiedName()}`);
           }
         }
       };
@@ -1576,7 +1620,7 @@
         static register(instance) {
           const name2 = instance.getName();
           if (this.REGISTRY.has(name2)) {
-            throw new RuntimeException_1.RuntimeException("DUPLICATED_TYPE", `Type already defined: ${name2}`);
+            throw new RuntimeException_1.RuntimeException("TYPE_DUPLICATED", `Type already defined: ${name2}`);
           }
           this.REGISTRY.set(name2, instance);
         }
@@ -1670,7 +1714,7 @@
           const schemaNode = schema.getNodeDefinition(node.getCanonicalName());
           if (!schemaNode) {
             const error = `NOT EXIST NODE ${node.getCanonicalName()} for namespace ${schema.getNamespace()}`;
-            errors.push(new ValidationException_1.ValidationException(node.getLine(), "NODE_NOT_EXIST_IN_SCHEMA", error));
+            errors.push(new ValidationException_1.ValidationException(node.getLine(), "NODE_NOT_DEFINED_IN_SCHEMA", error));
             return errors;
           }
           errors.push(..._SchemaValidator.validateValue(schemaNode, node));
@@ -1698,7 +1742,7 @@
           const nodeType = nodeDef.getType();
           const validator = TypeRegistry_1.TypeRegistry.get(nodeType);
           if (!validator) {
-            errors.push(new ValidationException_1.ValidationException(node.getLine(), "TYPE_NOT_SUPPORTED", `Node type not supported: ${nodeType}`));
+            errors.push(new ValidationException_1.ValidationException(node.getLine(), "TYPE_NOT_VALID", `Node type not supported: ${nodeType}`));
             return errors;
           }
           try {
@@ -1707,9 +1751,9 @@
             if (e instanceof ValidationException_1.ValidationException) {
               errors.push(e);
             } else if (e instanceof Error) {
-              errors.push(new ValidationException_1.ValidationException(node.getLine(), "VALIDATION_ERROR", e.message));
+              errors.push(new ValidationException_1.ValidationException(node.getLine(), "UNEXPECTED_ERROR", e.message));
             } else {
-              errors.push(new ValidationException_1.ValidationException(node.getLine(), "UNKNOWN_VALIDATION_ERROR", String(e)));
+              errors.push(new ValidationException_1.ValidationException(node.getLine(), "UNEXPECTED_ERROR", String(e)));
             }
           }
           return errors;
@@ -1737,12 +1781,12 @@
           const min = childDef.getMin();
           const max = childDef.getMax();
           if (min !== null && childCount < min) {
-            errors.push(new ValidationException_1.ValidationException(node.getLine(), "INVALID_NUMBER", `${childCount} nodes of '${childDef.getQualifiedName()}' and min is ${min}`));
+            errors.push(new ValidationException_1.ValidationException(node.getLine(), "TOO_FEW_CHILDREN", `${childCount} nodes of '${childDef.getQualifiedName()}' and min is ${min}`));
           }
           if (max !== null && childCount > max) {
-            errors.push(new ValidationException_1.ValidationException(node.getLine(), "INVALID_NUMBER", `${childCount} nodes of '${childDef.getQualifiedName()}' and max is ${max}`));
+            errors.push(new ValidationException_1.ValidationException(node.getLine(), "TOO_MANY_CHILDREN", `${childCount} nodes of '${childDef.getQualifiedName()}' and max is ${max}`));
             for (const child of children) {
-              errors.push(new ValidationException_1.ValidationException(child.getLine(), "INVALID_NUMBER", `Too many '${childDef.getQualifiedName()}' nodes: found ${childCount}, max is ${max}`));
+              errors.push(new ValidationException_1.ValidationException(child.getLine(), "TOO_MANY_CHILDREN", `Too many '${childDef.getQualifiedName()}' nodes: found ${childCount}, max is ${max}`));
             }
           }
           return errors;
@@ -1820,12 +1864,12 @@
          * Adds the definition of an expected child.
          *
          * @param childDefinition definition of the child to add.
-         * @throws ValidationException with code `CHILD_DEF_ALREADY_DEFINED` if a definition for that child already existed.
+         * @throws ValidationException with code `CHILD_DUPLICATED` if a definition for that child already existed.
          */
         addChildDefinition(childDefinition) {
           const qname = childDefinition.getQualifiedName();
           if (this.children.has(qname)) {
-            throw new ValidationException_1.ValidationException(0, "CHILD_DEF_ALREADY_DEFINED", `Exists a previous node definition with: ${qname}`);
+            throw new ValidationException_1.ValidationException(0, "CHILD_DUPLICATED", `Exists a previous node definition with: ${qname}`);
           }
           this.children.set(qname, childDefinition);
         }
@@ -1966,18 +2010,26 @@
       var ChildDefinition_1 = require_ChildDefinition();
       var InlineNode_1 = require_InlineNode();
       var ValidationException_1 = require_ValidationException();
-      var RuntimeException_1 = require_RuntimeException();
+      var NamespaceValidator_1 = require_NamespaceValidator();
+      var StringUtils_1 = require_StringUtils();
       var NameNamespaceParser_1 = require_NameNamespaceParser();
       var TypeRegistry_1 = require_TypeRegistry();
       function transformNodeToSchema2(node) {
         const nodeName = node.getCanonicalName();
         const namespaceSchema = node.getNamespace();
         if (nodeName !== "schema" || namespaceSchema !== Schema_1.Schema.SCHEMA_NAMESPACE) {
-          throw new ValidationException_1.ValidationException(node.getLine(), "NOT_STXT_SCHEMA", `Expected schema(${Schema_1.Schema.SCHEMA_NAMESPACE}) but got ${nodeName}(${namespaceSchema})`);
+          throw new ValidationException_1.ValidationException(node.getLine(), "SCHEMA_ROOT_NOT_VALID", `Expected schema(${Schema_1.Schema.SCHEMA_NAMESPACE}) but got ${nodeName}(${namespaceSchema})`);
         }
         const root = inline(node);
+        const targetNamespace = StringUtils_1.StringUtils.lowerCase(root.getValue());
+        if (!targetNamespace || targetNamespace.trim().length === 0) {
+          throw new ValidationException_1.ValidationException(root.getLine(), "SCHEMA_NAMESPACE_EMPTY", "Schema namespace is empty");
+        }
+        if (!NamespaceValidator_1.NamespaceValidator.isValid(targetNamespace)) {
+          throw new ValidationException_1.ValidationException(root.getLine(), "SCHEMA_ROOT_NOT_VALID", `Schema namespace not valid: ${targetNamespace}`);
+        }
         const descrip = root.getChild("description")?.getText();
-        const schema = new Schema_1.Schema(root.getValue(), root.getLine(), descrip);
+        const schema = new Schema_1.Schema(targetNamespace, root.getLine(), descrip);
         const allNames = /* @__PURE__ */ new Set();
         for (const n of root.getChildrenByName("node")) {
           const schNode = createFrom(n, schema.getNamespace());
@@ -2000,7 +2052,7 @@
         if (node instanceof InlineNode_1.InlineNode) {
           return node;
         }
-        throw new ValidationException_1.ValidationException(node.getLine(), "INVALID_SCHEMA", `Node '${node.getName()}' must be inline in a schema`);
+        throw new ValidationException_1.ValidationException(node.getLine(), "SCHEMA_NODE_NOT_INLINE", `Node '${node.getName()}' must be inline in a schema`);
       }
       function createFrom(node, namespace) {
         const n = inline(node);
@@ -2024,10 +2076,10 @@
         let valuesNodes = n.getChildrenByName("values");
         if (valuesNodes && valuesNodes.length > 0) {
           if (type !== "ENUM") {
-            throw new ValidationException_1.ValidationException(n.getLine(), "VALUES_ONLY_SUPPORTED_BY_ENUM", `Values only supported for type ENUM, not for type ${type}`);
+            throw new ValidationException_1.ValidationException(n.getLine(), "VALUES_NOT_ALLOWED_FOR_TYPE", `Values only supported for type ENUM, not for type ${type}`);
           }
           if (valuesNodes.length > 1) {
-            throw new RuntimeException_1.RuntimeException("INVALID_SIZE_VALUES", `Unexpected number of values: ${valuesNodes.length}`);
+            throw new ValidationException_1.ValidationException(valuesNodes[1].getLine(), "VALUES_DUPLICATED", `Node '${n.getValue()}' defines 'Values' ${valuesNodes.length} times`);
           }
           const valuesNode = valuesNodes[0];
           const values = inline(valuesNode).getChildrenByName("value");
@@ -2037,7 +2089,7 @@
           valuesNodes = values;
         }
         if (type === "ENUM" && (!valuesNodes || valuesNodes.length === 0)) {
-          throw new ValidationException_1.ValidationException(n.getLine(), "VALUES_EMPTY_FOR_ENUM", "ENUM Type must include values");
+          throw new ValidationException_1.ValidationException(n.getLine(), "VALUES_REQUIRED", "ENUM Type must include values");
         }
         return result;
       }
@@ -2062,7 +2114,7 @@
         const raw = n.getText();
         const parsed = Number.parseInt(raw, 10);
         if (Number.isNaN(parsed)) {
-          throw new ValidationException_1.ValidationException(node.getLine(), "INVALID_INTEGER", `Integer not valid: ${raw}`);
+          throw new ValidationException_1.ValidationException(node.getLine(), "CARDINALITY_NOT_VALID", `Integer not valid: ${raw}`);
         }
         return parsed;
       }
@@ -2244,7 +2296,7 @@
          * @param rawLine inline value of the node, `(min,max) TYPE [values]`.
          * @param lineNumber line number, for the error messages.
          * @returns the line already split into type, cardinality and values.
-         * @throws ValidationException with code `INVALID_CHILD_LINE`, `INVALID_CHILD_COUNT`,
+         * @throws ValidationException with code `STRUCTURE_LINE_NOT_VALID`, `CARDINALITY_NOT_VALID`,
          *         `MIN_GREATER_THAN_MAX` or `VALUE_DUPLICATED` if the line is not valid.
          */
         static parse(rawLine, lineNumber) {
@@ -2253,7 +2305,7 @@
           }
           const m = _ChildLineParser.CHILD_LINE_PATTERN.exec(rawLine);
           if (!m) {
-            throw new ValidationException_1.ValidationException(lineNumber, "INVALID_CHILD_LINE", `Line not valid: ${rawLine}`);
+            throw new ValidationException_1.ValidationException(lineNumber, "STRUCTURE_LINE_NOT_VALID", `Line not valid: ${rawLine}`);
           }
           let type = m[2]?.trim() ?? "";
           if (type.length === 0) {
@@ -2280,7 +2332,7 @@
           } else if (count.includes(",")) {
             const parts = count.split(",");
             if (parts.length !== 2) {
-              throw new ValidationException_1.ValidationException(lineNumber, "INVALID_CHILD_COUNT", `Invalid count ${count} in line: ${rawLine}`);
+              throw new ValidationException_1.ValidationException(lineNumber, "CARDINALITY_NOT_VALID", `Invalid count ${count} in line: ${rawLine}`);
             }
             const aNum = _ChildLineParser.parseCount(parts[0].trim(), count, rawLine, lineNumber);
             const bNum = _ChildLineParser.parseCount(parts[1].trim(), count, rawLine, lineNumber);
@@ -2315,7 +2367,7 @@
         // num, min and max must be non-negative integers, with no trailing text (STXT-TEMPLATE-SPEC 7.1)
         static parseCount(num, count, rawLine, lineNumber) {
           if (!/^\d+$/.test(num)) {
-            throw new ValidationException_1.ValidationException(lineNumber, "INVALID_CHILD_COUNT", `Invalid count ${count} in line: ${rawLine}`);
+            throw new ValidationException_1.ValidationException(lineNumber, "CARDINALITY_NOT_VALID", `Invalid count ${count} in line: ${rawLine}`);
           }
           return parseInt(num, 10);
         }
@@ -2341,8 +2393,20 @@
       var ChildLineParser_1 = require_ChildLineParser();
       var ParseException_1 = require_ParseException();
       var TypeRegistry_1 = require_TypeRegistry();
+      var NamespaceValidator_1 = require_NamespaceValidator();
+      var TEMPLATE_NAMESPACE2 = "@stxt.template";
       function transformTemplateNodeToSchema2(node) {
-        const result = new Schema_1.Schema(node.getText(), node.getLine(), void 0);
+        if (node.getCanonicalName() !== "template" || node.getNamespace() !== TEMPLATE_NAMESPACE2) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "TEMPLATE_ROOT_NOT_VALID", `Expected template(${TEMPLATE_NAMESPACE2}) but got ${node.getCanonicalName()}(${node.getNamespace()})`);
+        }
+        const targetNamespace = StringUtils_1.StringUtils.lowerCase(node.getText());
+        if (!targetNamespace || targetNamespace.trim().length === 0) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "TEMPLATE_NAMESPACE_EMPTY", "Template namespace is empty");
+        }
+        if (!NamespaceValidator_1.NamespaceValidator.isValid(targetNamespace)) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "TEMPLATE_ROOT_NOT_VALID", `Template namespace not valid: ${targetNamespace}`);
+        }
+        const result = new Schema_1.Schema(targetNamespace, node.getLine(), void 0);
         const structure = node instanceof InlineNode_1.InlineNode ? node.getChild("structure") : null;
         if (!structure) {
           throw new ValidationException_1.ValidationException(node.getLine(), "TEMPLATE_STRUCTURE_REQUIRED", "Template must define 'Structure >>'");
@@ -2384,7 +2448,7 @@
       }
       function addToSchema(schema, node) {
         if (!(node instanceof InlineNode_1.InlineNode)) {
-          throw new ValidationException_1.ValidationException(node.getLine(), "INVALID_CHILD_LINE", "Template Structure lines must use ':'");
+          throw new ValidationException_1.ValidationException(node.getLine(), "STRUCTURE_LINE_NOT_VALID", "Template Structure lines must use ':'");
         }
         let namespace = node.getNamespace();
         const name2 = node.getName();
@@ -2395,7 +2459,7 @@
         if (namespace !== schema.getNamespace()) {
           const type = cl.getType();
           if (type && type.trim().length > 0) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "TYPE_DEFINITION_NOT_ALLOWED", "Not allowed type definition in external namespaces");
+            throw new ValidationException_1.ValidationException(node.getLine(), "TYPE_NOT_ALLOWED_IN_EXTERNAL_NAMESPACE", "Not allowed type definition in external namespaces");
           }
           const values = cl.getValues();
           if (values) {
@@ -2420,19 +2484,19 @@
           const values = cl.getValues();
           if (values) {
             if (type !== "ENUM") {
-              throw new ValidationException_1.ValidationException(node.getLine(), "VALUES_ONLY_SUPPORTED_BY_ENUM", `Values only supported for type ENUM, not for type ${type}`);
+              throw new ValidationException_1.ValidationException(node.getLine(), "VALUES_NOT_ALLOWED_FOR_TYPE", `Values only supported for type ENUM, not for type ${type}`);
             }
             for (const v of values) {
               schemaNode.addValue(v, node.getLine());
             }
           }
           if (type === "ENUM" && (!values || values.length === 0)) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "VALUES_EMPTY_FOR_ENUM", "ENUM Type must include values");
+            throw new ValidationException_1.ValidationException(node.getLine(), "VALUES_REQUIRED", "ENUM Type must include values");
           }
         } else {
           const type = cl.getType();
           if (!type || !type.startsWith("@")) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "NODE_DEFINED_MULTIPLE_TIMES", `Multiple node reference must start with @: ${node.getName()}`);
+            throw new ValidationException_1.ValidationException(node.getLine(), "REFERENCE_REQUIRED", `Multiple node reference must start with @: ${node.getName()}`);
           }
           const reference = type.substring(1).trim();
           const explicitType = referenceType(reference, node.getCanonicalName());
@@ -2440,7 +2504,7 @@
             throw new ValidationException_1.ValidationException(node.getLine(), "REFERENCE_WITH_TYPE_NOT_ALLOWED", `Reference '@${node.getName()}' can not declare a type: ${explicitType}`);
           }
           if (StringUtils_1.StringUtils.normalize(reference) !== node.getCanonicalName()) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "NODE_REFERENCE_NOT_VALID", `Reference must be '@${node.getName()}', not '${reference}'`);
+            throw new ValidationException_1.ValidationException(node.getLine(), "REFERENCE_NAME_NOT_VALID", `Reference must be '@${node.getName()}', not '${reference}'`);
           }
           const values = cl.getValues();
           if (values) {
@@ -2457,7 +2521,7 @@
         }
         for (const child of childrenNode) {
           if (!(child instanceof InlineNode_1.InlineNode)) {
-            throw new ValidationException_1.ValidationException(child.getLine(), "INVALID_CHILD_LINE", "Template Structure lines must use ':'");
+            throw new ValidationException_1.ValidationException(child.getLine(), "STRUCTURE_LINE_NOT_VALID", "Template Structure lines must use ':'");
           }
           cl = ChildLineParser_1.ChildLineParser.parse(child.getValue(), child.getLine());
           const childName = child.getName();
@@ -2489,17 +2553,17 @@
             namespace = schema.getNamespace();
           }
           if (namespace !== schema.getNamespace()) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "EXTERNAL_DESCRIPTION_NOT_ALLOWED", "Not allowed description in external namespaces");
+            throw new ValidationException_1.ValidationException(node.getLine(), "DESCRIPTION_NOT_ALLOWED_IN_EXTERNAL_NAMESPACE", "Not allowed description in external namespaces");
           }
           if (node instanceof InlineNode_1.InlineNode && node.getChildren().length > 0) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "CHILDREN_DESCRIPTION_NOT_ALLOWED", "Not allowed children in description");
+            throw new ValidationException_1.ValidationException(node.getLine(), "DESCRIPTION_CHILDREN_NOT_ALLOWED", "Not allowed children in description");
           }
           const nodeDef = schema.getNodeDefinition(node.getName());
           if (!nodeDef) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "NODE_NOT_FOUND", `Not found node with name: ${node.getName()}`);
+            throw new ValidationException_1.ValidationException(node.getLine(), "DESCRIPTION_NODE_NOT_FOUND", `Not found node with name: ${node.getName()}`);
           }
           if (nodeDef.getDescription() !== void 0) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "DESCRIPTION_ALREADY_DEFINED", `Exists a previous description for node: ${node.getName()}`);
+            throw new ValidationException_1.ValidationException(node.getLine(), "DESCRIPTION_DUPLICATED", `Exists a previous description for node: ${node.getName()}`);
           }
           nodeDef.setDescription(node.getText());
         });
@@ -18362,7 +18426,7 @@
         } catch (e) {
           diagnostics.push({
             line: node.getLine() - 1,
-            code: "VALIDATION_ERROR",
+            code: "UNEXPECTED_ERROR",
             message: e instanceof Error ? e.message : String(e),
             severity: "error",
             source: "validation"

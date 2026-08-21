@@ -87,7 +87,7 @@ describe("Analyzer: validation against the workspace grammars", () => {
 		const bad = analyzer.getAnalysis("bad");
 		assert.ok(bad);
 		assert.strictEqual(bad.diagnostics.length, 1);
-		assert.strictEqual(bad.diagnostics[0].code, "NODE_NOT_EXIST_IN_SCHEMA");
+		assert.strictEqual(bad.diagnostics[0].code, "NODE_NOT_DEFINED_IN_SCHEMA");
 		assert.strictEqual(bad.diagnostics[0].severity, "warning");
 		assert.strictEqual(bad.diagnostics[0].source, "validation");
 	});
@@ -99,7 +99,7 @@ describe("Analyzer: validation against the workspace grammars", () => {
 
 		const bad = analyzer.getAnalysis("bad");
 		assert.ok(bad);
-		assert.ok(bad.diagnostics.some((d) => d.code === "NODE_NOT_EXIST_IN_SCHEMA"),
+		assert.ok(bad.diagnostics.some((d) => d.code === "NODE_NOT_DEFINED_IN_SCHEMA"),
 			"a template compiles to a schema and validates the same way");
 	});
 
@@ -192,7 +192,7 @@ describe("Analyzer: workspace updates", () => {
 
 		// Rename the declared node: the document stops validating without being touched
 		analyzer.setDocument("schema", DEMO_SCHEMA.replace("Node: Root", "Node: Other"));
-		assert.ok(analyzer.getAnalysis("doc")?.diagnostics.some((d) => d.code === "NODE_NOT_EXIST_IN_SCHEMA"));
+		assert.ok(analyzer.getAnalysis("doc")?.diagnostics.some((d) => d.code === "NODE_NOT_DEFINED_IN_SCHEMA"));
 	});
 
 	it("stops validating when the last grammar leaves the workspace", () => {

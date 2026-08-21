@@ -392,7 +392,7 @@ export class Analyzer {
 			} catch (e: unknown) {
 				diagnostics.push({
 					line: node.getLine() - 1,
-					code: "VALIDATION_ERROR",
+					code: "UNEXPECTED_ERROR",
 					message: e instanceof Error ? e.message : String(e),
 					severity: "error",
 					source: "validation",

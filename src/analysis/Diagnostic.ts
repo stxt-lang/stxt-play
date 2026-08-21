@@ -21,7 +21,7 @@ export type DiagnosticSource = "syntax" | "grammar" | "validation";
 export interface Diagnostic {
 	/** Line of the document the problem was detected at, 0-based. */
 	line: number;
-	/** Stable UPPERCASE error code (e.g. `MIXED_INDENTATION`, `SCHEMA_NOT_FOUND`). */
+	/** Stable UPPERCASE error code (e.g. `INDENTATION_MIXED`, `SCHEMA_NOT_FOUND`). */
 	code: string;
 	/** Human readable message, in English like every message of the ecosystem. */
 	message: string;

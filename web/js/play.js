@@ -94,20 +94,33 @@
       var StringUtils5 = class {
         constructor() {
         }
+        /**
+         * Tells whether a character is an STXT blank (STXT-SPEC 4): space or tab.
+         *
+         * @param c single character.
+         * @returns true for U+0020 and U+0009 only.
+         */
+        static isBlank(c) {
+          return c === " " || c === "	";
+        }
+        /**
+         * Removes the leading and trailing blanks (space and tab only, STXT-SPEC 4) of a string.
+         *
+         * @param s string to trim.
+         * @returns the trimmed string; null/undefined is treated as the empty string.
+         */
+        static trim(s) {
+          return (s ?? "").replace(this.LEADING_BLANKS, "").replace(this.TRAILING_BLANKS, "");
+        }
         // Used for name>> nodes
         /**
-         * Removes the trailing whitespace of a string.
+         * Removes the trailing blanks (space and tab only, STXT-SPEC 4, 10.2) of a string.
          *
-         * @param s string to strip the trailing spaces from.
-         * @returns the string without trailing whitespace; null/undefined is treated as the empty string.
+         * @param s string to strip the trailing blanks from.
+         * @returns the string without trailing blanks; null/undefined is treated as the empty string.
          */
         static rightTrim(s) {
-          const value = s ?? "";
-          let i = value.length - 1;
-          while (i >= 0 && /\s/.test(value.charAt(i))) {
-            i--;
-          }
-          return value.substring(0, i + 1);
+          return (s ?? "").replace(this.TRAILING_BLANKS, "");
         }
         // Used for BASE64 and HEXADECIMAL nodes
         /**
@@ -131,13 +144,13 @@
         }
         // Used for the name of the nodes
         /**
-         * Trims a string and collapses its inner whitespace.
+         * Trims a string and collapses its inner runs of blanks (space and tab only).
          *
          * @param s string to compact.
-         * @returns the string with the outer spaces trimmed and the inner ones collapsed into a single one; null/undefined is treated as the empty string.
+         * @returns the string with the outer blanks trimmed and the inner runs collapsed into a single space; null/undefined is treated as the empty string.
          */
         static compactSpaces(s) {
-          return (s ?? "").trim().replace(/\s+/g, " ");
+          return this.trim(s).replace(this.BLANK_RUN, " ");
         }
         /**
          * Tells whether a value is a valid STXT node name.
@@ -161,13 +174,13 @@
          * @returns the canonical name of a node: NFC + lower case, with separators collapsed into '-'; null/undefined is treated as the empty string.
          */
         static normalize(input) {
-          let s = (input ?? "").trim();
+          let s = this.trim(input);
           if (s.length === 0) {
             return "";
           }
           s = s.normalize("NFC");
           s = s.toLowerCase();
-          s = s.replace(/[-_\s]+/g, "-");
+          s = s.replace(/[-_ \t]+/g, "-");
           s = s.replace(/^-+|-+$/g, "");
           return s;
         }
@@ -175,6 +188,9 @@
       exports.StringUtils = StringUtils5;
       StringUtils5.NODE_NAME = /^[\p{L}\p{Nd}\p{Mn}\p{Mc}\-_ ]+$/u;
       StringUtils5.NODE_NAME_LETTER_OR_DIGIT = /[\p{L}\p{Nd}]/u;
+      StringUtils5.LEADING_BLANKS = /^[ \t]+/;
+      StringUtils5.TRAILING_BLANKS = /[ \t]+$/;
+      StringUtils5.BLANK_RUN = /[ \t]+/g;
     }
   });
 
@@ -473,7 +489,7 @@
          * @param value new value, or null/undefined for none. It is trimmed.
          */
         setValue(value) {
-          this.value = (value ?? "").trim();
+          this.value = StringUtils_1.StringUtils.trim(value);
         }
         getText() {
           return this.value;
@@ -608,6 +624,7 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Line = void 0;
+      var StringUtils_1 = require_StringUtils();
       var Line4 = class {
         /**
          * Creates a line already split into indentation and content.
@@ -625,9 +642,9 @@
           this.isBlock = isBlock;
           this.indentLength = indentLength;
         }
-        /** @returns true if the line has no content beyond whitespace. */
+        /** @returns true if the line has no content beyond blanks (space/tab only, spec 4). */
         isEmpty() {
-          return this.content.trim() === "";
+          return StringUtils_1.StringUtils.trim(this.content) === "";
         }
       };
       exports.Line = Line4;
@@ -650,6 +667,7 @@
         let pointer = 0;
         let sawSpace = false;
         let sawTab = false;
+        let isComment = false;
         while (pointer < line.length) {
           const c = line.charAt(pointer);
           if (c === Constants_1.Constants.SPACE) {
@@ -664,7 +682,8 @@
             level++;
             spaces = 0;
           } else if (c === Constants_1.Constants.COMMENT_CHAR) {
-            return new Line_1.Line(level, line.substring(pointer + 1), true, false, pointer);
+            isComment = true;
+            break;
           } else {
             break;
           }
@@ -692,7 +711,10 @@
         if (validate && level > lastLevel + 1) {
           throw new ParseException_1.ParseException(numLine, "INDENTATION_LEVEL_NOT_VALID", `Level of indent incorrect: ${level}`);
         }
-        return new Line_1.Line(level, line.substring(pointer).trim(), false, false, pointer);
+        if (isComment) {
+          return new Line_1.Line(level, line.substring(pointer + 1), true, false, pointer);
+        }
+        return new Line_1.Line(level, StringUtils_1.StringUtils.trim(line.substring(pointer)), false, false, pointer);
       }
     }
   });
@@ -735,6 +757,7 @@
       exports.NameNamespaceParser = void 0;
       var ParseException_1 = require_ParseException();
       var NameNamespace_1 = require_NameNamespace();
+      var StringUtils_1 = require_StringUtils();
       var NameNamespaceParser = class {
         constructor() {
         }
@@ -752,7 +775,7 @@
           if (rawName === null || rawName === void 0) {
             throw new ParseException_1.ParseException(lineNumber, "INVALID_LINE", `Line not valid: ${fullLine}`);
           }
-          rawName = rawName.trim();
+          rawName = StringUtils_1.StringUtils.trim(rawName);
           const startIndex = rawName.indexOf("(");
           const endIndex = rawName.indexOf(")");
           let name2;
@@ -761,7 +784,7 @@
             if (startIndex > endIndex || endIndex !== rawName.length - 1) {
               throw new ParseException_1.ParseException(lineNumber, "INVALID_NAMESPACE", `Line not valid: ${fullLine}`);
             }
-            name2 = rawName.substring(0, startIndex).trim();
+            name2 = StringUtils_1.StringUtils.trim(rawName.substring(0, startIndex));
             namespace = rawName.substring(startIndex + 1, endIndex);
             if (namespace.length === 0) {
               throw new ParseException_1.ParseException(lineNumber, "INVALID_NAMESPACE", `Line not valid: ${fullLine}`);
@@ -784,6 +807,7 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.createNode = createNode;
+      var StringUtils_1 = require_StringUtils();
       var NameNamespaceParser_1 = require_NameNamespaceParser();
       var InlineNode_1 = require_InlineNode();
       var TextNode_1 = require_TextNode();
@@ -814,7 +838,7 @@
           name2 = line.substring(0, nodeIndex);
           value = line.substring(nodeIndex + Constants_1.Constants.SEP_NODE.length);
         }
-        if (textNode && value.trim().length > 0) {
+        if (textNode && StringUtils_1.StringUtils.trim(value).length > 0) {
           throw new ParseException_1.ParseException(lineNumber, "INLINE_VALUE_NOT_VALID", `Line not valid: ${line}`);
         }
         const nameNamespace = NameNamespaceParser_1.NameNamespaceParser.parse(name2, null, lineNumber, line);

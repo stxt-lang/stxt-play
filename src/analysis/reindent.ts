@@ -8,8 +8,10 @@ import { DocumentAnalysis } from "./Analyzer";
  * - A text line of a block has `level of the block + 1` structural units; whatever indentation
  *   follows is part of the text (STXT keeps the relative indentation of block content) and is
  *   left exactly as it is.
- * - Comments, blank lines and lines the parser rejected have no level of their own: every full
- *   unit of their leading whitespace is converted, and any remainder is kept.
+ * - Comments, blank lines and lines the parser rejected are converted by units: every full
+ *   unit of their leading whitespace is converted, and any remainder is kept. In a document that
+ *   parses a comment has a whole number of units (STXT-SPEC §9 validates its indentation like a
+ *   node's), so the remainder only survives in documents with errors.
  *
  * Nothing but leading whitespace is ever touched, and only as many units as the line has, so
  * comments, values and text survive untouched, and a document with indentation errors keeps

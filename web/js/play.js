@@ -47,9 +47,15 @@
           this.code = code;
           Object.setPrototypeOf(this, _ParseException.prototype);
         }
-        /** @returns a readable representation of the error, with its line and its code. */
+        /**
+         * The string form carries the frame that `message` deliberately leaves out: `message` is only
+         * the description, and the code and the line are separate fields that whoever formats output
+         * composes. Same framing in every port since 0.10.0.
+         *
+         * @returns `[CODE] line N: message`.
+         */
         toString() {
-          return `${this.name} [line=${this.line}, code=${this.code}]: ${this.message}`;
+          return `[${this.code}] line ${this.line}: ${this.message}`;
         }
       };
       exports.ParseException = ParseException2;
@@ -458,10 +464,14 @@
         getCode() {
           return this.code;
         }
-        /** @returns a readable representation of the error, with its code. */
+        /**
+         * The string form carries the frame that `message` deliberately leaves out; same framing in
+         * every port since 0.10.0.
+         *
+         * @returns `[CODE] message`.
+         */
         toString() {
-          const message = this.message;
-          return `${this.name}[${this.code}]${message ? `: ${message}` : ""}`;
+          return `[${this.code}] ${this.message}`;
         }
       };
       exports.RuntimeException = RuntimeException;
@@ -617,6 +627,7 @@
       var Constants2 = class {
       };
       exports.Constants = Constants2;
+      Constants2.SPEC_VERSION = "1.0";
       Constants2.COMMENT_CHAR = "#";
       Constants2.TAB_SPACES = 4;
       Constants2.TAB = "	";
@@ -1407,10 +1418,8 @@
       exports.binaryValue = binaryValue;
       var TextNode_1 = require_TextNode();
       function binaryValue(node) {
-        if (!(node instanceof TextNode_1.TextNode)) {
-          return node.getText();
-        }
-        return node.getTextLines().map((line) => line.trim()).join("");
+        const raw = node instanceof TextNode_1.TextNode ? node.getTextLines().join("") : node.getText();
+        return raw.replace(/[ \t]/g, "");
       }
     }
   });
@@ -1480,23 +1489,30 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.BASE64 = void 0;
+      exports.isValidBase64 = isValidBase64;
       var ValidationException_1 = require_ValidationException();
       var binaryValue_1 = require_binaryValue();
+      var ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+      var SHAPE = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}(?:==)?|[A-Za-z0-9+/]{3}=?)?$/;
+      function isValidBase64(value) {
+        if (value.length === 0 || !SHAPE.test(value)) {
+          return false;
+        }
+        const data = value.replace(/=+$/, "");
+        const rest = data.length % 4;
+        if (rest === 0) {
+          return true;
+        }
+        const last = ALPHABET.indexOf(data.charAt(data.length - 1));
+        const mask = rest === 2 ? 15 : 3;
+        return (last & mask) === 0;
+      }
       exports.BASE64 = {
         getName() {
           return "BASE64";
         },
         validate(ndef, n) {
-          const raw = (0, binaryValue_1.binaryValue)(n);
-          try {
-            const buf = Buffer.from(raw, "base64");
-            const reencoded = buf.toString("base64");
-            const normalizedInput = raw.replace(/=+$/, "");
-            const normalizedReencoded = reencoded.replace(/=+$/, "");
-            if (normalizedInput !== normalizedReencoded) {
-              throw new ValidationException_1.ValidationException(n.getLine(), "INVALID_VALUE", `Node '${n.getName()}' Invalid Base64`);
-            }
-          } catch {
+          if (!isValidBase64((0, binaryValue_1.binaryValue)(n))) {
             throw new ValidationException_1.ValidationException(n.getLine(), "INVALID_VALUE", `Node '${n.getName()}' Invalid Base64`);
           }
         }
@@ -2084,6 +2100,9 @@
           const valuesNode = valuesNodes[0];
           const values = inline(valuesNode).getChildrenByName("value");
           for (const v of values) {
+            if (v.getText().length === 0) {
+              throw new ValidationException_1.ValidationException(v.getLine(), "VALUE_EMPTY", "Value of ENUM cannot be empty");
+            }
             result.addValue(v.getText(), v.getLine());
           }
           valuesNodes = values;
@@ -2352,6 +2371,9 @@
             const list = [];
             for (let part of parts) {
               part = part.trim();
+              if (part.length === 0 && parts.length > 1) {
+                throw new ValidationException_1.ValidationException(lineNumber, "VALUE_EMPTY", `Empty ENUM value in ${valuesStr}`);
+              }
               if (part.length === 0) {
                 continue;
               }
@@ -3214,7 +3236,7 @@
     "node_modules/@stxt-lang/core/out/all.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.DiscoveryError = exports.DiscoveryResult = exports.DiscoveryResolver = exports.transformTemplateNodeToSchema = exports.toCanonicalJson = exports.toCanonicalTree = exports.IndentStyle = exports.NodeWriter = exports.ConditionalValidator = exports.UnifiedSchemaProvider = exports.transformNodeToSchema = exports.ChildDefinition = exports.NodeDefinition = exports.SchemaValidator = exports.Schema = exports.ValidationException = exports.ParseException = exports.StringUtils = exports.parseLine = exports.Constants = exports.Line = exports.ParseResult = exports.Parser = exports.TextNode = exports.InlineNode = exports.Node = void 0;
+      exports.DiscoveryError = exports.DiscoveryResult = exports.DiscoveryResolver = exports.transformTemplateNodeToSchema = exports.toCanonicalJson = exports.toCanonicalTree = exports.IndentStyle = exports.NodeWriter = exports.ConditionalValidator = exports.UnifiedSchemaProvider = exports.transformNodeToSchema = exports.ChildDefinition = exports.NodeDefinition = exports.SchemaValidator = exports.Schema = exports.ValidationException = exports.ParseException = exports.StringUtils = exports.parseLine = exports.SPEC_VERSION = exports.Constants = exports.Line = exports.ParseResult = exports.Parser = exports.TextNode = exports.InlineNode = exports.Node = void 0;
       var Node_1 = require_Node();
       Object.defineProperty(exports, "Node", { enumerable: true, get: function() {
         return Node_1.Node;
@@ -3243,6 +3265,8 @@
       Object.defineProperty(exports, "Constants", { enumerable: true, get: function() {
         return Constants_1.Constants;
       } });
+      var Constants_2 = require_Constants();
+      exports.SPEC_VERSION = Constants_2.Constants.SPEC_VERSION;
       var LineParser_1 = require_LineParser();
       Object.defineProperty(exports, "parseLine", { enumerable: true, get: function() {
         return LineParser_1.parseLine;

@@ -18,7 +18,7 @@ Three groups, all written for the playground (since 2026-08-17):
 The namespaces are `stxt.play.*` on purpose — short, so they show whole in the document list, and
 under the language's own name rather than `com.example.*` (`@stxt.*` stays reserved for the
 language; `stxt.*` without the `@` is a plain namespace): the portal (`stxt.dev`, source in the
-`stxt-web` repository) never uses that family in its examples, so any example opened from the
+`stxt-lang` repository) never uses that family in its examples, so any example opened from the
 portal with its *Open in playground* button can be added to a fresh workspace without a
 `DISCOVERY_DUPLICATE_NAMESPACE` clash with the seed. Before 2026-08-17 the seed reused
 `com.example.docs` and `com.acme.book` from the corpus, which the portal defines too.

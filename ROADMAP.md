@@ -97,12 +97,13 @@ faltaba era la interfaz. La cabecera lleva un segmentado **Tabs | Spaces** y un 
 con sus defaults). El modo de indentación cambia lo que inserta Tab (un tabulador o cuatro
 espacios, vía un `Compartment` de CodeMirror sobre `indentUnit`, aplicado también a los estados
 aparcados al mostrarlos) **y reindenta todos los documentos del workspace** (decidido el
-2026-08-15, después de la fase 5; al principio no convertía nada). La conversión es de
-`src/analysis/reindent.ts` y toca **solo la indentación estructural**: en cada línea, tantas
-unidades como nivel tenga —en las líneas de texto de un bloque, el nivel del bloque más uno—, y
-en comentarios, líneas en blanco y líneas rechazadas por el parser, las unidades completas que
-haya. La indentación relativa del contenido de los bloques, los comentarios y los valores no se
-tocan; el árbol canónico es idéntico antes y después (hay test). Se aplica como cambios de
+2026-08-15, después de la fase 5; al principio no convertía nada). Desde la 0.11.1
+(2026-08-22) la conversión es el `Formatter` de `@stxt-lang/core`, el mismo de `stxt format` y de
+la extensión, y `src/analysis/reindent.ts` solo traduce su salida a un cambio por línea: en cada
+línea, tantas unidades como nivel tenga —en las líneas de texto de un bloque, el nivel del bloque
+más uno—, y en comentarios, líneas en blanco y líneas rechazadas por el parser, las unidades
+completas que haya; la indentación relativa del contenido de los bloques y los comentarios no se
+tocan, y el árbol canónico es idéntico antes y después (hay test). Se aplica como cambios de
 CodeMirror —transacción en el documento visible, `state.update` en los aparcados—, así que es
 **deshacible con Ctrl+Z** en cada documento; por eso no es un default destructivo. El interruptor
 de validación llama a `Analyzer.setValidation` y repinta editor, panel y contadores. En el panel,

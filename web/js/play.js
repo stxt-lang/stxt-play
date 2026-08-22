@@ -2806,11 +2806,11 @@
       exports.NodeWriter = exports.IndentStyle = void 0;
       var InlineNode_1 = require_InlineNode();
       var TextNode_1 = require_TextNode();
-      var IndentStyle;
-      (function(IndentStyle2) {
-        IndentStyle2["TABS"] = "TABS";
-        IndentStyle2["SPACES_4"] = "SPACES_4";
-      })(IndentStyle || (exports.IndentStyle = IndentStyle = {}));
+      var IndentStyle2;
+      (function(IndentStyle3) {
+        IndentStyle3["TABS"] = "TABS";
+        IndentStyle3["SPACES_4"] = "SPACES_4";
+      })(IndentStyle2 || (exports.IndentStyle = IndentStyle2 = {}));
       var NodeWriter = class _NodeWriter {
         constructor() {
         }
@@ -2821,7 +2821,7 @@
          * @param style indentation style to use; tabs by default.
          * @returns the node serialized to STXT text.
          */
-        static toSTXT(node, style = IndentStyle.TABS) {
+        static toSTXT(node, style = IndentStyle2.TABS) {
           const out = [];
           _NodeWriter.writeNode(out, node, 0, style);
           return out.join("");
@@ -2833,7 +2833,7 @@
          * @param style indentation style to use; tabs by default.
          * @returns the documents serialized to STXT text.
          */
-        static toSTXTDocs(docs, style = IndentStyle.TABS) {
+        static toSTXTDocs(docs, style = IndentStyle2.TABS) {
           const out = [];
           for (let i = 0; i < docs.length; i++) {
             if (i > 0) {
@@ -2870,11 +2870,154 @@
         }
         static indent(out, depth, style) {
           if (depth > 0) {
-            out.push(style === IndentStyle.SPACES_4 ? "    ".repeat(depth) : "	".repeat(depth));
+            out.push(style === IndentStyle2.SPACES_4 ? "    ".repeat(depth) : "	".repeat(depth));
           }
         }
       };
       exports.NodeWriter = NodeWriter;
+    }
+  });
+
+  // node_modules/@stxt-lang/core/out/runtime/Formatter.js
+  var require_Formatter = __commonJS({
+    "node_modules/@stxt-lang/core/out/runtime/Formatter.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.Formatter = void 0;
+      var InlineNode_1 = require_InlineNode();
+      var Parser_1 = require_Parser();
+      var StringUtils_1 = require_StringUtils();
+      var TextNode_1 = require_TextNode();
+      var NodeWriter_1 = require_NodeWriter();
+      var Formatter2 = class _Formatter {
+        constructor() {
+        }
+        /**
+         * Formats a document.
+         *
+         * @param text the document.
+         * @param style indentation style to format with; tabs by default.
+         * @returns the formatted text and the syntax errors found; see {@link FormatResult}.
+         */
+        static format(text, style = NodeWriter_1.IndentStyle.TABS) {
+          const sourceLines = new SourceLines();
+          const parser = new Parser_1.Parser();
+          parser.registerObserver(sourceLines);
+          const result = parser.parseResult(text);
+          const eol = text.includes("\r\n") ? "\r\n" : "\n";
+          const formatted = text.split(/\r?\n/).map((line, index) => _Formatter.formatLine(line, index + 1, style, sourceLines)).join(eol);
+          return { text: formatted, errors: result.getErrors() };
+        }
+        /**
+         * Formats one source line.
+         *
+         * @param line the line, without its line ending.
+         * @param lineNumber its line number, 1-indexed as the parser counts them.
+         * @param style indentation style to format with.
+         * @param sourceLines the parse of the document seen as source lines.
+         * @returns the formatted line.
+         */
+        static formatLine(line, lineNumber, style, sourceLines) {
+          const node = sourceLines.nodeAt(lineNumber);
+          if (node) {
+            return _Formatter.renderNode(node, line, style);
+          }
+          const text = sourceLines.textAt(lineNumber);
+          if (text) {
+            return _Formatter.indent(text.node.getLevel() + 1, style) + text.line.content;
+          }
+          return _Formatter.convertUnits(StringUtils_1.StringUtils.rightTrim(line), style);
+        }
+        /**
+         * Renders the line that opens a node in its canonical form.
+         *
+         * @param node the node the line opens.
+         * @param line the source line, used only to tell whether it spelled the namespace out.
+         * @param style indentation style to format with.
+         * @returns the formatted line.
+         */
+        static renderNode(node, line, style) {
+          const indent = _Formatter.indent(node.getLevel(), style);
+          const head = node instanceof InlineNode_1.InlineNode ? line.substring(0, line.indexOf(":")) : line;
+          const name2 = head.includes("(") ? `${node.getName()} (${node.getNamespace()})` : node.getName();
+          if (node instanceof TextNode_1.TextNode) {
+            return `${indent}${name2} >>`;
+          }
+          const value = node.getValue();
+          return value.length > 0 ? `${indent}${name2}: ${value}` : `${indent}${name2}:`;
+        }
+        /**
+         * Converts the whole indentation units at the start of a line to the requested style and
+         * keeps the rest of the line, remainder included.
+         *
+         * @param line the line, without trailing blanks.
+         * @param style indentation style to convert to.
+         * @returns the line with its indentation units converted.
+         */
+        static convertUnits(line, style) {
+          let consumed = 0;
+          let units = 0;
+          let unit = _Formatter.unitAt(line, consumed);
+          while (unit > 0) {
+            consumed += unit;
+            units++;
+            unit = _Formatter.unitAt(line, consumed);
+          }
+          return units === 0 ? line : _Formatter.indent(units, style) + line.substring(consumed);
+        }
+        /**
+         * @param line a line.
+         * @param position a position in it.
+         * @returns the length of the whole indentation unit — a tab or four spaces — that starts at
+         *          `position`, or 0 if none does.
+         */
+        static unitAt(line, position) {
+          if (line.startsWith("	", position)) {
+            return 1;
+          }
+          return line.startsWith("    ", position) ? 4 : 0;
+        }
+        /**
+         * @param level indentation level to produce.
+         * @param style indentation style to produce it in.
+         * @returns the indentation of that level.
+         */
+        static indent(level, style) {
+          return (style === NodeWriter_1.IndentStyle.SPACES_4 ? "    " : "	").repeat(level);
+        }
+      };
+      exports.Formatter = Formatter2;
+      var SourceLines = class {
+        constructor() {
+          this.nodeByLine = /* @__PURE__ */ new Map();
+          this.textByLine = /* @__PURE__ */ new Map();
+        }
+        onCreate(node) {
+          this.nodeByLine.set(node.getLine(), node);
+        }
+        onFinish() {
+        }
+        onComment() {
+        }
+        onTextLine(node, lineNumber, lineString, line) {
+          this.textByLine.set(lineNumber, { node, line });
+        }
+        /**
+         * @param lineNumber line number, 1-indexed.
+         * @returns the node this line opened, or undefined if it opened none.
+         */
+        nodeAt(lineNumber) {
+          return this.nodeByLine.get(lineNumber);
+        }
+        /**
+         * @param lineNumber line number, 1-indexed.
+         * @returns the block node this line is text of and the line already split into indentation
+         *          and content, or undefined if the line is not text of a block.
+         */
+        textAt(lineNumber) {
+          return this.textByLine.get(lineNumber);
+        }
+      };
     }
   });
 
@@ -3320,7 +3463,7 @@
     "node_modules/@stxt-lang/core/out/all.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.DiscoveryError = exports.DiscoveryResult = exports.DiscoveryResolver = exports.MetaTemplateSchemaProvider = exports.TemplateSchemaProviderMemory = exports.TEMPLATE_NAMESPACE = exports.transformTemplateNodeToSchema = exports.toCanonicalJson = exports.toCanonicalTree = exports.IndentStyle = exports.NodeWriter = exports.UnifiedSchemaProvider = exports.transformNodeToSchema = exports.ChildDefinition = exports.NodeDefinition = exports.TypeRegistry = exports.SchemaProviderMeta = exports.SchemaProviderMemory = exports.SchemaValidator = exports.Schema = exports.RuntimeException = exports.ValidationException = exports.ParseException = exports.StringUtils = exports.parseLine = exports.SPEC_VERSION = exports.Constants = exports.Line = exports.ParseResult = exports.Parser = exports.TextNode = exports.InlineNode = exports.Node = void 0;
+      exports.DiscoveryError = exports.DiscoveryResult = exports.DiscoveryResolver = exports.MetaTemplateSchemaProvider = exports.TemplateSchemaProviderMemory = exports.TEMPLATE_NAMESPACE = exports.transformTemplateNodeToSchema = exports.toCanonicalJson = exports.toCanonicalTree = exports.Formatter = exports.IndentStyle = exports.NodeWriter = exports.UnifiedSchemaProvider = exports.transformNodeToSchema = exports.ChildDefinition = exports.NodeDefinition = exports.TypeRegistry = exports.SchemaProviderMeta = exports.SchemaProviderMemory = exports.SchemaValidator = exports.Schema = exports.RuntimeException = exports.ValidationException = exports.ParseException = exports.StringUtils = exports.parseLine = exports.SPEC_VERSION = exports.Constants = exports.Line = exports.ParseResult = exports.Parser = exports.TextNode = exports.InlineNode = exports.Node = void 0;
       var Node_1 = require_Node();
       Object.defineProperty(exports, "Node", { enumerable: true, get: function() {
         return Node_1.Node;
@@ -3413,6 +3556,10 @@
       } });
       Object.defineProperty(exports, "IndentStyle", { enumerable: true, get: function() {
         return NodeWriter_1.IndentStyle;
+      } });
+      var Formatter_1 = require_Formatter();
+      Object.defineProperty(exports, "Formatter", { enumerable: true, get: function() {
+        return Formatter_1.Formatter;
       } });
       var TreeJson_1 = require_TreeJson();
       Object.defineProperty(exports, "toCanonicalTree", { enumerable: true, get: function() {
@@ -17606,7 +17753,7 @@
   }
 
   // src/analysis/Analyzer.ts
-  var import_core6 = __toESM(require_all());
+  var import_core7 = __toESM(require_all());
 
   // src/analysis/completion.ts
   var import_core = __toESM(require_all());
@@ -18110,34 +18257,17 @@
   }
 
   // src/analysis/reindent.ts
+  var import_core5 = __toESM(require_all());
   var TAB_UNIT = "	";
   var SPACES_UNIT = "    ";
-  function computeIndentChanges(analysis, text, unit) {
-    const changes = [];
+  function computeIndentChanges(text, unit) {
+    const style = unit === SPACES_UNIT ? import_core5.IndentStyle.SPACES_4 : import_core5.IndentStyle.TABS;
     const lines = text.split("\n");
+    const formatted = import_core5.Formatter.format(text, style).text.split("\n");
+    const changes = [];
     for (let i = 0; i < lines.length; i++) {
-      const leading = /^[\t ]*/.exec(lines[i])?.[0] ?? "";
-      if (leading.length === 0) {
-        continue;
-      }
-      const node = analysis.nodeByLine.get(i);
-      const block = analysis.textLineByLineNumber.get(i);
-      const wanted = node ? node.getLevel() : block ? block.getLevel() + 1 : Number.POSITIVE_INFINITY;
-      let consumed = 0;
-      let units = 0;
-      while (units < wanted && consumed < leading.length) {
-        if (leading.startsWith(TAB_UNIT, consumed)) {
-          consumed += TAB_UNIT.length;
-        } else if (leading.startsWith(SPACES_UNIT, consumed)) {
-          consumed += SPACES_UNIT.length;
-        } else {
-          break;
-        }
-        units++;
-      }
-      const insert2 = unit.repeat(units);
-      if (consumed > 0 && leading.slice(0, consumed) !== insert2) {
-        changes.push({ line: i, from: 0, to: consumed, insert: insert2 });
+      if (formatted[i] !== lines[i]) {
+        changes.push({ line: i, from: 0, to: lines[i].length, insert: formatted[i] });
       }
     }
     return changes;
@@ -18155,7 +18285,7 @@
   }
 
   // src/analysis/TokenGeneratorObserver.ts
-  var import_core5 = __toESM(require_all());
+  var import_core6 = __toESM(require_all());
   var TokenGeneratorObserver = class _TokenGeneratorObserver {
     constructor() {
       this.tokens = [];
@@ -18200,7 +18330,7 @@
         if (!content2 || content2.trim() === "") {
           return;
         }
-        const parser = new import_core5.Parser();
+        const parser = new import_core6.Parser();
         const innerObserver = new _TokenGeneratorObserver();
         parser.registerObserver(innerObserver);
         parser.parseResult(content2);
@@ -18376,8 +18506,8 @@
       return analysis ? computeCompletions(analysis, this.registry, line, linePrefix) : null;
     }
     /**
-     * The changes that re-indent a document to a unit, touching only structural indentation
-     * (see `reindent.ts`).
+     * The changes that re-indent a document to a unit, with the formatter of the core (see
+     * `reindent.ts`).
      *
      * @param id identifier of the document.
      * @param unit target indent unit: a tab or four spaces.
@@ -18385,8 +18515,7 @@
      */
     getIndentChanges(id, unit) {
       const parsed = this.parsed.get(id);
-      const analysis = this.analyses.get(id);
-      return parsed && analysis ? computeIndentChanges(analysis, parsed.text, unit) : [];
+      return parsed ? computeIndentChanges(parsed.text, unit) : [];
     }
     /**
      * Describes the node opened at a line of a document, for the hover (see `nodeInfo.ts`).
@@ -18415,7 +18544,7 @@
     /** Parses a document once, collecting tokens, line maps and syntax errors. */
     static parseDocument(text) {
       const observer = new TokenGeneratorObserver();
-      const parser = new import_core6.Parser();
+      const parser = new import_core7.Parser();
       parser.registerObserver(observer);
       const result = parser.parseResult(text);
       const roots = result.getNodes();
@@ -18482,7 +18611,7 @@
         grammars: parsed.grammarRoots.map((root) => ({
           // A grammar root is `Name (@stxt.schema): namespace`; a block form is a broken grammar
           // the registry reports on its own, and declares no namespace here.
-          namespace: root instanceof import_core6.InlineNode ? import_core6.StringUtils.lowerCase(root.getValue().trim()) : "",
+          namespace: root instanceof import_core7.InlineNode ? import_core7.StringUtils.lowerCase(root.getValue().trim()) : "",
           kind: grammarKindOf(root),
           line: root.getLine() - 1
         })),
@@ -18534,9 +18663,9 @@
      */
     validateRoots(roots) {
       const diagnostics = [];
-      const validator = new import_core6.SchemaValidator(this.registry);
+      const validator = new import_core7.SchemaValidator(this.registry);
       const walk = (node) => {
-        if (node instanceof import_core6.InlineNode) {
+        if (node instanceof import_core7.InlineNode) {
           node.getChildren().forEach(walk);
         }
         try {

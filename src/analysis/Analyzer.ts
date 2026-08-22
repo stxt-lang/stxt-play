@@ -181,8 +181,8 @@ export class Analyzer {
 	}
 
 	/**
-	 * The changes that re-indent a document to a unit, touching only structural indentation
-	 * (see `reindent.ts`).
+	 * The changes that re-indent a document to a unit, with the formatter of the core (see
+	 * `reindent.ts`).
 	 *
 	 * @param id identifier of the document.
 	 * @param unit target indent unit: a tab or four spaces.
@@ -190,8 +190,7 @@ export class Analyzer {
 	 */
 	getIndentChanges(id: string, unit: string): IndentChange[] {
 		const parsed = this.parsed.get(id);
-		const analysis = this.analyses.get(id);
-		return parsed && analysis ? computeIndentChanges(analysis, parsed.text, unit) : [];
+		return parsed ? computeIndentChanges(parsed.text, unit) : [];
 	}
 
 	/**

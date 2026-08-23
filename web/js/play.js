@@ -1019,7 +1019,7 @@
         processLine(lineString, lineNumber, stack, documents, result) {
           try {
             const lastNode = stack.length === 0 ? null : stack[stack.length - 1];
-            const lastLevel = lastNode ? stack.length - 1 : 0;
+            const lastLevel = lastNode ? stack.length - 1 : -1;
             const lastNodeText = lastNode instanceof TextNode_1.TextNode;
             const line = (0, LineParser_1.parseLine)(lineString, lastNodeText, lastLevel, lineNumber);
             if (line.isComment) {

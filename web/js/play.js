@@ -2823,7 +2823,7 @@
          */
         static toSTXT(node, style = IndentStyle2.TABS) {
           const out = [];
-          _NodeWriter.writeNode(out, node, 0, style);
+          _NodeWriter.writeNode(out, node, 0, style, "");
           return out.join("");
         }
         /**
@@ -2839,15 +2839,22 @@
             if (i > 0) {
               out.push("\n");
             }
-            _NodeWriter.writeNode(out, docs[i], 0, style);
+            _NodeWriter.writeNode(out, docs[i], 0, style, "");
           }
           return out.join("");
         }
-        static writeNode(out, n, depth, style) {
+        /**
+         * Writes one node and, recursively, its children, in the canonical text form of
+         * STXT-TREE-SPEC 11.1.
+         *
+         * @param parentNs effective namespace of the parent, "" for a root: the namespace is
+         *        declared only where it changes (rule 3), wherever the source declared it.
+         */
+        static writeNode(out, n, depth, style, parentNs) {
           _NodeWriter.indent(out, depth, style);
-          const ns = n.getDeclaredNamespace();
+          const ns = n.getNamespace();
           out.push(n.getName());
-          if (ns.length > 0) {
+          if (ns !== parentNs) {
             out.push(" (", ns, ")");
           }
           if (n instanceof TextNode_1.TextNode) {
@@ -2864,7 +2871,7 @@
             }
             out.push("\n");
             for (const child of n.getChildren()) {
-              _NodeWriter.writeNode(out, child, depth + 1, style);
+              _NodeWriter.writeNode(out, child, depth + 1, style, ns);
             }
           }
         }
@@ -2900,6 +2907,9 @@
          * @returns the formatted text and the syntax errors found; see {@link FormatResult}.
          */
         static format(text, style = NodeWriter_1.IndentStyle.TABS) {
+          if (text.startsWith("\uFEFF")) {
+            text = text.substring(1);
+          }
           const sourceLines = new SourceLines();
           const parser = new Parser_1.Parser();
           parser.registerObserver(sourceLines);

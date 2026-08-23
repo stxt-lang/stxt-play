@@ -69,12 +69,13 @@ $warning: #9a6b00;
 	}
 }
 
+// Narrow screens: the list is a pane of its own (see the view tabs in _layout.scss)
 @media (max-width: 720px) {
 	.sidebar {
+		flex: 1;
 		width: auto;
-		max-height: 30%;
+		min-height: 0;
 		border-right: 0;
-		border-bottom: 1px solid $color3;
 	}
 }
 

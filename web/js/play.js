@@ -25089,6 +25089,35 @@ Book (stxt.play.library):
     };
   }
 
+  // src/ui/viewTabs.ts
+  var NARROW_QUERY = "(max-width: 720px)";
+  function createViewTabs(nav2, onShow) {
+    const buttons = Array.from(nav2.querySelectorAll("button[data-view]"));
+    const counter = nav2.querySelector(".view-tab-count");
+    const narrow = window.matchMedia(NARROW_QUERY);
+    const show = (view) => {
+      document.body.dataset.view = view;
+      for (const button2 of buttons) {
+        button2.setAttribute("aria-selected", String(button2.dataset.view === view));
+      }
+      onShow?.(view);
+    };
+    for (const button2 of buttons) {
+      button2.addEventListener("click", () => show(button2.dataset.view));
+    }
+    show("editor");
+    return {
+      show,
+      isActive: () => narrow.matches,
+      setProblemCount(count) {
+        if (counter) {
+          counter.textContent = String(count);
+          counter.hidden = count === 0;
+        }
+      }
+    };
+  }
+
   // src/workspace/Workspace.ts
   var UNTITLED = "Untitled";
   function defaultIdGenerator() {
@@ -25493,7 +25522,8 @@ Book (stxt.play.library):
     const docClear = document.getElementById("doc-clear");
     const shareButton = document.getElementById("share");
     const status = document.getElementById("status");
-    if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount || !indentTabs || !indentSpaces || !validationToggle || !docReset || !docClear || !shareButton || !status) {
+    const viewTabsNav = document.getElementById("view-tabs");
+    if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount || !indentTabs || !indentSpaces || !validationToggle || !docReset || !docClear || !shareButton || !status || !viewTabsNav) {
       return;
     }
     let statusTimer;
@@ -25567,14 +25597,29 @@ Book (stxt.play.library):
       goToLine(location2.line);
       return true;
     };
-    const panel2 = createProblemsPanel(problemsList, problemsCount, goToLine);
+    const tabs = createViewTabs(viewTabsNav, (shown) => {
+      if (shown === "editor") {
+        view.requestMeasure();
+      }
+    });
+    const showEditor = () => {
+      if (tabs.isActive()) {
+        tabs.show("editor");
+      }
+    };
+    const panel2 = createProblemsPanel(problemsList, problemsCount, (line) => {
+      showEditor();
+      goToLine(line);
+    });
     const list = createDocumentList(docList, docNew, {
       onSelect: (id) => {
         workspace.setActive(id);
+        showEditor();
         view.focus();
       },
       onCreate: () => {
         workspace.addDocument();
+        showEditor();
         view.focus();
       },
       onRename: (id, title) => workspace.rename(id, title),
@@ -25625,7 +25670,9 @@ Book (stxt.play.library):
       list.render(entries);
     };
     const renderPanel = () => {
-      panel2.render(activeAnalysis()?.diagnostics ?? []);
+      const diagnostics = activeAnalysis()?.diagnostics ?? [];
+      panel2.render(diagnostics);
+      tabs.setProblemCount(diagnostics.length);
     };
     const refreshView = () => {
       const analysis = activeAnalysis();

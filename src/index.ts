@@ -8,6 +8,7 @@ import { SEED_DOCUMENTS } from "./seed";
 import { createDocumentList, DocumentListEntry, DocumentListKind } from "./ui/documentList";
 import { confirmDialog, linkDialog } from "./ui/dialog";
 import { createProblemsPanel } from "./ui/problemsPanel";
+import { createViewTabs } from "./ui/viewTabs";
 import {
 	decodeOpen,
 	decodeShare,
@@ -115,9 +116,10 @@ function main(): void {
 	const docClear = document.getElementById("doc-clear");
 	const shareButton = document.getElementById("share");
 	const status = document.getElementById("status");
+	const viewTabsNav = document.getElementById("view-tabs");
 	if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount
 		|| !indentTabs || !indentSpaces || !validationToggle || !docReset || !docClear || !shareButton
-		|| !status) {
+		|| !status || !viewTabsNav) {
 		return;
 	}
 
@@ -214,15 +216,32 @@ function main(): void {
 
 	// --- Rendering ----------------------------------------------------------------------------
 
-	const panel = createProblemsPanel(problemsList, problemsCount, goToLine);
+	// Narrow screens show one pane at a time: picking a document or a problem lands in the editor
+	const tabs = createViewTabs(viewTabsNav, (shown) => {
+		if (shown === "editor") {
+			view.requestMeasure();
+		}
+	});
+	const showEditor = (): void => {
+		if (tabs.isActive()) {
+			tabs.show("editor");
+		}
+	};
+
+	const panel = createProblemsPanel(problemsList, problemsCount, (line) => {
+		showEditor();
+		goToLine(line);
+	});
 
 	const list = createDocumentList(docList, docNew, {
 		onSelect: (id) => {
 			workspace.setActive(id);
+			showEditor();
 			view.focus();
 		},
 		onCreate: () => {
 			workspace.addDocument();
+			showEditor();
 			view.focus();
 		},
 		onRename: (id, title) => workspace.rename(id, title),
@@ -278,7 +297,9 @@ function main(): void {
 	};
 
 	const renderPanel = (): void => {
-		panel.render(activeAnalysis()?.diagnostics ?? []);
+		const diagnostics = activeAnalysis()?.diagnostics ?? [];
+		panel.render(diagnostics);
+		tabs.setProblemCount(diagnostics.length);
 	};
 
 	/** Pushes the analysis of the shown document into the view: highlighting and underlines. */

@@ -11,15 +11,15 @@
 	<meta property="og:description" content="Edit STXT documents and grammars in the browser, with live validation.">
 	<meta property="og:url" content="https://play.stxt.dev/">
 	<meta property="og:type" content="website">
-	<link rel="icon" href="favicon.ico?v=066a84161f" sizes="any">
-	<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=9ecb1a9bf6">
-	<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=f3e566f8cd">
-	<link rel="apple-touch-icon" href="apple-touch-icon.png?v=05ffc81aab">
+	<link rel="icon" href="favicon.ico?v=31bb5a8d78" sizes="any">
+	<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=84d3ae1982">
+	<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=3111d8f7a6">
+	<link rel="apple-touch-icon" href="apple-touch-icon.png?v=cc530a12a6">
 	<!-- Russo One: the identity font of the STXT wordmark, the same source as the portal (stxt.dev) -->
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-	<link rel="stylesheet" href="css/site.css?v=62461a9bcd">
+	<link rel="stylesheet" href="css/site.css?v=2949b354e0">
 </head>
 <body>
 	<header class="topbar">
@@ -42,6 +42,12 @@
 		</div>
 	</header>
 	<div id="status" class="status" role="status" aria-live="polite"></div>
+	<!-- Narrow screens only: one pane at a time, picked here (see _layout.scss) -->
+	<nav id="view-tabs" class="view-tabs" aria-label="Panes">
+		<button type="button" data-view="documents" aria-selected="false">Documents</button>
+		<button type="button" data-view="editor" aria-selected="true">Editor</button>
+		<button type="button" data-view="problems" aria-selected="false">Problems <span class="view-tab-count" hidden>0</span></button>
+	</nav>
 	<div class="workbench">
 		<aside class="sidebar" aria-label="Documents">
 			<header class="sidebar-header">
@@ -59,6 +65,6 @@
 		<header class="problems-header">Problems <span id="problems-count" class="problems-count" aria-live="polite" aria-label="Number of problems">0</span></header>
 		<ul id="problems-list" class="problems-list"></ul>
 	</section>
-	<script src="js/play.js?v=8514a28944"></script>
+	<script src="js/play.js?v=9a8557ea5e"></script>
 </body>
 </html>

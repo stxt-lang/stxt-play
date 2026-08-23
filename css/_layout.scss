@@ -238,29 +238,55 @@ body {
 	min-height: 0; // let the editor scroll instead of growing the page
 }
 
-// Narrow screens: the sidebar becomes a strip above the editor, the header drops its links
-@media (max-width: 720px) {
-	.topbar {
-		flex-wrap: wrap;
-		gap: 0.5rem 0.75rem;
-		padding: 0.4rem 1rem;
+// View tabs: Documents · Editor · Problems. Hidden on wide screens, where the three panes
+// share the screen; on narrow screens they pick the one pane shown (body[data-view]).
+.view-tabs {
+	display: none;
+	flex: none;
+	border-bottom: 1px solid $color3;
+	background: $color4;
 
-		.doc-title {
-			flex-basis: 100%;
-			order: 3;
+	button {
+		flex: 1;
+		padding: 0.55rem 0.5rem;
+		border: 0;
+		border-bottom: 2px solid transparent;
+		background: transparent;
+		color: $stxt-muted;
+		font: inherit;
+		font-size: 0.8rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		cursor: pointer;
+
+		&[aria-selected="true"] {
+			border-bottom-color: $color1;
+			color: $color1;
 		}
 
-		.topbar-links {
+		&:focus-visible {
+			outline: 2px solid $color1;
+			outline-offset: -2px;
+		}
+	}
+
+	.view-tab-count {
+		display: inline-block;
+		min-width: 1.2rem;
+		margin-left: 0.3rem;
+		padding: 0 0.4rem;
+		border-radius: 999px;
+		background: $error;
+		color: #fff;
+		font-size: 0.7rem;
+		line-height: 1.2rem;
+		text-align: center;
+		letter-spacing: 0;
+
+		&[hidden] {
 			display: none;
 		}
-	}
-
-	.workbench {
-		flex-direction: column;
-	}
-
-	.problems {
-		height: 8rem;
 	}
 }
 
@@ -378,5 +404,74 @@ body {
 	.problem-none {
 		padding: 0.3rem 1rem;
 		color: $stxt-muted;
+	}
+}
+
+// Narrow screens: one pane at a time — the document list, the editor or the problems — chosen
+// with the view tabs; the header drops its links and subtitle and wraps its controls.
+// Last in the file on purpose: these rules must win over the panes' own ones above.
+@media (max-width: 720px) {
+	.topbar {
+		flex-wrap: wrap;
+		gap: 0.4rem 0.75rem;
+		padding: 0.4rem 1rem;
+
+		.brand-sub,
+		.topbar-links {
+			display: none;
+		}
+
+		.doc-title {
+			flex: 1;
+			order: 0;
+		}
+
+		.topbar-controls {
+			flex-basis: 100%;
+			order: 1;
+			justify-content: space-between;
+			gap: 0.6rem;
+		}
+	}
+
+	.view-tabs {
+		display: flex;
+	}
+
+	.workbench {
+		flex-direction: column;
+	}
+
+	// Every pane takes the whole space under the tabs; only the chosen one is displayed
+	body:not([data-view="documents"]) .sidebar,
+	body:not([data-view="editor"]) .editor,
+	body[data-view="problems"] .workbench,
+	body:not([data-view="problems"]) .problems {
+		display: none;
+	}
+
+	.editor {
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+	}
+
+	.problems {
+		flex: 1;
+		height: auto;
+		min-height: 0;
+		border-top: 0;
+
+		// Room to read the whole message: the row wraps, the message takes its own line
+		.problem {
+			flex-wrap: wrap;
+			padding: 0.45rem 1rem;
+		}
+
+		.problem-message {
+			flex-basis: 100%;
+			order: 1;
+			white-space: normal;
+		}
 	}
 }

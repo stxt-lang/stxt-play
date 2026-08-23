@@ -24821,6 +24821,16 @@ Book (stxt.play.library):
       if (entry.warnings > 0) {
         problems.appendChild(problemCount("warning", entry.warnings));
       }
+      const rename = document.createElement("button");
+      rename.type = "button";
+      rename.className = "doc-edit";
+      rename.title = "Rename document";
+      rename.setAttribute("aria-label", `Rename ${entry.label}`);
+      rename.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3l4 4L8 20l-5 1 1-5Z"></path></svg>';
+      rename.addEventListener("click", (event) => {
+        event.stopPropagation();
+        startRename(entry.id);
+      });
       const remove2 = document.createElement("button");
       remove2.type = "button";
       remove2.className = "doc-delete";
@@ -24831,7 +24841,11 @@ Book (stxt.play.library):
         event.stopPropagation();
         handlers2.onDelete(entry.id);
       });
-      row.append(badge, label, problems, remove2);
+      row.append(badge, label, problems);
+      if (entry.renamable) {
+        row.append(rename);
+      }
+      row.append(remove2);
       row.draggable = true;
       row.addEventListener("dragstart", (event) => {
         dragging = entry.id;

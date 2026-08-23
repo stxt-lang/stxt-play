@@ -64,7 +64,8 @@ const KIND_TITLE: Record<DocumentListKind, string> = {
  * Delete asks for deletion, Alt+Up/Down moves; double-click on the label renames too, and rows can
  * be dragged to reorder them. The list keeps only two pieces of state of its own — which row is
  * being renamed, which one is being dragged — so re-rendering while the user types a new title
- * keeps the input in place.
+ * keeps the input in place. Renamable rows also carry a pencil button — on touch screens there
+ * is no double-click nor F2 — shown on hover on wide screens and always on narrow ones.
  *
  * @param list element the rows are rendered into.
  * @param newButton the "new document" button.
@@ -158,6 +159,19 @@ export function createDocumentList(
 			problems.appendChild(problemCount("warning", entry.warnings));
 		}
 
+		const rename = document.createElement("button");
+		rename.type = "button";
+		rename.className = "doc-edit";
+		rename.title = "Rename document";
+		rename.setAttribute("aria-label", `Rename ${entry.label}`);
+		rename.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+			+ 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+			+ '<path d="M17 3l4 4L8 20l-5 1 1-5Z"></path></svg>';
+		rename.addEventListener("click", (event) => {
+			event.stopPropagation();
+			startRename(entry.id);
+		});
+
 		const remove = document.createElement("button");
 		remove.type = "button";
 		remove.className = "doc-delete";
@@ -169,7 +183,11 @@ export function createDocumentList(
 			handlers.onDelete(entry.id);
 		});
 
-		row.append(badge, label, problems, remove);
+		row.append(badge, label, problems);
+		if (entry.renamable) {
+			row.append(rename);
+		}
+		row.append(remove);
 
 		// Drag and drop to reorder
 		row.draggable = true;

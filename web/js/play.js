@@ -627,6 +627,9 @@
       Constants2.SEP_NODE = ":";
       Constants2.SEP_TEXT_NODE = ">>";
       Constants2.EMPTY_NAMESPACE = "";
+      Constants2.DEFAULT_MAX_NESTING = 100;
+      Constants2.DEFAULT_MAX_LINE_LENGTH = 1e4;
+      Constants2.DEFAULT_MAX_INPUT_SIZE = 1e7;
     }
   });
 
@@ -939,6 +942,31 @@
     }
   });
 
+  // node_modules/@stxt-lang/core/out/exceptions/LimitException.js
+  var require_LimitException = __commonJS({
+    "node_modules/@stxt-lang/core/out/exceptions/LimitException.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.LimitException = void 0;
+      var ParseException_1 = require_ParseException();
+      var LimitException = class _LimitException extends ParseException_1.ParseException {
+        /**
+         * Creates a limit error located at a line of the document.
+         *
+         * @param line line number where the limit was exceeded.
+         * @param code error code in UPPERCASE (`LIMIT_*`).
+         * @param message descriptive message.
+         */
+        constructor(line, code, message) {
+          super(line, code, message);
+          this.name = "LimitException";
+          Object.setPrototypeOf(this, _LimitException.prototype);
+        }
+      };
+      exports.LimitException = LimitException;
+    }
+  });
+
   // node_modules/@stxt-lang/core/out/core/Parser.js
   var require_Parser = __commonJS({
     "node_modules/@stxt-lang/core/out/core/Parser.js"(exports) {
@@ -948,13 +976,24 @@
       var TextNode_1 = require_TextNode();
       var LineParser_1 = require_LineParser();
       var NodeCreator_1 = require_NodeCreator();
+      var Constants_1 = require_Constants();
       var ParseResult_1 = require_ParseResult();
       var ParseException_1 = require_ParseException();
       var ValidationException_1 = require_ValidationException();
+      var LimitException_1 = require_LimitException();
       var Parser5 = class {
-        constructor() {
+        /**
+         * Creates a parser, optionally with its own limits.
+         *
+         * @param options the {@link ParserOptions} limits; every omitted one takes its default.
+         */
+        constructor(options) {
           this.observers = [];
+          this.streamObservers = [];
           this.validators = [];
+          this.maxNesting = options?.maxNesting ?? Constants_1.Constants.DEFAULT_MAX_NESTING;
+          this.maxLineLength = options?.maxLineLength ?? Constants_1.Constants.DEFAULT_MAX_LINE_LENGTH;
+          this.maxInputSize = options?.maxInputSize ?? Constants_1.Constants.DEFAULT_MAX_INPUT_SIZE;
         }
         /**
          * Registers an observer, notified when each node is opened and closed.
@@ -963,6 +1002,15 @@
          */
         registerObserver(observer) {
           this.observers.push(observer);
+        }
+        /**
+         * Registers a stream observer, notified with each completed root node and each error, in
+         * every mode.
+         *
+         * @param streamObserver the {@link StreamObserver} to register.
+         */
+        registerStreamObserver(streamObserver) {
+          this.streamObservers.push(streamObserver);
         }
         /**
          * Registers a validator, invoked when each node is closed.
@@ -991,32 +1039,69 @@
         }
         /**
          * Multi-error mode: parses the whole content collecting every error found (both syntax and
-         * validation) without bailing out on the first one. See {@link ParseResult}.
+         * validation) without bailing out on the first one — except a {@link LimitException}, which
+         * aborts and is in every case the last error collected. See {@link ParseResult}.
          *
          * @param content the whole STXT document to parse.
          * @returns the collected result, with the root nodes obtained and every error found.
          */
         parseResult(content2) {
-          content2 = this.removeUTF8BOM(content2);
           const result = new ParseResult_1.ParseResult();
-          const stack = [];
-          const documents = [];
-          let lineNumber = 0;
           const lines = content2.split(/\r?\n/);
           if (lines.length > 0 && lines[lines.length - 1] === "") {
             lines.pop();
           }
-          for (const line of lines) {
-            lineNumber++;
-            this.processLine(line, lineNumber, stack, documents, result);
-          }
-          this.closeToLevel(stack, 0, result);
-          for (const doc2 of documents) {
-            result.addNode(doc2);
-          }
+          this.parseLines(lines, result);
           return result;
         }
-        processLine(lineString, lineNumber, stack, documents, result) {
+        /**
+         * Streaming mode: input from a line iterable (each item one line, without its line break —
+         * e.g. a generator over a file read lazily), and nothing retained: no nodes, no errors.
+         * Results reach the program only through the registered {@link StreamObserver}s (each
+         * completed root by `onRootNode()`, each error by `onError()`), so memory holds one root
+         * tree at a time. This is the entry point for files that do not fit in memory.
+         *
+         * @param lines the input, line by line.
+         */
+        parseStream(lines) {
+          this.parseLines(lines, null);
+        }
+        /**
+         * Shared traversal. With a result, roots and errors are collected into it
+         * (parse/parseResult); with null, nothing is retained (parseStream). Either way every
+         * registered callback fires the same.
+         */
+        parseLines(lines, result) {
+          const stack = [];
+          let lineNumber = 0;
+          let consumed = 0;
+          for (let line of lines) {
+            lineNumber++;
+            if (lineNumber === 1) {
+              line = this.removeUTF8BOM(line);
+            }
+            if (this.maxLineLength !== -1 && line.length > this.maxLineLength) {
+              this.emitError(new LimitException_1.LimitException(lineNumber, "LIMIT_LINE_LENGTH_EXCEEDED", `Line longer than ${this.maxLineLength} characters`), result);
+              return;
+            }
+            consumed += line.length + 1;
+            if (this.maxInputSize !== -1 && consumed > this.maxInputSize) {
+              this.emitError(new LimitException_1.LimitException(lineNumber, "LIMIT_INPUT_SIZE_EXCEEDED", `Input larger than ${this.maxInputSize} characters`), result);
+              return;
+            }
+            try {
+              this.processLine(line, lineNumber, stack, result);
+            } catch (e) {
+              if (e instanceof LimitException_1.LimitException) {
+                this.emitError(e, result);
+                return;
+              }
+              throw e;
+            }
+          }
+          this.closeToLevel(stack, 0, result);
+        }
+        processLine(lineString, lineNumber, stack, result) {
           try {
             const lastNode = stack.length === 0 ? null : stack[stack.length - 1];
             const lastLevel = lastNode ? stack.length - 1 : -1;
@@ -1043,12 +1128,13 @@
             if (line.isEmpty()) {
               return;
             }
+            if (this.maxNesting !== -1 && currentLevel >= this.maxNesting) {
+              throw new LimitException_1.LimitException(lineNumber, "LIMIT_NESTING_EXCEEDED", `Nesting deeper than ${this.maxNesting} levels`);
+            }
             this.closeToLevel(stack, currentLevel, result);
             const parent = stack.length === 0 ? null : stack[stack.length - 1];
             const node = (0, NodeCreator_1.createNode)(line, lineNumber);
-            if (parent === null) {
-              documents.push(node);
-            } else {
+            if (parent !== null) {
               parent.addChild(node);
             }
             this.observers.forEach((observer) => {
@@ -1056,6 +1142,9 @@
             });
             stack.push(node);
           } catch (e) {
+            if (e instanceof LimitException_1.LimitException) {
+              throw e;
+            }
             this.handleError(e, lineNumber, result);
           }
         }
@@ -1066,11 +1155,23 @@
          */
         handleError(e, line, result, validating = false) {
           if (e instanceof ParseException_1.ParseException) {
-            result.addError(e);
+            this.emitError(e, result);
           } else {
             const message = e instanceof Error ? e.message : String(e);
-            result.addError(validating ? new ValidationException_1.ValidationException(line, "UNEXPECTED_ERROR", message) : new ParseException_1.ParseException(line, "UNEXPECTED_ERROR", message));
+            this.emitError(validating ? new ValidationException_1.ValidationException(line, "UNEXPECTED_ERROR", message) : new ParseException_1.ParseException(line, "UNEXPECTED_ERROR", message), result);
           }
+        }
+        /**
+         * Every error goes through here: collected into the result when there is one, and notified
+         * to the stream observers always, in order of appearance.
+         */
+        emitError(error, result) {
+          if (result !== null) {
+            result.addError(error);
+          }
+          this.streamObservers.forEach((streamObserver) => {
+            streamObserver.onError(error);
+          });
         }
         closeToLevel(stack, targetLevel, result) {
           while (stack.length > targetLevel) {
@@ -1079,7 +1180,7 @@
               try {
                 const errors = validator.validate(completed);
                 errors.forEach((error) => {
-                  result.addError(error);
+                  this.emitError(error, result);
                 });
               } catch (e) {
                 this.handleError(e, completed.getLine(), result, true);
@@ -1088,6 +1189,14 @@
             this.observers.forEach((observer) => {
               observer.onFinish(completed);
             });
+            if (stack.length === 0) {
+              this.streamObservers.forEach((streamObserver) => {
+                streamObserver.onRootNode(completed);
+              });
+              if (result !== null) {
+                result.addNode(completed);
+              }
+            }
           }
         }
         removeUTF8BOM(content2) {
@@ -2848,7 +2957,7 @@
          * STXT-TREE-SPEC 11.1.
          *
          * @param parentNs effective namespace of the parent, "" for a root: the namespace is
-         *        declared only where it changes (rule 3), wherever the source declared it.
+         *        written only where it changes (rule 3), regardless of where the source declared it.
          */
         static writeNode(out, n, depth, style, parentNs) {
           _NodeWriter.indent(out, depth, style);
@@ -3473,7 +3582,7 @@
     "node_modules/@stxt-lang/core/out/all.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.DiscoveryError = exports.DiscoveryResult = exports.DiscoveryResolver = exports.MetaTemplateSchemaProvider = exports.TemplateSchemaProviderMemory = exports.TEMPLATE_NAMESPACE = exports.transformTemplateNodeToSchema = exports.toCanonicalJson = exports.toCanonicalTree = exports.Formatter = exports.IndentStyle = exports.NodeWriter = exports.UnifiedSchemaProvider = exports.transformNodeToSchema = exports.ChildDefinition = exports.NodeDefinition = exports.TypeRegistry = exports.SchemaProviderMeta = exports.SchemaProviderMemory = exports.SchemaValidator = exports.Schema = exports.RuntimeException = exports.ValidationException = exports.ParseException = exports.StringUtils = exports.parseLine = exports.SPEC_VERSION = exports.Constants = exports.Line = exports.ParseResult = exports.Parser = exports.TextNode = exports.InlineNode = exports.Node = void 0;
+      exports.DiscoveryError = exports.DiscoveryResult = exports.DiscoveryResolver = exports.MetaTemplateSchemaProvider = exports.TemplateSchemaProviderMemory = exports.TEMPLATE_NAMESPACE = exports.transformTemplateNodeToSchema = exports.toCanonicalJson = exports.toCanonicalTree = exports.Formatter = exports.IndentStyle = exports.NodeWriter = exports.UnifiedSchemaProvider = exports.transformNodeToSchema = exports.ChildDefinition = exports.NodeDefinition = exports.TypeRegistry = exports.SchemaProviderMeta = exports.SchemaProviderMemory = exports.SchemaValidator = exports.Schema = exports.RuntimeException = exports.LimitException = exports.ValidationException = exports.ParseException = exports.StringUtils = exports.parseLine = exports.SPEC_VERSION = exports.Constants = exports.Line = exports.ParseResult = exports.Parser = exports.TextNode = exports.InlineNode = exports.Node = void 0;
       var Node_1 = require_Node();
       Object.defineProperty(exports, "Node", { enumerable: true, get: function() {
         return Node_1.Node;
@@ -3519,6 +3628,10 @@
       var ValidationException_1 = require_ValidationException();
       Object.defineProperty(exports, "ValidationException", { enumerable: true, get: function() {
         return ValidationException_1.ValidationException;
+      } });
+      var LimitException_1 = require_LimitException();
+      Object.defineProperty(exports, "LimitException", { enumerable: true, get: function() {
+        return LimitException_1.LimitException;
       } });
       var RuntimeException_1 = require_RuntimeException();
       Object.defineProperty(exports, "RuntimeException", { enumerable: true, get: function() {

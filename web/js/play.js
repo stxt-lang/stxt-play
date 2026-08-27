@@ -24799,7 +24799,7 @@ ${indentation}${unit}` : suggestion.text
   var book_handbook_default = `# This document is validated by a schema, the other way of writing a grammar.
 # Hover over a node to see what the schema "stxt.play.library" declares for it.
 Book (stxt.play.library):
-	Title: The Semantic Text Handbook
+	Title: The STXT Handbook
 	Authors:
 		Author: Joan Costa
 	ISBN: 978-84-000-0000-0
@@ -24848,7 +24848,7 @@ Book (stxt.play.library):
     { title: "Spaghetti bolognese", text: recipe_bolognese_default },
     { title: "Chocolate brownies", text: recipe_brownies_default },
     { title: "Cooking template", text: stxt_play_cooking_default },
-    { title: "The Semantic Text Handbook", text: book_handbook_default },
+    { title: "The STXT Handbook", text: book_handbook_default },
     { title: "Notes on Indentation", text: book_notes_default },
     { title: "Plain Text at Scale", text: book_plain_text_default },
     { title: "Library schema", text: stxt_play_library_default },

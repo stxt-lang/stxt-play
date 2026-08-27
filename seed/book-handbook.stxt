@@ -1,7 +1,7 @@
 # This document is validated by a schema, the other way of writing a grammar.
 # Hover over a node to see what the schema "stxt.play.library" declares for it.
 Book (stxt.play.library):
-	Title: The Semantic Text Handbook
+	Title: The STXT Handbook
 	Authors:
 		Author: Joan Costa
 	ISBN: 978-84-000-0000-0

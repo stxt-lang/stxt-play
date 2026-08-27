@@ -32,7 +32,7 @@ export const SEED_DOCUMENTS: SeedDocument[] = [
 	{ title: "Spaghetti bolognese", text: BOLOGNESE },
 	{ title: "Chocolate brownies", text: BROWNIES },
 	{ title: "Cooking template", text: COOKING_TEMPLATE },
-	{ title: "The Semantic Text Handbook", text: HANDBOOK },
+	{ title: "The STXT Handbook", text: HANDBOOK },
 	{ title: "Notes on Indentation", text: NOTES },
 	{ title: "Plain Text at Scale", text: PLAIN_TEXT },
 	{ title: "Library schema", text: LIBRARY_SCHEMA },

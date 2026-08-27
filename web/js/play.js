@@ -3013,14 +3013,18 @@
          *
          * @param text the document.
          * @param style indentation style to format with; tabs by default.
+         * @param options limits for the internal parser (STXT-SPEC 11.2); every omitted one keeps
+         *                its recommended default, and -1 disables one. A limit exceeded shows up in
+         *                the errors like any other syntax error, and the lines the aborted parse
+         *                never described are converted as "other lines" (indentation units only).
          * @returns the formatted text and the syntax errors found; see {@link FormatResult}.
          */
-        static format(text, style = NodeWriter_1.IndentStyle.TABS) {
+        static format(text, style = NodeWriter_1.IndentStyle.TABS, options) {
           if (text.startsWith("\uFEFF")) {
             text = text.substring(1);
           }
           const sourceLines = new SourceLines();
-          const parser = new Parser_1.Parser();
+          const parser = new Parser_1.Parser(options);
           parser.registerObserver(sourceLines);
           const result = parser.parseResult(text);
           const eol = text.includes("\r\n") ? "\r\n" : "\n";

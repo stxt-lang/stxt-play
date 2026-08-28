@@ -37,10 +37,20 @@ body {
 		color: #fff;
 		font-weight: 700;
 		letter-spacing: 0.02em;
+	}
+
+	// The wordmark in the identity font, and the only link of the brand;
+	// "Playground" stays in the body font next to it, outside the link.
+	.brand-name {
+		font-family: $font-brand;
+		font-weight: 400;
+		font-size: 1.45rem;
+		line-height: 1;
+		color: #fff;
 		text-decoration: none;
 
-		&:hover .brand-sub,
-		&:focus-visible .brand-sub {
+		&:hover,
+		&:focus-visible {
 			text-decoration: underline;
 		}
 
@@ -48,14 +58,6 @@ body {
 			outline: 2px solid #fff;
 			outline-offset: 2px;
 		}
-	}
-
-	// The wordmark in the identity font; "Playground" stays in the body font next to it.
-	.brand-name {
-		font-family: $font-brand;
-		font-weight: 400;
-		font-size: 1.45rem;
-		line-height: 1;
 	}
 
 	.brand-sub {

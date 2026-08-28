@@ -2,7 +2,7 @@
   "name": "@stxt-lang/play",
   "version": "0.15.0",
   "private": true,
-  "description": "Web playground for STXT, an indentation-based structured-text format.",
+  "description": "Web playground for STXT, an indentation-based structured-text language.",
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('web/js', { recursive: true, force: true }); require('node:fs').rmSync('web/css', { recursive: true, force: true })\"",
     "build": "npm run build:ts && npm run build:css && npm run build:stamp",

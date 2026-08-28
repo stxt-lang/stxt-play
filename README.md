@@ -1,6 +1,6 @@
 # STXT Playground
 
-A web playground for [STXT](https://stxt.dev), the human-first hierarchical text format: write STXT
+A web playground for [STXT](https://stxt.dev), the human-first hierarchical text language: write STXT
 in the browser, with its grammar next to it, and see errors as you type. Think VS Code, simplified —
 a real editor, not a form or a viewer.
 

@@ -415,6 +415,17 @@
         clearText() {
           this.lines.length = 0;
         }
+        /**
+         * Removes the final empty lines (`""` elements at the end of the lines). The {@link Parser}
+         * calls it when the block closes (STXT-SPEC §10.3: the final empty lines of a block are not
+         * content); it is public because a programmatically built node may want the same
+         * normalization before writing.
+         */
+        removeTrailingEmptyLines() {
+          while (this.lines.length > 0 && this.lines[this.lines.length - 1] === "") {
+            this.lines.pop();
+          }
+        }
         getText() {
           return this.lines.join("\n");
         }
@@ -1176,6 +1187,9 @@
         closeToLevel(stack, targetLevel, result) {
           while (stack.length > targetLevel) {
             const completed = stack.pop();
+            if (completed instanceof TextNode_1.TextNode) {
+              completed.removeTrailingEmptyLines();
+            }
             this.validators.forEach((validator) => {
               try {
                 const errors = validator.validate(completed);
@@ -2968,9 +2982,14 @@
           }
           if (n instanceof TextNode_1.TextNode) {
             out.push(" >>\n");
-            for (const line of n.getTextLines()) {
+            const lines = n.getTextLines();
+            let last = lines.length;
+            while (last > 0 && lines[last - 1] === "") {
+              last--;
+            }
+            for (let i = 0; i < last; i++) {
               _NodeWriter.indent(out, depth + 1, style);
-              out.push(line, "\n");
+              out.push(lines[i], "\n");
             }
           } else if (n instanceof InlineNode_1.InlineNode) {
             out.push(":");
@@ -3046,7 +3065,7 @@
             return _Formatter.renderNode(node, line, style);
           }
           const text = sourceLines.textAt(lineNumber);
-          if (text) {
+          if (text && text.index < text.node.getTextLines().length) {
             return _Formatter.indent(text.node.getLevel() + 1, style) + text.line.content;
           }
           return _Formatter.convertUnits(StringUtils_1.StringUtils.rightTrim(line), style);
@@ -3123,7 +3142,7 @@
         onComment() {
         }
         onTextLine(node, lineNumber, lineString, line) {
-          this.textByLine.set(lineNumber, { node, line });
+          this.textByLine.set(lineNumber, { node, line, index: node.getTextLines().length - 1 });
         }
         /**
          * @param lineNumber line number, 1-indexed.
@@ -3134,8 +3153,9 @@
         }
         /**
          * @param lineNumber line number, 1-indexed.
-         * @returns the block node this line is text of and the line already split into indentation
-         *          and content, or undefined if the line is not text of a block.
+         * @returns the block node this line is text of, the line already split into indentation and
+         *          content, and its 0-based index in the block; or undefined if the line is not text
+         *          of a block.
          */
         textAt(lineNumber) {
           return this.textByLine.get(lineNumber);

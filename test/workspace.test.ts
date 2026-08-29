@@ -338,28 +338,11 @@ describe("Share links", () => {
 		});
 	});
 
-	it("still decodes the legacy JSON payload of older links", async () => {
-		const legacy = JSON.stringify({
-			version: 1,
-			active: "d2",
-			documents: [
-				{ id: "d1", title: "Recipe", text: "Recipe (com.example.cooking): Pancakes\n" },
-				{ id: "d2", title: "Grammar", text: "Template (@stxt.template): com.example.cooking\n" },
-			],
-		});
-
-		assert.deepStrictEqual(await decodeShare(await compress(legacy)), {
-			active: "d2",
-			documents: [
-				{ id: "d1", title: "Recipe", text: "Recipe (com.example.cooking): Pancakes\n" },
-				{ id: "d2", title: "Grammar", text: "Template (@stxt.template): com.example.cooking\n" },
-			],
-		});
-	});
-
 	it("reads nothing from garbage or from STXT that is not a share envelope", async () => {
 		assert.strictEqual(await decodeShare("not-a-payload"), undefined);
 		assert.strictEqual(await decodeShare(""), undefined);
+		assert.strictEqual(await decodeShare(await compress('{"version":1,"active":null,"documents":[]}')),
+			undefined, "JSON is not a workspace: the share document is STXT");
 		assert.strictEqual(sharePayloadOf(""), undefined);
 		assert.strictEqual(sharePayloadOf("#other=1"), undefined);
 

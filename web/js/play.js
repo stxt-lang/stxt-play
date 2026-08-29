@@ -25465,6 +25465,121 @@ Book (stxt.play.library):
 
   // src/workspace/share.ts
   var import_core8 = __toESM(require_all());
+  var SHARE_PARAM = "w";
+  var SHARE_NAMESPACE = "stxt.play.share";
+  var SHARE_VERSION = "1";
+  var SHARE_HEADER = "# STXT Playground workspace \u2014 https://play.stxt.dev\n";
+  var OPEN_PARAM = "d";
+  var OPEN_TITLE_PARAM = "t";
+  function toBase64Url(bytes) {
+    let binary = "";
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
+    }
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function fromBase64Url(text) {
+    const base64 = text.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - text.length % 4) % 4);
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+  async function pipe(bytes, stream) {
+    const response = new Response(new Blob([bytes]).stream().pipeThrough(stream));
+    return new Uint8Array(await response.arrayBuffer());
+  }
+  function toShareDocument(snapshot) {
+    const root = new import_core8.InlineNode("Workspace", SHARE_NAMESPACE, null);
+    root.addChild(new import_core8.InlineNode("Version", SHARE_VERSION));
+    for (const document2 of snapshot.documents) {
+      const entry = new import_core8.InlineNode("Document", document2.title);
+      if (document2.id === snapshot.active) {
+        entry.addChild(new import_core8.InlineNode("Active", "true"));
+      }
+      entry.addChild(new import_core8.TextNode("Text", document2.text));
+      root.addChild(entry);
+    }
+    return SHARE_HEADER + import_core8.NodeWriter.toSTXT(root);
+  }
+  function fromShareDocument(text) {
+    let roots;
+    try {
+      roots = new import_core8.Parser({ maxNesting: -1, maxLineLength: -1, maxInputSize: -1 }).parse(text);
+    } catch {
+      return void 0;
+    }
+    const root = roots.find(
+      (node) => node instanceof import_core8.InlineNode && node.getCanonicalName() === "workspace" && node.getNamespace() === SHARE_NAMESPACE
+    );
+    if (!root || firstValue(root, "Version") !== SHARE_VERSION) {
+      return void 0;
+    }
+    const documents = [];
+    let active = null;
+    for (const child of root.getChildrenByName("Document")) {
+      if (!(child instanceof import_core8.InlineNode)) {
+        continue;
+      }
+      const id = `s${documents.length + 1}`;
+      documents.push({ id, title: child.getValue(), text: textOf(child) });
+      if (active === null && firstValue(child, "Active")?.toLowerCase() === "true") {
+        active = id;
+      }
+    }
+    return { active: active ?? documents[0]?.id ?? null, documents };
+  }
+  function firstValue(node, name2) {
+    const child = node.getChildrenByName(name2).find((candidate) => candidate instanceof import_core8.InlineNode);
+    return child === void 0 ? void 0 : child.getValue();
+  }
+  function textOf(entry) {
+    const block = entry.getChildrenByName("Text").find((candidate) => candidate instanceof import_core8.TextNode);
+    const lines = block === void 0 ? [] : block.getTextLines();
+    return lines.length === 0 ? "" : lines.join("\n") + "\n";
+  }
+  async function encodeShare(snapshot) {
+    const stxt = toShareDocument(snapshot);
+    const compressed = await pipe(new TextEncoder().encode(stxt), new CompressionStream("deflate-raw"));
+    return toBase64Url(compressed);
+  }
+  async function decodeShare(payload) {
+    try {
+      const bytes = await pipe(fromBase64Url(payload), new DecompressionStream("deflate-raw"));
+      return fromShareDocument(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    } catch {
+      return void 0;
+    }
+  }
+  function sharePayloadOf(hash) {
+    return nonEmpty(fragmentParams(hash).get(SHARE_PARAM));
+  }
+  async function decodeOpen(hash) {
+    const params = fragmentParams(hash);
+    const payload = nonEmpty(params.get(OPEN_PARAM));
+    if (!payload) {
+      return void 0;
+    }
+    try {
+      const bytes = await pipe(fromBase64Url(payload), new DecompressionStream("deflate-raw"));
+      const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      const title = nonEmpty(params.get(OPEN_TITLE_PARAM)?.trim());
+      return title === void 0 ? { text } : { text, title };
+    } catch {
+      return void 0;
+    }
+  }
+  function isOpenLink(hash) {
+    return nonEmpty(fragmentParams(hash).get(OPEN_PARAM)) !== void 0;
+  }
+  function fragmentParams(hash) {
+    return new URLSearchParams(hash.replace(/^#/, ""));
+  }
+  function nonEmpty(value) {
+    return value && value.length > 0 ? value : void 0;
+  }
 
   // src/workspace/storage.ts
   var WORKSPACE_STORAGE_KEY = "stxt-play.workspace";
@@ -25554,131 +25669,6 @@ Book (stxt.play.library):
       const fields = document2;
       return typeof fields.id === "string" && typeof fields.title === "string" && typeof fields.text === "string";
     });
-  }
-
-  // src/workspace/share.ts
-  var SHARE_PARAM = "w";
-  var SHARE_NAMESPACE = "stxt.play.share";
-  var SHARE_VERSION = "1";
-  var SHARE_HEADER = "# STXT Playground workspace \u2014 https://play.stxt.dev\n";
-  var OPEN_PARAM = "d";
-  var OPEN_TITLE_PARAM = "t";
-  function toBase64Url(bytes) {
-    let binary = "";
-    for (const byte of bytes) {
-      binary += String.fromCharCode(byte);
-    }
-    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-  }
-  function fromBase64Url(text) {
-    const base64 = text.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - text.length % 4) % 4);
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-  }
-  async function pipe(bytes, stream) {
-    const response = new Response(new Blob([bytes]).stream().pipeThrough(stream));
-    return new Uint8Array(await response.arrayBuffer());
-  }
-  function toShareDocument(snapshot) {
-    const root = new import_core8.InlineNode("Workspace", SHARE_NAMESPACE, null);
-    root.addChild(new import_core8.InlineNode("Version", SHARE_VERSION));
-    for (const document2 of snapshot.documents) {
-      const entry = new import_core8.InlineNode("Document", document2.title);
-      if (document2.id === snapshot.active) {
-        entry.addChild(new import_core8.InlineNode("Active", "true"));
-      }
-      entry.addChild(new import_core8.TextNode("Text", document2.text));
-      root.addChild(entry);
-    }
-    return SHARE_HEADER + import_core8.NodeWriter.toSTXT(root);
-  }
-  function fromShareDocument(text) {
-    let roots;
-    try {
-      roots = new import_core8.Parser({ maxNesting: -1, maxLineLength: -1, maxInputSize: -1 }).parse(text);
-    } catch {
-      return void 0;
-    }
-    const root = roots.find(
-      (node) => node instanceof import_core8.InlineNode && node.getCanonicalName() === "workspace" && node.getNamespace() === SHARE_NAMESPACE
-    );
-    if (!root || firstValue(root, "Version") !== SHARE_VERSION) {
-      return void 0;
-    }
-    const documents = [];
-    let active = null;
-    for (const child of root.getChildrenByName("Document")) {
-      if (!(child instanceof import_core8.InlineNode)) {
-        continue;
-      }
-      const id = `s${documents.length + 1}`;
-      documents.push({ id, title: child.getValue(), text: textOf(child) });
-      if (active === null && firstValue(child, "Active")?.toLowerCase() === "true") {
-        active = id;
-      }
-    }
-    return { active: active ?? documents[0]?.id ?? null, documents };
-  }
-  function firstValue(node, name2) {
-    const child = node.getChildrenByName(name2).find((candidate) => candidate instanceof import_core8.InlineNode);
-    return child === void 0 ? void 0 : child.getValue();
-  }
-  function textOf(entry) {
-    const block = entry.getChildrenByName("Text").find((candidate) => candidate instanceof import_core8.TextNode);
-    const lines = block === void 0 ? [] : block.getTextLines();
-    return lines.length === 0 ? "" : lines.join("\n") + "\n";
-  }
-  async function encodeShare(snapshot) {
-    const stxt = toShareDocument(snapshot);
-    const compressed = await pipe(new TextEncoder().encode(stxt), new CompressionStream("deflate-raw"));
-    return toBase64Url(compressed);
-  }
-  async function decodeShare(payload) {
-    try {
-      const bytes = await pipe(fromBase64Url(payload), new DecompressionStream("deflate-raw"));
-      const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-      return fromShareDocument(text) ?? legacyJsonShare(text);
-    } catch {
-      return void 0;
-    }
-  }
-  function legacyJsonShare(text) {
-    try {
-      return toWorkspaceSnapshot(JSON.parse(text));
-    } catch {
-      return void 0;
-    }
-  }
-  function sharePayloadOf(hash) {
-    return nonEmpty(fragmentParams(hash).get(SHARE_PARAM));
-  }
-  async function decodeOpen(hash) {
-    const params = fragmentParams(hash);
-    const payload = nonEmpty(params.get(OPEN_PARAM));
-    if (!payload) {
-      return void 0;
-    }
-    try {
-      const bytes = await pipe(fromBase64Url(payload), new DecompressionStream("deflate-raw"));
-      const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-      const title = nonEmpty(params.get(OPEN_TITLE_PARAM)?.trim());
-      return title === void 0 ? { text } : { text, title };
-    } catch {
-      return void 0;
-    }
-  }
-  function isOpenLink(hash) {
-    return nonEmpty(fragmentParams(hash).get(OPEN_PARAM)) !== void 0;
-  }
-  function fragmentParams(hash) {
-    return new URLSearchParams(hash.replace(/^#/, ""));
-  }
-  function nonEmpty(value) {
-    return value && value.length > 0 ? value : void 0;
   }
 
   // src/index.ts

@@ -1,5 +1,4 @@
 import { InlineNode, Node, NodeWriter, Parser, TextNode } from "@stxt-lang/core";
-import { toWorkspaceSnapshot } from "./storage";
 import { WorkspaceDocument, WorkspaceSnapshot } from "./Workspace";
 
 /**
@@ -9,8 +8,7 @@ import { WorkspaceDocument, WorkspaceSnapshot } from "./Workspace";
  * - Share links, `#w=` followed by the base64url of the raw-deflate of the whole workspace
  *   written as one STXT document (see {@link toShareDocument}): whoever opens the link gets it
  *   loaded in place of their own workspace (after confirming). STXT sharing STXT — inflating
- *   the payload shows a document anyone can read, edit and compress again; links made before
- *   this format, which carried the versioned JSON of the local store, still decode.
+ *   the payload shows a document anyone can read, edit and compress again.
  * - Open links, `#d=` followed by the base64url of the raw-deflate of the UTF-8 text of one STXT
  *   document, plus an optional `&t=` with its title: the document is added to whatever workspace
  *   the browser already has and selected. This is what "Open in the playground" on stxt.dev
@@ -175,8 +173,7 @@ export async function encodeShare(snapshot: WorkspaceSnapshot): Promise<string> 
 }
 
 /**
- * Reads a workspace back from a fragment payload: the STXT share document, or, for links made
- * before that format existed, the versioned JSON of the local store.
+ * Reads a workspace back from a fragment payload: the compressed STXT share document.
  *
  * @param payload what follows `#w=`.
  * @returns the snapshot, or undefined if the payload is not a workspace. Never throws.
@@ -184,17 +181,7 @@ export async function encodeShare(snapshot: WorkspaceSnapshot): Promise<string> 
 export async function decodeShare(payload: string): Promise<WorkspaceSnapshot | undefined> {
 	try {
 		const bytes = await pipe(fromBase64Url(payload), new DecompressionStream("deflate-raw"));
-		const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-		return fromShareDocument(text) ?? legacyJsonShare(text);
-	} catch {
-		return undefined;
-	}
-}
-
-/** Reads the pre-STXT payload: the JSON of the local store. Undefined when it is not that either. */
-function legacyJsonShare(text: string): WorkspaceSnapshot | undefined {
-	try {
-		return toWorkspaceSnapshot(JSON.parse(text));
+		return fromShareDocument(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
 	} catch {
 		return undefined;
 	}

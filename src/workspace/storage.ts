@@ -140,8 +140,6 @@ export function saveSettings(storage: KeyValueStorage, settings: PlaygroundSetti
 
 /**
  * Turns a parsed JSON value into a workspace snapshot, if it has the stored shape and version.
- * Shared by the local store and the share links made before they carried STXT, whose payload
- * was this same JSON.
  *
  * @param value anything that came out of `JSON.parse`.
  * @returns the snapshot, or undefined if the value is not a stored workspace.

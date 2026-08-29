@@ -91,8 +91,7 @@ marks the one open in the editor (the first is used otherwise), and the `Text` b
 full text, literal, indented one level deeper. The header comment and the indentation style are
 free — it is just STXT — and a `Document` without `Text` is an empty document. Anyone can build
 such a link to hand a whole workspace (say, a document next to its grammar) to the playground;
-opening it asks before replacing what the browser holds. Links from before this format, which
-carried JSON, still work.
+opening it asks before replacing what the browser holds.
 
 ### Opening a document from a link
 

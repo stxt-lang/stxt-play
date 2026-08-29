@@ -16,12 +16,16 @@ export {
 	decodeShare,
 	encodeOpen,
 	encodeShare,
+	fromShareDocument,
 	isOpenLink,
 	OPEN_PARAM,
 	OPEN_TITLE_PARAM,
 	OpenLinkDocument,
+	SHARE_NAMESPACE,
 	SHARE_PARAM,
+	SHARE_VERSION,
 	sharePayloadOf,
+	toShareDocument,
 } from "./share";
 export {
 	clearWorkspace,

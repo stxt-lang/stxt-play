@@ -66,6 +66,34 @@ the next visit. Nothing leaves your machine. **Share** puts the whole workspace,
 URL fragment — the link carries the documents, no server involved — **↺ Reset** brings back the
 example documents (see `seed/`), and **Clear** (the bin icon) removes them all and leaves a single empty one.
 
+### Sharing a workspace from a link
+
+What travels in a share link is STXT: `https://play.stxt.dev/#w=<payload>`, where `<payload>` is
+the base64url (no padding) of the raw-deflate of one STXT document that carries the whole
+workspace — inflate it and you get something you can read, edit and compress again:
+
+```stxt
+# STXT Playground workspace — https://play.stxt.dev
+Workspace (stxt.play.share):
+	Version: 1
+	Document: Recipe
+		Active: true
+		Text >>
+			Recipe (stxt.play.cooking): Pancakes
+			...
+	Document: stxt.play.cooking
+		Text >>
+			...
+```
+
+One `Document` per workspace document, in order, with its title as the value; `Active: true`
+marks the one open in the editor (the first is used otherwise), and the `Text` block carries the
+full text, literal, indented one level deeper. The header comment and the indentation style are
+free — it is just STXT — and a `Document` without `Text` is an empty document. Anyone can build
+such a link to hand a whole workspace (say, a document next to its grammar) to the playground;
+opening it asks before replacing what the browser holds. Links from before this format, which
+carried JSON, still work.
+
 ### Opening a document from a link
 
 Any site can hand a snippet to the playground: `https://play.stxt.dev/#d=<payload>` opens it as

@@ -13,6 +13,7 @@ import {
 	saveSettings,
 	saveWorkspace,
 	SETTINGS_STORAGE_KEY,
+	toShareDocument,
 	Workspace,
 	WORKSPACE_STORAGE_KEY,
 	WorkspaceEvent,
@@ -245,6 +246,18 @@ describe("Settings persistence", () => {
 });
 
 describe("Share links", () => {
+	/** Compresses a text the way a share payload is compressed, to feed decodeShare directly. */
+	async function compress(text: string): Promise<string> {
+		const stream = new Blob([new TextEncoder().encode(text) as BlobPart]).stream()
+			.pipeThrough(new CompressionStream("deflate-raw"));
+		const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+		let binary = "";
+		for (const byte of bytes) {
+			binary += String.fromCharCode(byte);
+		}
+		return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+	}
+
 	it("round-trips a workspace through the compressed fragment payload", async () => {
 		const workspace = new Workspace(sequentialIds());
 		workspace.addDocument("Recipe (com.example.cooking): Pa amb tomàquet\n\tServes: 2\n", "Recipe");
@@ -253,15 +266,107 @@ describe("Share links", () => {
 
 		const payload = await encodeShare(workspace.toSnapshot());
 		assert.ok(/^[A-Za-z0-9_-]+$/.test(payload), "base64url, safe in a fragment");
-		assert.deepStrictEqual(await decodeShare(payload), workspace.toSnapshot());
+		// Ids are minted on decode (s1, s2…): they only mean something inside one browser
+		assert.deepStrictEqual(await decodeShare(payload), {
+			active: "s1",
+			documents: [
+				{ id: "s1", title: "Recipe", text: "Recipe (com.example.cooking): Pa amb tomàquet\n\tServes: 2\n" },
+				{ id: "s2", title: "Grammar", text: "Template (@stxt.template): com.example.cooking\n" },
+			],
+		});
 		assert.strictEqual(sharePayloadOf(`#w=${payload}`), payload);
 	});
 
-	it("reads nothing from garbage or from a fragment without a workspace", async () => {
+	it("carries the workspace as a readable STXT document", () => {
+		const workspace = new Workspace(sequentialIds());
+		workspace.addDocument("Recipe (com.example.cooking): Pancakes\n", "Recipe");
+
+		const stxt = toShareDocument(workspace.toSnapshot());
+		assert.strictEqual(stxt, [
+			"# STXT Playground workspace — https://play.stxt.dev",
+			"Workspace (stxt.play.share):",
+			"\tVersion: 1",
+			"\tDocument: Recipe",
+			"\t\tActive: true",
+			"\t\tText >>",
+			"\t\t\tRecipe (com.example.cooking): Pancakes",
+			"",
+		].join("\n"));
+	});
+
+	it("keeps documents literal inside the envelope: comments, blocks, blank lines, any indent", async () => {
+		const tricky = "Doc (com.example.docs): A >> B\n" // ">>" after ":" stays inline
+			+ "    Note >>\n"
+			+ "        # not a comment\n"
+			+ "\n"
+			+ "        indented >> literal: yes\n";
+		const workspace = new Workspace(sequentialIds());
+		workspace.addDocument(tricky, "Spaces: a tricky one");
+		workspace.addDocument("", "Empty");
+		workspace.setActive("d1");
+
+		const decoded = await decodeShare(await encodeShare(workspace.toSnapshot()));
+		assert.deepStrictEqual(decoded, {
+			active: "s1",
+			documents: [
+				{ id: "s1", title: "Spaces: a tricky one", text: tricky },
+				{ id: "s2", title: "Empty", text: "" },
+			],
+		});
+	});
+
+	it("decodes a hand-written envelope, whatever its indentation and without the comment", async () => {
+		const stxt = [
+			"Workspace (stxt.play.share):",
+			"    Version: 1",
+			"    Document: Hello",
+			"        Text >>",
+			"            Greeting (com.example.hello): World",
+			"    Document: Chosen",
+			"        Active: TRUE",
+			"        Text >>",
+			"            Other (com.example.hello): One",
+			"",
+		].join("\n");
+
+		assert.deepStrictEqual(await decodeShare(await compress(stxt)), {
+			active: "s2",
+			documents: [
+				{ id: "s1", title: "Hello", text: "Greeting (com.example.hello): World\n" },
+				{ id: "s2", title: "Chosen", text: "Other (com.example.hello): One\n" },
+			],
+		});
+	});
+
+	it("still decodes the legacy JSON payload of older links", async () => {
+		const legacy = JSON.stringify({
+			version: 1,
+			active: "d2",
+			documents: [
+				{ id: "d1", title: "Recipe", text: "Recipe (com.example.cooking): Pancakes\n" },
+				{ id: "d2", title: "Grammar", text: "Template (@stxt.template): com.example.cooking\n" },
+			],
+		});
+
+		assert.deepStrictEqual(await decodeShare(await compress(legacy)), {
+			active: "d2",
+			documents: [
+				{ id: "d1", title: "Recipe", text: "Recipe (com.example.cooking): Pancakes\n" },
+				{ id: "d2", title: "Grammar", text: "Template (@stxt.template): com.example.cooking\n" },
+			],
+		});
+	});
+
+	it("reads nothing from garbage or from STXT that is not a share envelope", async () => {
 		assert.strictEqual(await decodeShare("not-a-payload"), undefined);
 		assert.strictEqual(await decodeShare(""), undefined);
 		assert.strictEqual(sharePayloadOf(""), undefined);
 		assert.strictEqual(sharePayloadOf("#other=1"), undefined);
+
+		assert.strictEqual(await decodeShare(await compress("Root (com.example.docs): not a workspace\n")),
+			undefined, "valid STXT, wrong root");
+		assert.strictEqual(await decodeShare(await compress("Workspace (stxt.play.share):\n\tVersion: 99\n")),
+			undefined, "unknown envelope version");
 	});
 });
 

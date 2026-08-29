@@ -218,7 +218,7 @@
       var ParseException_1 = require_ParseException();
       var NamespaceValidator_1 = require_NamespaceValidator();
       var StringUtils_1 = require_StringUtils();
-      var Node6 = class _Node {
+      var Node7 = class _Node {
         /**
          * Common initialisation, for the two concrete forms.
          *
@@ -355,8 +355,8 @@
           return s;
         }
       };
-      exports.Node = Node6;
-      Node6.NO_LINE = -1;
+      exports.Node = Node7;
+      Node7.NO_LINE = -1;
     }
   });
 
@@ -367,7 +367,7 @@
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.TextNode = void 0;
       var Node_1 = require_Node();
-      var TextNode5 = class _TextNode extends Node_1.Node {
+      var TextNode6 = class _TextNode extends Node_1.Node {
         constructor(name2, ...rest) {
           const [namespace, text, line] = rest.length <= 1 ? [null, rest[0], Node_1.Node.NO_LINE] : [rest[0], rest[1], rest[2] ?? Node_1.Node.NO_LINE];
           super(name2, namespace, line);
@@ -440,7 +440,7 @@
           return `, lines=${this.lines.length}`;
         }
       };
-      exports.TextNode = TextNode5;
+      exports.TextNode = TextNode6;
     }
   });
 
@@ -491,7 +491,7 @@
       var TextNode_1 = require_TextNode();
       var RuntimeException_1 = require_RuntimeException();
       var StringUtils_1 = require_StringUtils();
-      var InlineNode5 = class _InlineNode extends Node_1.Node {
+      var InlineNode6 = class _InlineNode extends Node_1.Node {
         constructor(name2, ...rest) {
           const [namespace, value, line] = rest.length <= 1 ? [null, rest[0], Node_1.Node.NO_LINE] : [rest[0], rest[1], rest[2] ?? Node_1.Node.NO_LINE];
           super(name2, namespace, line);
@@ -617,7 +617,7 @@
           return s;
         }
       };
-      exports.InlineNode = InlineNode5;
+      exports.InlineNode = InlineNode6;
     }
   });
 
@@ -992,7 +992,7 @@
       var ParseException_1 = require_ParseException();
       var ValidationException_1 = require_ValidationException();
       var LimitException_1 = require_LimitException();
-      var Parser5 = class {
+      var Parser6 = class {
         /**
          * Creates a parser, optionally with its own limits.
          *
@@ -1217,7 +1217,7 @@
           return content2.charCodeAt(0) === 65279 ? content2.slice(1) : content2;
         }
       };
-      exports.Parser = Parser5;
+      exports.Parser = Parser6;
     }
   });
 
@@ -2934,7 +2934,7 @@
         IndentStyle3["TABS"] = "TABS";
         IndentStyle3["SPACES_4"] = "SPACES_4";
       })(IndentStyle2 || (exports.IndentStyle = IndentStyle2 = {}));
-      var NodeWriter = class _NodeWriter {
+      var NodeWriter2 = class _NodeWriter {
         constructor() {
         }
         /**
@@ -3009,7 +3009,7 @@
           }
         }
       };
-      exports.NodeWriter = NodeWriter;
+      exports.NodeWriter = NodeWriter2;
     }
   });
 
@@ -25463,6 +25463,9 @@ Book (stxt.play.library):
     }
   };
 
+  // src/workspace/share.ts
+  var import_core8 = __toESM(require_all());
+
   // src/workspace/storage.ts
   var WORKSPACE_STORAGE_KEY = "stxt-play.workspace";
   var WORKSPACE_STORAGE_VERSION = 1;
@@ -25555,6 +25558,9 @@ Book (stxt.play.library):
 
   // src/workspace/share.ts
   var SHARE_PARAM = "w";
+  var SHARE_NAMESPACE = "stxt.play.share";
+  var SHARE_VERSION = "1";
+  var SHARE_HEADER = "# STXT Playground workspace \u2014 https://play.stxt.dev\n";
   var OPEN_PARAM = "d";
   var OPEN_TITLE_PARAM = "t";
   function toBase64Url(bytes) {
@@ -25577,15 +25583,72 @@ Book (stxt.play.library):
     const response = new Response(new Blob([bytes]).stream().pipeThrough(stream));
     return new Uint8Array(await response.arrayBuffer());
   }
+  function toShareDocument(snapshot) {
+    const root = new import_core8.InlineNode("Workspace", SHARE_NAMESPACE, null);
+    root.addChild(new import_core8.InlineNode("Version", SHARE_VERSION));
+    for (const document2 of snapshot.documents) {
+      const entry = new import_core8.InlineNode("Document", document2.title);
+      if (document2.id === snapshot.active) {
+        entry.addChild(new import_core8.InlineNode("Active", "true"));
+      }
+      entry.addChild(new import_core8.TextNode("Text", document2.text));
+      root.addChild(entry);
+    }
+    return SHARE_HEADER + import_core8.NodeWriter.toSTXT(root);
+  }
+  function fromShareDocument(text) {
+    let roots;
+    try {
+      roots = new import_core8.Parser({ maxNesting: -1, maxLineLength: -1, maxInputSize: -1 }).parse(text);
+    } catch {
+      return void 0;
+    }
+    const root = roots.find(
+      (node) => node instanceof import_core8.InlineNode && node.getCanonicalName() === "workspace" && node.getNamespace() === SHARE_NAMESPACE
+    );
+    if (!root || firstValue(root, "Version") !== SHARE_VERSION) {
+      return void 0;
+    }
+    const documents = [];
+    let active = null;
+    for (const child of root.getChildrenByName("Document")) {
+      if (!(child instanceof import_core8.InlineNode)) {
+        continue;
+      }
+      const id = `s${documents.length + 1}`;
+      documents.push({ id, title: child.getValue(), text: textOf(child) });
+      if (active === null && firstValue(child, "Active")?.toLowerCase() === "true") {
+        active = id;
+      }
+    }
+    return { active: active ?? documents[0]?.id ?? null, documents };
+  }
+  function firstValue(node, name2) {
+    const child = node.getChildrenByName(name2).find((candidate) => candidate instanceof import_core8.InlineNode);
+    return child === void 0 ? void 0 : child.getValue();
+  }
+  function textOf(entry) {
+    const block = entry.getChildrenByName("Text").find((candidate) => candidate instanceof import_core8.TextNode);
+    const lines = block === void 0 ? [] : block.getTextLines();
+    return lines.length === 0 ? "" : lines.join("\n") + "\n";
+  }
   async function encodeShare(snapshot) {
-    const json = JSON.stringify(fromWorkspaceSnapshot(snapshot));
-    const compressed = await pipe(new TextEncoder().encode(json), new CompressionStream("deflate-raw"));
+    const stxt = toShareDocument(snapshot);
+    const compressed = await pipe(new TextEncoder().encode(stxt), new CompressionStream("deflate-raw"));
     return toBase64Url(compressed);
   }
   async function decodeShare(payload) {
     try {
       const bytes = await pipe(fromBase64Url(payload), new DecompressionStream("deflate-raw"));
-      return toWorkspaceSnapshot(JSON.parse(new TextDecoder().decode(bytes)));
+      const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      return fromShareDocument(text) ?? legacyJsonShare(text);
+    } catch {
+      return void 0;
+    }
+  }
+  function legacyJsonShare(text) {
+    try {
+      return toWorkspaceSnapshot(JSON.parse(text));
     } catch {
       return void 0;
     }

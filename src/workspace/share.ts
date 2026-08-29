@@ -1,13 +1,16 @@
-import { fromWorkspaceSnapshot, toWorkspaceSnapshot } from "./storage";
-import { WorkspaceSnapshot } from "./Workspace";
+import { InlineNode, Node, NodeWriter, Parser, TextNode } from "@stxt-lang/core";
+import { toWorkspaceSnapshot } from "./storage";
+import { WorkspaceDocument, WorkspaceSnapshot } from "./Workspace";
 
 /**
  * Links that carry content in the URL fragment, compressed, so nothing needs a server — the
  * fragment never leaves the browser. Two kinds:
  *
- * - Share links, `#w=` followed by the base64url of the raw-deflate of the same versioned JSON
- *   the local store uses: the whole workspace travels, and whoever opens the link gets it loaded
- *   in place of their own (after confirming).
+ * - Share links, `#w=` followed by the base64url of the raw-deflate of the whole workspace
+ *   written as one STXT document (see {@link toShareDocument}): whoever opens the link gets it
+ *   loaded in place of their own workspace (after confirming). STXT sharing STXT — inflating
+ *   the payload shows a document anyone can read, edit and compress again; links made before
+ *   this format, which carried the versioned JSON of the local store, still decode.
  * - Open links, `#d=` followed by the base64url of the raw-deflate of the UTF-8 text of one STXT
  *   document, plus an optional `&t=` with its title: the document is added to whatever workspace
  *   the browser already has and selected. This is what "Open in the playground" on stxt.dev
@@ -16,6 +19,15 @@ import { WorkspaceSnapshot } from "./Workspace";
 
 /** Parameter name of the workspace inside the URL fragment. */
 export const SHARE_PARAM = "w";
+
+/** Namespace of the share envelope. The `stxt.play.*` family is the playground's own. */
+export const SHARE_NAMESPACE = "stxt.play.share";
+
+/** Version of the share envelope, the value of its `Version` node. Bump on incompatible change. */
+export const SHARE_VERSION = "1";
+
+/** Comment that heads the share document, for whoever inflates a payload out of curiosity. */
+const SHARE_HEADER = "# STXT Playground workspace — https://play.stxt.dev\n";
 
 /** Parameter name of a single document to open inside the URL fragment. */
 export const OPEN_PARAM = "d";
@@ -56,19 +68,115 @@ async function pipe(bytes: Uint8Array, stream: CompressionStream | Decompression
 }
 
 /**
+ * Writes a workspace as one STXT document, the form that travels in a share link:
+ *
+ * ```stxt
+ * # STXT Playground workspace — https://play.stxt.dev
+ * Workspace (stxt.play.share):
+ * 	Version: 1
+ * 	Document: Recipe
+ * 		Active: true
+ * 		Text >>
+ * 			Recipe (stxt.play.cooking): Pancakes
+ * 			...
+ * ```
+ *
+ * One `Document` per workspace document, in order, with its title as the value; the active one
+ * carries `Active: true`, and the full text goes in the `Text` block, literal. Document ids are
+ * not part of the format: they only mean something inside one browser, and {@link fromShareDocument}
+ * mints fresh ones. Two STXT normalizations apply to the text (both harmless in an editor, and
+ * both applied anyway by the formatter): blank-trim removes trailing whitespace of every line,
+ * and a block drops its final empty lines — decoding closes every non-empty text with a single
+ * newline, so a document that ends with one (the usual case) round-trips exactly.
+ *
+ * @param snapshot the workspace to write.
+ * @returns the share document, ready to compress.
+ */
+export function toShareDocument(snapshot: WorkspaceSnapshot): string {
+	const root = new InlineNode("Workspace", SHARE_NAMESPACE, null);
+	root.addChild(new InlineNode("Version", SHARE_VERSION));
+	for (const document of snapshot.documents) {
+		const entry = new InlineNode("Document", document.title);
+		if (document.id === snapshot.active) {
+			entry.addChild(new InlineNode("Active", "true"));
+		}
+		entry.addChild(new TextNode("Text", document.text));
+		root.addChild(entry);
+	}
+	return SHARE_HEADER + NodeWriter.toSTXT(root);
+}
+
+/**
+ * Reads a workspace back from a share document. The counterpart of {@link toShareDocument},
+ * lenient enough for hand-written envelopes: indentation style is free (it is STXT), the header
+ * comment is optional, a `Document` without `Text` is an empty document, and `Active` is
+ * compared case-insensitively. The first root named `Workspace (stxt.play.share)` with
+ * `Version: 1` is the workspace; without one there is no workspace.
+ *
+ * @param text the share document.
+ * @returns the snapshot, with fresh sequential ids, or undefined when the text is not a share
+ * document. Never throws.
+ */
+export function fromShareDocument(text: string): WorkspaceSnapshot | undefined {
+	let roots: ReadonlyArray<Node>;
+	try {
+		// The envelope itself nests two levels; the limits exist to guard the editor, and what
+		// each document allows is judged there once loaded, so none applies to the decode
+		roots = new Parser({ maxNesting: -1, maxLineLength: -1, maxInputSize: -1 }).parse(text);
+	} catch {
+		return undefined;
+	}
+
+	const root = roots.find(
+		(node) => node instanceof InlineNode && node.getCanonicalName() === "workspace" && node.getNamespace() === SHARE_NAMESPACE,
+	) as InlineNode | undefined;
+	if (!root || firstValue(root, "Version") !== SHARE_VERSION) {
+		return undefined;
+	}
+
+	const documents: WorkspaceDocument[] = [];
+	let active: string | null = null;
+	for (const child of root.getChildrenByName("Document")) {
+		if (!(child instanceof InlineNode)) {
+			continue;
+		}
+		const id = `s${documents.length + 1}`;
+		documents.push({ id, title: child.getValue(), text: textOf(child) });
+		if (active === null && firstValue(child, "Active")?.toLowerCase() === "true") {
+			active = id;
+		}
+	}
+	return { active: active ?? documents[0]?.id ?? null, documents };
+}
+
+/** Value of the first inline child with that name, or undefined when there is none. */
+function firstValue(node: InlineNode, name: string): string | undefined {
+	const child = node.getChildrenByName(name).find((candidate) => candidate instanceof InlineNode);
+	return child === undefined ? undefined : (child as InlineNode).getValue();
+}
+
+/** Text of the `Text` block of a document entry; empty without one. Non-empty text ends in `\n`. */
+function textOf(entry: InlineNode): string {
+	const block = entry.getChildrenByName("Text").find((candidate) => candidate instanceof TextNode);
+	const lines = block === undefined ? [] : (block as TextNode).getTextLines();
+	return lines.length === 0 ? "" : lines.join("\n") + "\n";
+}
+
+/**
  * Builds the fragment payload of a workspace.
  *
  * @param snapshot the workspace to share.
  * @returns the payload to put after `#w=`.
  */
 export async function encodeShare(snapshot: WorkspaceSnapshot): Promise<string> {
-	const json = JSON.stringify(fromWorkspaceSnapshot(snapshot));
-	const compressed = await pipe(new TextEncoder().encode(json), new CompressionStream("deflate-raw"));
+	const stxt = toShareDocument(snapshot);
+	const compressed = await pipe(new TextEncoder().encode(stxt), new CompressionStream("deflate-raw"));
 	return toBase64Url(compressed);
 }
 
 /**
- * Reads a workspace back from a fragment payload.
+ * Reads a workspace back from a fragment payload: the STXT share document, or, for links made
+ * before that format existed, the versioned JSON of the local store.
  *
  * @param payload what follows `#w=`.
  * @returns the snapshot, or undefined if the payload is not a workspace. Never throws.
@@ -76,7 +184,17 @@ export async function encodeShare(snapshot: WorkspaceSnapshot): Promise<string> 
 export async function decodeShare(payload: string): Promise<WorkspaceSnapshot | undefined> {
 	try {
 		const bytes = await pipe(fromBase64Url(payload), new DecompressionStream("deflate-raw"));
-		return toWorkspaceSnapshot(JSON.parse(new TextDecoder().decode(bytes)));
+		const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+		return fromShareDocument(text) ?? legacyJsonShare(text);
+	} catch {
+		return undefined;
+	}
+}
+
+/** Reads the pre-STXT payload: the JSON of the local store. Undefined when it is not that either. */
+function legacyJsonShare(text: string): WorkspaceSnapshot | undefined {
+	try {
+		return toWorkspaceSnapshot(JSON.parse(text));
 	} catch {
 		return undefined;
 	}

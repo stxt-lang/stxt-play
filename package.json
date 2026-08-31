@@ -1,6 +1,6 @@
 {
   "name": "@stxt-lang/play",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "private": true,
   "description": "Web playground for STXT, an indentation-based structured-text language.",
   "scripts": {
@@ -46,7 +46,7 @@
     "@codemirror/lint": "^6.9.7",
     "@codemirror/state": "^6.7.1",
     "@codemirror/view": "^6.43.8",
-    "@stxt-lang/core": "^0.16.0"
+    "@stxt-lang/core": "^0.17.0"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

@@ -1,31 +1,33 @@
 import { Diagnostic as CmDiagnostic, setDiagnostics } from "@codemirror/lint";
-import { ChangeSpec, EditorState, Text } from "@codemirror/state";
+import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { Analyzer, applyIndentChanges, Diagnostic, DocumentAnalysis, IndentChange, SPACES_UNIT, TAB_UNIT } from "./analysis";
+import { Analyzer, Diagnostic, DocumentAnalysis } from "./analysis";
 import { setTokensEffect } from "./editor/highlight";
 import { createStxtEditor } from "./editor/stxtEditor";
 import { SEED_DOCUMENTS } from "./seed";
 import { createDocumentList, DocumentListEntry, DocumentListKind } from "./ui/documentList";
 import { confirmDialog, linkDialog } from "./ui/dialog";
+import { setupHeaderSwitches } from "./ui/headerSwitches";
 import { createProblemsPanel } from "./ui/problemsPanel";
 import { createViewTabs } from "./ui/viewTabs";
 import {
+	createWorkspacePersistence,
 	decodeOpen,
 	decodeShare,
+	DEFAULT_SETTINGS,
 	encodeShare,
-	IndentMode,
 	isOpenLink,
 	KeyValueStorage,
 	loadSettings,
+	loadSharedSnapshot,
 	loadWorkspace,
+	openLinked,
 	PlaygroundSettings,
 	saveSettings,
-	saveWorkspace,
 	SHARE_PARAM,
 	sharePayloadOf,
 	Workspace,
 	WorkspaceDocument,
-	WorkspaceSnapshot,
 } from "./workspace";
 
 /**
@@ -39,9 +41,6 @@ import {
  * — indentation mode and validation on/off — are settings, persisted apart from the workspace.
  */
 
-/** How long after the last change the workspace is written to localStorage. */
-const PERSIST_DELAY_MS = 300;
-
 /** How long a status message stays on screen. */
 const STATUS_MS = 2500;
 
@@ -50,14 +49,6 @@ interface DocumentLabel {
 	label: string;
 	kind: DocumentListKind;
 	renamable: boolean;
-}
-
-/** Maps re-indentation changes (0-based line and columns) to CodeMirror change specs. */
-function toCmChanges(doc: Text, changes: IndentChange[]): ChangeSpec[] {
-	return changes.map((change) => {
-		const line = doc.line(change.line + 1);
-		return { from: line.from + change.from, to: line.from + change.to, insert: change.insert };
-	});
 }
 
 /** Maps analysis diagnostics (0-based lines) to CodeMirror diagnostics (whole-line ranges). */
@@ -138,7 +129,7 @@ function main(): void {
 	const analyzer = new Analyzer();
 	const workspace = new Workspace();
 	const storage = browserStorage();
-	const settings: PlaygroundSettings = storage ? loadSettings(storage) : { indent: "tabs", validation: true };
+	const settings: PlaygroundSettings = storage ? loadSettings(storage) : { ...DEFAULT_SETTINGS };
 	analyzer.setValidation(settings.validation);
 
 	/** One editor state per workspace document. */
@@ -146,27 +137,9 @@ function main(): void {
 	/** Identifier of the document currently in the view, if any. */
 	let shownId: string | null = null;
 
-	// --- Persistence -------------------------------------------------------------------------
+	// --- Persistence: debounced after every change, immediate when the page goes away --------
 
-	let persistTimer: number | undefined;
-	const persistNow = (): void => {
-		if (persistTimer !== undefined) {
-			window.clearTimeout(persistTimer);
-			persistTimer = undefined;
-		}
-		if (storage) {
-			saveWorkspace(storage, workspace.toSnapshot());
-		}
-	};
-	const schedulePersist = (): void => {
-		if (!storage) {
-			return;
-		}
-		if (persistTimer !== undefined) {
-			window.clearTimeout(persistTimer);
-		}
-		persistTimer = window.setTimeout(persistNow, PERSIST_DELAY_MS);
-	};
+	const { persistNow, schedulePersist } = createWorkspacePersistence(workspace, storage);
 	window.addEventListener("pagehide", persistNow);
 	document.addEventListener("visibilitychange", () => {
 		if (document.visibilityState === "hidden") {
@@ -333,74 +306,25 @@ function main(): void {
 
 	// --- Header switches ----------------------------------------------------------------------
 
-	const renderSwitches = (): void => {
-		indentTabs.setAttribute("aria-pressed", String(settings.indent === "tabs"));
-		indentSpaces.setAttribute("aria-pressed", String(settings.indent === "spaces"));
-		validationToggle.setAttribute("aria-checked", String(settings.validation));
-	};
-
-	const persistSettings = (): void => {
-		if (storage) {
-			saveSettings(storage, settings);
-		}
-	};
-
-	/**
-	 * Re-indents every document of the workspace to the unit of a mode. Only structural
-	 * indentation changes (see `analysis/reindent.ts`); comments and block content stay as they
-	 * are. The document in the view goes through a transaction, parked documents through their
-	 * own state, so the change is undoable everywhere; documents never shown are rewritten in
-	 * the model.
-	 */
-	const reindentAll = (mode: IndentMode): void => {
-		const unit = mode === "tabs" ? TAB_UNIT : SPACES_UNIT;
-		for (const document of workspace.getDocuments()) {
-			const changes = analyzer.getIndentChanges(document.id, unit);
-			if (changes.length === 0) {
-				continue;
+	setupHeaderSwitches({
+		elements: { indentTabs, indentSpaces, validationToggle },
+		settings,
+		workspace,
+		analyzer,
+		editor,
+		states,
+		shownId: () => shownId,
+		persistSettings: () => {
+			if (storage) {
+				saveSettings(storage, settings);
 			}
-			if (document.id === shownId) {
-				// The update listener pushes the new text into the workspace
-				view.dispatch({ changes: toCmChanges(view.state.doc, changes), userEvent: "reindent" });
-				continue;
-			}
-			const parked = states.get(document.id);
-			if (parked) {
-				const next = parked.update({ changes: toCmChanges(parked.doc, changes), userEvent: "reindent" }).state;
-				states.set(document.id, next);
-				workspace.setText(document.id, next.doc.toString());
-			} else {
-				workspace.setText(document.id, applyIndentChanges(document.text, changes));
-			}
-		}
-	};
-
-	/** Changes what Tab inserts from now on, and re-indents the workspace to match. */
-	const setIndent = (mode: IndentMode): void => {
-		if (settings.indent !== mode) {
-			settings.indent = mode;
-			editor.setIndentMode(mode);
-			reindentAll(mode);
-			renderSwitches();
-			persistSettings();
-		}
-		view.focus();
-	};
-	indentTabs.addEventListener("click", () => setIndent("tabs"));
-	indentSpaces.addEventListener("click", () => setIndent("spaces"));
-
-	/** Switches schema validation on or off for the whole workspace and repaints everything. */
-	validationToggle.addEventListener("click", () => {
-		settings.validation = !settings.validation;
-		analyzer.setValidation(settings.validation);
-		refreshView();
-		renderPanel();
-		renderList();
-		renderSwitches();
-		persistSettings();
-		view.focus();
+		},
+		refreshAfterValidation: () => {
+			refreshView();
+			renderPanel();
+			renderList();
+		},
 	});
-	renderSwitches();
 
 	// --- Wiring: the workspace drives everything ----------------------------------------------
 
@@ -460,16 +384,7 @@ function main(): void {
 
 	/** Replaces every document with the seed and activates the first one. */
 	const loadSeed = (): void => {
-		for (const document of workspace.getDocuments()) {
-			workspace.removeDocument(document.id);
-		}
-		for (const seed of SEED_DOCUMENTS) {
-			workspace.addDocument(seed.text, seed.title);
-		}
-		const first = workspace.getDocuments()[0];
-		if (first) {
-			workspace.setActive(first.id);
-		}
+		workspace.replaceAll(SEED_DOCUMENTS.map((seed) => ({ title: seed.title, text: seed.text })));
 	};
 
 	docReset.addEventListener("click", () => {
@@ -489,10 +404,7 @@ function main(): void {
 
 	/** Removes every document and leaves a single empty one: the playground always has something to edit. */
 	const clearDocuments = (): void => {
-		for (const document of workspace.getDocuments()) {
-			workspace.removeDocument(document.id);
-		}
-		workspace.addDocument();
+		workspace.replaceAll([{}]);
 	};
 
 	docClear.addEventListener("click", () => {
@@ -529,22 +441,6 @@ function main(): void {
 		});
 	});
 
-	/** Loads a snapshot that came in a share link, with fresh ids so it cannot collide with local ones. */
-	const loadShared = (snapshot: WorkspaceSnapshot): void => {
-		for (const document of workspace.getDocuments()) {
-			workspace.removeDocument(document.id);
-		}
-		let activeId: string | undefined;
-		for (const document of snapshot.documents) {
-			const added = workspace.addDocument(document.text, document.title);
-			if (document.id === snapshot.active) {
-				activeId = added.id;
-			}
-		}
-		const first = workspace.getDocuments()[0];
-		workspace.setActive(activeId ?? first?.id ?? "");
-	};
-
 	// --- Start: a share link, the stored workspace, or the seed ------------------------------
 
 	const stored = storage ? loadWorkspace(storage) : undefined;
@@ -557,34 +453,6 @@ function main(): void {
 	/** Forgets the fragment: a link is consumed once, so a reload must not act on it again. */
 	const consumeFragment = (): void => {
 		history.replaceState(null, "", `${location.pathname}${location.search}`);
-	};
-
-	/** First title among "title", "title (2)", "title (3)"… not taken by any document. */
-	const freeTitle = (title: string): string => {
-		const titles = new Set(workspace.getDocuments().map((document) => document.title));
-		let candidate = title;
-		for (let n = 2; titles.has(candidate); n++) {
-			candidate = `${title} (${n})`;
-		}
-		return candidate;
-	};
-
-	/**
-	 * Adds a document that came in an open link and selects it. Nothing is replaced and nothing
-	 * is asked: the link carries one document, not a workspace. If the same text is already in
-	 * the workspace, that document is selected instead, so opening a link twice does not
-	 * duplicate it.
-	 */
-	const openLinked = (text: string, title: string | undefined): void => {
-		const existing = workspace.getDocuments().find((document) => document.text === text);
-		if (existing) {
-			workspace.setActive(existing.id);
-			showStatus("The document of the link was already in the workspace.");
-			return;
-		}
-		const added = workspace.addDocument(text, title ? freeTitle(title) : undefined);
-		workspace.setActive(added.id);
-		showStatus("Document opened from the link.");
 	};
 
 	/**
@@ -615,7 +483,7 @@ function main(): void {
 					danger: true,
 				});
 				if (replace) {
-					loadShared(shared);
+					loadSharedSnapshot(workspace, shared);
 					showStatus("Shared workspace loaded.");
 				}
 			});
@@ -626,7 +494,10 @@ function main(): void {
 					showStatus("The link does not carry a valid document.");
 					return;
 				}
-				openLinked(linked.text, linked.title);
+				const outcome = openLinked(workspace, linked.text, linked.title);
+				showStatus(outcome === "existing"
+					? "The document of the link was already in the workspace."
+					: "Document opened from the link.");
 			});
 		}
 	};

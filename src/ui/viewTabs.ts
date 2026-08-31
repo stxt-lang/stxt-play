@@ -1,5 +1,13 @@
 /** The three panes of the playground a narrow screen shows one at a time. */
-export type PlaygroundView = "documents" | "editor" | "problems";
+const PLAYGROUND_VIEWS = ["documents", "editor", "problems"] as const;
+
+/** One of the pane names of {@link PLAYGROUND_VIEWS}. */
+export type PlaygroundView = (typeof PLAYGROUND_VIEWS)[number];
+
+/** Narrows the `data-view` attribute of a button, which is markup, not typed code. */
+function isPlaygroundView(value: string | undefined): value is PlaygroundView {
+	return (PLAYGROUND_VIEWS as readonly string[]).includes(value ?? "");
+}
 
 /** The view tabs of narrow screens: Documents · Editor · Problems. */
 export interface ViewTabs {
@@ -40,7 +48,12 @@ export function createViewTabs(nav: HTMLElement, onShow?: (view: PlaygroundView)
 	};
 
 	for (const button of buttons) {
-		button.addEventListener("click", () => show(button.dataset.view as PlaygroundView));
+		button.addEventListener("click", () => {
+			const view = button.dataset.view;
+			if (isPlaygroundView(view)) {
+				show(view);
+			}
+		});
 	}
 	show("editor");
 

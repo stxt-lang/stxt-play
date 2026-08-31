@@ -72,7 +72,7 @@ export function computeCompletions(
 	}
 
 	if (context.isValue) {
-		const node = analysis.nodeByLine.get(line);
+		const node = analysis.nodeByLineIndex.get(line);
 		return node ? { from: context.from, suggestions: findEnumValues(registry, node, context.prefix) } : null;
 	}
 
@@ -90,7 +90,7 @@ export function computeCompletions(
 /** The first node opened at a line before the given one. */
 function getLastNode(analysis: DocumentAnalysis, line: number): Node | undefined {
 	for (let search = line - 1; search >= 0; search--) {
-		const node = analysis.nodeByLine.get(search);
+		const node = analysis.nodeByLineIndex.get(search);
 		if (node) {
 			return node;
 		}
@@ -105,7 +105,7 @@ function getLastNode(analysis: DocumentAnalysis, line: number): Node | undefined
  */
 function getParentNode(analysis: DocumentAnalysis, line: number, level: number): InlineNode | undefined {
 	for (let search = line - 1; search >= 0; search--) {
-		const node = analysis.nodeByLine.get(search);
+		const node = analysis.nodeByLineIndex.get(search);
 		if (node?.getLevel() === level - 1) {
 			return node instanceof InlineNode ? node : undefined;
 		}

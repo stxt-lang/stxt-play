@@ -37,7 +37,7 @@ export interface KeyValueStorage {
 }
 
 /** What is actually written: the snapshot plus its format version. */
-interface StoredWorkspace extends WorkspaceSnapshot {
+export interface StoredWorkspace extends WorkspaceSnapshot {
 	version: number;
 }
 
@@ -81,19 +81,6 @@ export function saveWorkspace(storage: KeyValueStorage, snapshot: WorkspaceSnaps
 		return true;
 	} catch {
 		return false;
-	}
-}
-
-/**
- * Forgets the stored workspace.
- *
- * @param storage the store to clear.
- */
-export function clearWorkspace(storage: KeyValueStorage): void {
-	try {
-		storage.removeItem(WORKSPACE_STORAGE_KEY);
-	} catch {
-		// Nothing to do: if the store is unavailable there is nothing to forget
 	}
 }
 
@@ -152,15 +139,14 @@ export function toWorkspaceSnapshot(value: unknown): WorkspaceSnapshot | undefin
  * The stored form of a snapshot: the documents and the active id, plus the format version.
  *
  * @param snapshot the workspace to serialize.
- * @returns a plain object ready for `JSON.stringify`.
+ * @returns the stored form, ready for `JSON.stringify`.
  */
-export function fromWorkspaceSnapshot(snapshot: WorkspaceSnapshot): object {
-	const stored: StoredWorkspace = {
+export function fromWorkspaceSnapshot(snapshot: WorkspaceSnapshot): StoredWorkspace {
+	return {
 		version: WORKSPACE_STORAGE_VERSION,
 		active: snapshot.active,
 		documents: snapshot.documents.map(({ id, title, text }) => ({ id, title, text })),
 	};
-	return stored;
 }
 
 /** Structural check of what came out of the store, field by field. */

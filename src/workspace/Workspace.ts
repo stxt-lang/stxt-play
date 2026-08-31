@@ -40,6 +40,16 @@ export interface WorkspaceSnapshot {
 /** Title given to new documents; a counter is appended to keep titles unique. */
 export const UNTITLED = "Untitled";
 
+/** What {@link Workspace.replaceAll} needs of each new document. */
+export interface NewWorkspaceDocument {
+	/** Identifier to keep; a fresh one is generated when missing. */
+	id?: string;
+	/** Title; the next free "Untitled N" when missing or blank. */
+	title?: string;
+	/** Full text; empty when missing. */
+	text?: string;
+}
+
 /** Default identifier generator: time-based plus a random tail, unique enough for one browser. */
 function defaultIdGenerator(): string {
 	return `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -211,24 +221,48 @@ export class Workspace {
 	}
 
 	/**
-	 * Replaces the whole workspace with a snapshot, reporting the change document by document.
-	 * A snapshot whose active id is missing activates the first document instead.
+	 * Replaces the whole workspace: every current document is removed (reported one by one) and
+	 * the given ones are added in order, with fresh identifiers unless one comes with the
+	 * document. The document at `activeIndex` (the first, by default) ends up active. This is
+	 * the single place with the "replace everything" semantics: the seed, Clear, a share link
+	 * and {@link Workspace.load} all go through it.
+	 *
+	 * @param documents the new content of the workspace, in order; missing fields take the
+	 * {@link Workspace.addDocument} defaults.
+	 * @param activeIndex position of the document to activate; clamped, ignored when empty.
+	 * @returns the added documents, in order.
+	 */
+	replaceAll(documents: NewWorkspaceDocument[], activeIndex = 0): WorkspaceDocument[] {
+		for (const document of this.getDocuments()) {
+			this.removeDocument(document.id);
+		}
+		const added: WorkspaceDocument[] = [];
+		for (const document of documents) {
+			const created: WorkspaceDocument = {
+				id: document.id ?? this.generateId(),
+				title: document.title?.trim() || this.nextUntitled(),
+				text: document.text ?? "",
+			};
+			this.documents.push(created);
+			added.push(created);
+			this.emit({ kind: "added", id: created.id });
+		}
+		if (added.length > 0) {
+			const index = Math.max(0, Math.min(Math.trunc(activeIndex), added.length - 1));
+			this.setActive(added[index].id);
+		}
+		return added;
+	}
+
+	/**
+	 * Replaces the whole workspace with a snapshot, keeping its identifiers. A snapshot whose
+	 * active id is missing activates the first document instead.
 	 *
 	 * @param snapshot the workspace to load.
 	 */
 	load(snapshot: WorkspaceSnapshot): void {
-		for (const document of this.getDocuments()) {
-			this.removeDocument(document.id);
-		}
-		for (const document of snapshot.documents) {
-			this.documents.push({ id: document.id, title: document.title, text: document.text });
-			this.emit({ kind: "added", id: document.id });
-		}
-		const first = this.documents[0];
-		const active = snapshot.active !== null && this.getDocument(snapshot.active) ? snapshot.active : first?.id;
-		if (active !== undefined) {
-			this.setActive(active);
-		}
+		const activeIndex = snapshot.documents.findIndex((document) => document.id === snapshot.active);
+		this.replaceAll(snapshot.documents, activeIndex >= 0 ? activeIndex : 0);
 	}
 
 	private indexOf(id: string): number {

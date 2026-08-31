@@ -39,8 +39,6 @@ export interface DocumentListHandlers {
 export interface DocumentList {
 	/** Replaces the rows with the given entries, in their order. */
 	render(entries: DocumentListEntry[]): void;
-	/** Starts an inline rename of a row, if it is renamable. */
-	startRename(id: string): void;
 }
 
 /** Text of the kind badge of a row. */
@@ -321,6 +319,5 @@ export function createDocumentList(
 				list.querySelector<HTMLElement>(`.doc[data-id="${CSS.escape(focused)}"]`)?.focus();
 			}
 		},
-		startRename,
 	};
 }

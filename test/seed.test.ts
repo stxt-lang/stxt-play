@@ -1,10 +1,16 @@
 import * as assert from "assert";
 import * as fs from "fs";
 import * as path from "path";
-import { Analyzer } from "../src/analysis";
+import { Analyzer, DocumentAnalysis } from "../src/analysis";
 
 /** The seed files as they are on disk (the app bundles them as text; here we read them). */
 const SEED_DIR = path.join(__dirname, "..", "..", "seed");
+
+function analysisOf(analyzer: Analyzer, id: string): DocumentAnalysis {
+	const analysis = analyzer.getAnalysis(id);
+	assert.ok(analysis, `no analysis for ${id}`);
+	return analysis;
+}
 
 describe("Seed workspace", () => {
 	it("parses and validates cleanly as one workspace, with schemas and templates in it", () => {
@@ -37,7 +43,7 @@ describe("Seed workspace", () => {
 		for (const file of files) {
 			analyzer.setDocument(file, fs.readFileSync(path.join(SEED_DIR, file), "utf8"));
 		}
-		const namespaces = files.flatMap((file) => analyzer.getAnalysis(file)!.grammars.map((g) => g.namespace));
+		const namespaces = files.flatMap((file) => analysisOf(analyzer, file).grammars.map((g) => g.namespace));
 		assert.deepStrictEqual(namespaces.sort(), ["stxt.play.config", "stxt.play.cooking", "stxt.play.library"]);
 	});
 
@@ -48,7 +54,7 @@ describe("Seed workspace", () => {
 			analyzer.setDocument(file, fs.readFileSync(path.join(SEED_DIR, file), "utf8"));
 		}
 		const markdownTypes = (file: string) =>
-			new Set(analyzer.getAnalysis(file)!.tokens.filter((t) => t.type.startsWith("markdown")).map((t) => t.type));
+			new Set(analysisOf(analyzer, file).tokens.filter((t) => t.type.startsWith("markdown")).map((t) => t.type));
 
 		assert.ok(markdownTypes("recipe-bolognese.stxt").has("markdownBold"), "the bolognese Notes have bold text");
 		assert.ok(markdownTypes("book-handbook.stxt").has("markdownLink"), "the handbook Summary has a link");

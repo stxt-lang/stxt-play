@@ -10,6 +10,7 @@ import {
 	keymap,
 	lineNumbers,
 } from "@codemirror/view";
+import { SPACES_UNIT, TAB_UNIT } from "../analysis";
 import { IndentMode } from "../workspace";
 import { CompletionProvider, stxtCompletion } from "./completion";
 import { DefinitionNavigator, stxtGoToDefinition } from "./definition";
@@ -61,8 +62,11 @@ export interface StxtEditor {
 	setIndentMode(mode: IndentMode): void;
 }
 
-/** The indentation string of each mode. STXT: one tab, or exactly four spaces, per level. */
-const INDENT_UNITS: Record<IndentMode, string> = { tabs: "\t", spaces: "    " };
+/**
+ * The indentation string of each mode, shared with the analysis reindenter so the Tab key and
+ * the Formatter can never disagree. STXT: one tab, or exactly four spaces, per level.
+ */
+const INDENT_UNITS: Record<IndentMode, string> = { tabs: TAB_UNIT, spaces: SPACES_UNIT };
 
 /** Slot of the state configuration that holds the indent unit, so the header can swap it. */
 const indentCompartment = new Compartment();

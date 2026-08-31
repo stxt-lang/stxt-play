@@ -59,6 +59,7 @@
         }
       };
       exports.ParseException = ParseException2;
+      ParseException2.NO_LINE = 0;
     }
   });
 
@@ -71,13 +72,6 @@
       var ParseException_1 = require_ParseException();
       var NamespaceValidator = class _NamespaceValidator {
         /**
-         * Validates the format of a namespace.
-         *
-         * @param namespace already normalized namespace to validate; ignored when null or empty.
-         * @param lineNumber line number, for the error message.
-         * @throws ParseException with code `INVALID_NAMESPACE` if it does not match the format.
-         */
-        /**
          * Tells whether a namespace matches the format, without throwing.
          *
          * @param namespace already normalized namespace to check.
@@ -86,6 +80,13 @@
         static isValid(namespace) {
           return !!namespace && _NamespaceValidator.NAMESPACE_FORMAT.test(namespace);
         }
+        /**
+         * Validates the format of a namespace.
+         *
+         * @param namespace already normalized namespace to validate; ignored when null or empty.
+         * @param lineNumber line number, for the error message.
+         * @throws ParseException with code `INVALID_NAMESPACE` if it does not match the format.
+         */
         static validateNamespaceFormat(namespace, lineNumber) {
           if (!namespace) {
             return;
@@ -136,16 +137,6 @@
          */
         static rightTrim(s) {
           return (s ?? "").replace(this.TRAILING_BLANKS, "");
-        }
-        // Used for BASE64 and HEXADECIMAL nodes
-        /**
-         * Removes every whitespace character of a string.
-         *
-         * @param input string to remove the spaces from.
-         * @returns the string without any whitespace at all.
-         */
-        static cleanSpaces(input) {
-          return input.replace(/\s+/g, "");
         }
         // Used to normalize namespaces
         /**
@@ -627,20 +618,20 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Constants = void 0;
-      var Constants2 = class {
+      var Constants3 = class {
       };
-      exports.Constants = Constants2;
-      Constants2.SPEC_VERSION = "1.0";
-      Constants2.COMMENT_CHAR = "#";
-      Constants2.TAB_SPACES = 4;
-      Constants2.TAB = "	";
-      Constants2.SPACE = " ";
-      Constants2.SEP_NODE = ":";
-      Constants2.SEP_TEXT_NODE = ">>";
-      Constants2.EMPTY_NAMESPACE = "";
-      Constants2.DEFAULT_MAX_NESTING = 100;
-      Constants2.DEFAULT_MAX_LINE_LENGTH = 1e4;
-      Constants2.DEFAULT_MAX_INPUT_SIZE = 1e7;
+      exports.Constants = Constants3;
+      Constants3.SPEC_VERSION = "1.0";
+      Constants3.COMMENT_CHAR = "#";
+      Constants3.TAB_SPACES = 4;
+      Constants3.TAB = "	";
+      Constants3.SPACE = " ";
+      Constants3.SEP_NODE = ":";
+      Constants3.SEP_TEXT_NODE = ">>";
+      Constants3.EMPTY_NAMESPACE = "";
+      Constants3.DEFAULT_MAX_NESTING = 100;
+      Constants3.DEFAULT_MAX_LINE_LENGTH = 1e4;
+      Constants3.DEFAULT_MAX_INPUT_SIZE = 1e7;
     }
   });
 
@@ -753,11 +744,11 @@
       exports.NameNamespace = void 0;
       var NameNamespace = class {
         /**
-         * Creates a resolved name and namespace pair.
-         *
-         * @param name name of the node without the namespace part.
-         * @param namespace resolved namespace (its own or inherited).
-         */
+        * Creates a resolved name and namespace pair.
+        *
+        * @param name name of the node without the namespace part.
+        * @param namespace resolved namespace (its own or inherited).
+        */
         constructor(name2, namespace) {
           this.name = name2;
           this.namespace = namespace;
@@ -1100,18 +1091,17 @@
               this.emitError(new LimitException_1.LimitException(lineNumber, "LIMIT_INPUT_SIZE_EXCEEDED", `Input larger than ${this.maxInputSize} characters`), result);
               return;
             }
-            try {
-              this.processLine(line, lineNumber, stack, result);
-            } catch (e) {
-              if (e instanceof LimitException_1.LimitException) {
-                this.emitError(e, result);
-                return;
-              }
-              throw e;
+            if (!this.processLine(line, lineNumber, stack, result)) {
+              return;
             }
           }
           this.closeToLevel(stack, 0, result);
         }
+        /**
+         * Processes one source line. Errors of this line are collected into the result and the
+         * traversal continues with the next line: returns true to keep going, false when a limit
+         * aborted the parse (its error is already emitted) — parseLines stops on it.
+         */
         processLine(lineString, lineNumber, stack, result) {
           try {
             const lastNode = stack.length === 0 ? null : stack[stack.length - 1];
@@ -1125,7 +1115,7 @@
               this.observers.forEach((observer) => {
                 observer.onComment(lineNumber, lineString);
               });
-              return;
+              return true;
             }
             const currentLevel = line.level;
             if (line.isBlock) {
@@ -1134,13 +1124,14 @@
               this.observers.forEach((observer) => {
                 observer.onTextLine(textNode, lineNumber, lineString, line);
               });
-              return;
+              return true;
             }
             if (line.isEmpty()) {
-              return;
+              return true;
             }
             if (this.maxNesting !== -1 && currentLevel >= this.maxNesting) {
-              throw new LimitException_1.LimitException(lineNumber, "LIMIT_NESTING_EXCEEDED", `Nesting deeper than ${this.maxNesting} levels`);
+              this.emitError(new LimitException_1.LimitException(lineNumber, "LIMIT_NESTING_EXCEEDED", `Nesting deeper than ${this.maxNesting} levels`), result);
+              return false;
             }
             this.closeToLevel(stack, currentLevel, result);
             const parent = stack.length === 0 ? null : stack[stack.length - 1];
@@ -1153,11 +1144,9 @@
             });
             stack.push(node);
           } catch (e) {
-            if (e instanceof LimitException_1.LimitException) {
-              throw e;
-            }
             this.handleError(e, lineNumber, result);
           }
+          return true;
         }
         /**
          * Records an error raised while parsing or validating a line. Typed exceptions travel as they
@@ -1186,7 +1175,8 @@
         }
         closeToLevel(stack, targetLevel, result) {
           while (stack.length > targetLevel) {
-            const completed = stack.pop();
+            const completed = stack[stack.length - 1];
+            stack.pop();
             if (completed instanceof TextNode_1.TextNode) {
               completed.removeTrailingEmptyLines();
             }
@@ -1229,6 +1219,7 @@
       exports.Schema = void 0;
       var NamespaceValidator_1 = require_NamespaceValidator();
       var StringUtils_1 = require_StringUtils();
+      var ParseException_1 = require_ParseException();
       var ValidationException_1 = require_ValidationException();
       var Schema3 = class {
         /**
@@ -1269,11 +1260,11 @@
          * @throws ValidationException with code `NODE_DUPLICATED` if there already was a node definition with the same name.
          */
         addNodeDefinition(nodeDefinition) {
-          const qname = nodeDefinition.getCanonicalName();
-          if (this.nodes.has(qname)) {
-            throw new ValidationException_1.ValidationException(0, "NODE_DUPLICATED", `Exists a previous node definition with: ${qname}`);
+          const canonicalName = nodeDefinition.getCanonicalName();
+          if (this.nodes.has(canonicalName)) {
+            throw new ValidationException_1.ValidationException(ParseException_1.ParseException.NO_LINE, "NODE_DUPLICATED", `A node definition with the same name already exists: ${canonicalName}`);
           }
-          this.nodes.set(qname, nodeDefinition);
+          this.nodes.set(canonicalName, nodeDefinition);
         }
         /** @returns the namespace this schema applies to. */
         getNamespace() {
@@ -1293,6 +1284,7 @@
       };
       exports.Schema = Schema3;
       Schema3.SCHEMA_NAMESPACE = "@stxt.schema";
+      Schema3.TEMPLATE_NAMESPACE = "@stxt.template";
     }
   });
 
@@ -1612,17 +1604,31 @@
       var ValidationException_1 = require_ValidationException();
       var binaryValue_1 = require_binaryValue();
       var ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-      var SHAPE = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}(?:==)?|[A-Za-z0-9+/]{3}=?)?$/;
+      var ALPHABET_ONLY = /^[A-Za-z0-9+/]*$/;
       function isValidBase64(value) {
-        if (value.length === 0 || !SHAPE.test(value)) {
+        if (value.length === 0) {
           return false;
         }
-        const data = value.replace(/=+$/, "");
-        const rest = data.length % 4;
+        let core = value;
+        let padding = 0;
+        if (value.endsWith("==")) {
+          core = value.slice(0, -2);
+          padding = 2;
+        } else if (value.endsWith("=")) {
+          core = value.slice(0, -1);
+          padding = 1;
+        }
+        if (!ALPHABET_ONLY.test(core)) {
+          return false;
+        }
+        const rest = core.length % 4;
+        if (padding === 2 ? rest !== 2 : padding === 1 ? rest !== 3 : rest === 1) {
+          return false;
+        }
         if (rest === 0) {
           return true;
         }
-        const last = ALPHABET.indexOf(data.charAt(data.length - 1));
+        const last = ALPHABET.indexOf(core.charAt(core.length - 1));
         const mask = rest === 2 ? 15 : 3;
         return (last & mask) === 0;
       }
@@ -1690,17 +1696,12 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.MARKDOWN = void 0;
-      var InlineNode_1 = require_InlineNode();
-      var ValidationException_1 = require_ValidationException();
+      var TEXT_1 = require_TEXT();
       exports.MARKDOWN = {
         getName() {
           return "MARKDOWN";
         },
-        validate(nodeDef, node) {
-          if (node instanceof InlineNode_1.InlineNode && node.getChildren().length > 0) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "CHILDREN_NOT_ALLOWED", `Not allowed children nodes in node ${node.getQualifiedName()}`);
-          }
-        }
+        validate: TEXT_1.TEXT.validate
       };
     }
   });
@@ -1900,10 +1901,12 @@
           for (const child of _SchemaValidator.childrenOf(node)) {
             const childName = child.getQualifiedName();
             count.set(childName, (count.get(childName) ?? 0) + 1);
-            if (!childrenByType.has(childName)) {
-              childrenByType.set(childName, []);
+            let sameName = childrenByType.get(childName);
+            if (!sameName) {
+              sameName = [];
+              childrenByType.set(childName, sameName);
             }
-            childrenByType.get(childName).push(child);
+            sameName.push(child);
           }
           for (const childDef of nodeDef.getChildren().values()) {
             const qname = childDef.getQualifiedName();
@@ -1931,12 +1934,41 @@
     }
   });
 
+  // node_modules/@stxt-lang/core/out/schema/DefinitionCompiler.js
+  var require_DefinitionCompiler = __commonJS({
+    "node_modules/@stxt-lang/core/out/schema/DefinitionCompiler.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.compileDefinitionNode = compileDefinitionNode;
+      exports.compileDefinitionDocument = compileDefinitionDocument;
+      var Parser_1 = require_Parser();
+      var ParseException_1 = require_ParseException();
+      var ValidationException_1 = require_ValidationException();
+      var SchemaValidator_1 = require_SchemaValidator();
+      function compileDefinitionNode(node, meta2, transform) {
+        const errors = new SchemaValidator_1.SchemaValidator(meta2, true).validate(node);
+        if (errors.length > 0) {
+          throw errors[0];
+        }
+        return transform(node);
+      }
+      function compileDefinitionDocument(text, meta2, transform, multipleRootsCode, kind) {
+        const nodes = new Parser_1.Parser().parse(text);
+        if (nodes.length !== 1) {
+          throw new ValidationException_1.ValidationException(ParseException_1.ParseException.NO_LINE, multipleRootsCode, `A ${kind} document must hold exactly 1 root node, got ${nodes.length}`);
+        }
+        return compileDefinitionNode(nodes[0], meta2, transform);
+      }
+    }
+  });
+
   // node_modules/@stxt-lang/core/out/schema/NodeDefinition.js
   var require_NodeDefinition = __commonJS({
     "node_modules/@stxt-lang/core/out/schema/NodeDefinition.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.NodeDefinition = void 0;
+      var ParseException_1 = require_ParseException();
       var ValidationException_1 = require_ValidationException();
       var StringUtils_1 = require_StringUtils();
       var NodeDefinition2 = class {
@@ -1997,7 +2029,7 @@
         addChildDefinition(childDefinition) {
           const qname = childDefinition.getQualifiedName();
           if (this.children.has(qname)) {
-            throw new ValidationException_1.ValidationException(0, "CHILD_DUPLICATED", `Exists a previous node definition with: ${qname}`);
+            throw new ValidationException_1.ValidationException(ParseException_1.ParseException.NO_LINE, "CHILD_DUPLICATED", `A child declaration with the same name already exists: ${qname}`);
           }
           this.children.set(qname, childDefinition);
         }
@@ -2012,9 +2044,9 @@
          * @throws ValidationException with code `VALUE_DUPLICATED` if the value (once trimmed) had already been added.
          */
         addValue(value, line) {
-          const trimmed = value?.trim() ?? "";
+          const trimmed = StringUtils_1.StringUtils.trim(value ?? "");
           if (this.values.has(trimmed)) {
-            throw new ValidationException_1.ValidationException(line ?? 0, "VALUE_DUPLICATED", `The values ${trimmed} is duplicated`);
+            throw new ValidationException_1.ValidationException(line ?? ParseException_1.ParseException.NO_LINE, "VALUE_DUPLICATED", `The value ${trimmed} is duplicated`);
           }
           this.values.add(trimmed);
         }
@@ -2130,6 +2162,7 @@
       var NodeDefinition_1 = require_NodeDefinition();
       var ChildDefinition_1 = require_ChildDefinition();
       var InlineNode_1 = require_InlineNode();
+      var ParseException_1 = require_ParseException();
       var ValidationException_1 = require_ValidationException();
       var NamespaceValidator_1 = require_NamespaceValidator();
       var StringUtils_1 = require_StringUtils();
@@ -2143,7 +2176,7 @@
         }
         const root = inline(node);
         const targetNamespace = StringUtils_1.StringUtils.lowerCase(root.getValue());
-        if (!targetNamespace || targetNamespace.trim().length === 0) {
+        if (!targetNamespace) {
           throw new ValidationException_1.ValidationException(root.getLine(), "SCHEMA_NAMESPACE_EMPTY", "Schema namespace is empty");
         }
         if (!NamespaceValidator_1.NamespaceValidator.isValid(targetNamespace)) {
@@ -2162,7 +2195,7 @@
             if (schChild.getNamespace() === schema.getNamespace()) {
               const childNorm = schChild.getCanonicalName();
               if (!allNames.has(childNorm)) {
-                throw new ValidationException_1.ValidationException(0, "CHILD_NOT_DEFINED", `Child ${childNorm} not defined in ${schema.getNamespace()}`);
+                throw new ValidationException_1.ValidationException(ParseException_1.ParseException.NO_LINE, "CHILD_NOT_DEFINED", `Child ${childNorm} not defined in ${schema.getNamespace()}`);
               }
             }
           }
@@ -2194,7 +2227,8 @@
             putChildToSchemaNode(result, child, namespace);
           }
         }
-        let valuesNodes = n.getChildrenByName("values");
+        const valuesNodes = n.getChildrenByName("values");
+        let valueEntries = [];
         if (valuesNodes && valuesNodes.length > 0) {
           if (type !== "ENUM") {
             throw new ValidationException_1.ValidationException(n.getLine(), "VALUES_NOT_ALLOWED_FOR_TYPE", `Values only supported for type ENUM, not for type ${type}`);
@@ -2202,17 +2236,15 @@
           if (valuesNodes.length > 1) {
             throw new ValidationException_1.ValidationException(valuesNodes[1].getLine(), "VALUES_DUPLICATED", `Node '${n.getValue()}' defines 'Values' ${valuesNodes.length} times`);
           }
-          const valuesNode = valuesNodes[0];
-          const values = inline(valuesNode).getChildrenByName("value");
-          for (const v of values) {
+          valueEntries = inline(valuesNodes[0]).getChildrenByName("value");
+          for (const v of valueEntries) {
             if (v.getText().length === 0) {
               throw new ValidationException_1.ValidationException(v.getLine(), "VALUE_EMPTY", "Value of ENUM cannot be empty");
             }
             result.addValue(v.getText(), v.getLine());
           }
-          valuesNodes = values;
         }
-        if (type === "ENUM" && (!valuesNodes || valuesNodes.length === 0)) {
+        if (type === "ENUM" && valueEntries.length === 0) {
           throw new ValidationException_1.ValidationException(n.getLine(), "VALUES_REQUIRED", "ENUM Type must include values");
         }
         return result;
@@ -2253,21 +2285,25 @@
       exports.SchemaProviderMeta = void 0;
       var Schema_1 = require_Schema();
       var Parser_1 = require_Parser();
+      var ParseException_1 = require_ParseException();
       var ValidationException_1 = require_ValidationException();
       var SchemaParser_1 = require_SchemaParser();
       var SchemaProviderMeta = class _SchemaProviderMeta {
         /**
-         * Parses the meta-schema and keeps it ready to be served.
+         * Compiles the meta-schema the first time and keeps it ready to be served.
          *
          * @throws ValidationException with code `META_SCHEMA_INVALID` if the meta-schema does not produce exactly one document.
          */
         constructor() {
-          const parser = new Parser_1.Parser();
-          const nodes = parser.parse(_SchemaProviderMeta.META_TEXT);
-          if (nodes.length !== 1) {
-            throw new ValidationException_1.ValidationException(0, "META_SCHEMA_INVALID", `Meta schema must produce exactly 1 document, got ${nodes.length}`);
+          if (!_SchemaProviderMeta.compiledMeta) {
+            const parser = new Parser_1.Parser();
+            const nodes = parser.parse(_SchemaProviderMeta.META_TEXT);
+            if (nodes.length !== 1) {
+              throw new ValidationException_1.ValidationException(ParseException_1.ParseException.NO_LINE, "META_SCHEMA_INVALID", `Meta schema must produce exactly 1 document, got ${nodes.length}`);
+            }
+            _SchemaProviderMeta.compiledMeta = (0, SchemaParser_1.transformNodeToSchema)(nodes[0]);
           }
-          this.meta = (0, SchemaParser_1.transformNodeToSchema)(nodes[0]);
+          this.meta = _SchemaProviderMeta.compiledMeta;
         }
         /**
          * Serves the meta-schema of the schema language.
@@ -2283,9 +2319,6 @@
         getSchema(namespace) {
           if (namespace !== Schema_1.Schema.SCHEMA_NAMESPACE) {
             return null;
-          }
-          if (!this.meta) {
-            throw new ValidationException_1.ValidationException(0, "META_SCHEMA_NOT_AVAILABLE", "Meta schema not available");
           }
           return this.meta;
         }
@@ -2363,12 +2396,10 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.SchemaProviderMemory = void 0;
-      var Parser_1 = require_Parser();
       var StringUtils_1 = require_StringUtils();
-      var ValidationException_1 = require_ValidationException();
+      var DefinitionCompiler_1 = require_DefinitionCompiler();
       var SchemaParser_1 = require_SchemaParser();
       var SchemaProviderMeta_1 = require_SchemaProviderMeta();
-      var SchemaValidator_1 = require_SchemaValidator();
       var SchemaProviderMemory = class {
         /**
          * Creates an empty provider.
@@ -2408,20 +2439,8 @@
          *         particular `SCHEMA_MULTIPLE_ROOTS` if it does not hold exactly one root node.
          */
         addSchema(txt) {
-          const parser = new Parser_1.Parser();
-          const nodes = parser.parse(txt);
-          if (nodes.length !== 1) {
-            throw new ValidationException_1.ValidationException(0, "SCHEMA_MULTIPLE_ROOTS", `A schema document must hold exactly 1 root node, got ${nodes.length}`);
-          }
-          const node = nodes[0];
-          const schemaValidator = new SchemaValidator_1.SchemaValidator(new SchemaProviderMeta_1.SchemaProviderMeta(), true);
-          const errors = schemaValidator.validate(node);
-          if (errors.length > 0) {
-            throw errors[0];
-          }
-          const schema = (0, SchemaParser_1.transformNodeToSchema)(node);
-          const key = schema.getNamespace();
-          this.schemas.set(key, schema);
+          const schema = (0, DefinitionCompiler_1.compileDefinitionDocument)(txt, new SchemaProviderMeta_1.SchemaProviderMeta(), SchemaParser_1.transformNodeToSchema, "SCHEMA_MULTIPLE_ROOTS", "schema");
+          this.schemas.set(schema.getNamespace(), schema);
         }
         /** Removes every schema registered in this provider (the parent one is left untouched). */
         clear() {
@@ -2489,6 +2508,7 @@
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.ChildLineParser = void 0;
       var ValidationException_1 = require_ValidationException();
+      var StringUtils_1 = require_StringUtils();
       var ChildLine_1 = require_ChildLine();
       var ChildLineParser = class _ChildLineParser {
         constructor() {
@@ -2503,18 +2523,18 @@
          *         `MIN_GREATER_THAN_MAX` or `VALUE_DUPLICATED` if the line is not valid.
          */
         static parse(rawLine, lineNumber) {
-          if (rawLine.trim().length === 0) {
+          if (StringUtils_1.StringUtils.trim(rawLine).length === 0) {
             return new ChildLine_1.ChildLine(null, null, null, null);
           }
           const m = _ChildLineParser.CHILD_LINE_PATTERN.exec(rawLine);
           if (!m) {
             throw new ValidationException_1.ValidationException(lineNumber, "STRUCTURE_LINE_NOT_VALID", `Line not valid: ${rawLine}`);
           }
-          let type = m[2]?.trim() ?? "";
+          let type = StringUtils_1.StringUtils.trim(m[2]);
           if (type.length === 0) {
             type = null;
           }
-          const count = (m[1] ?? "").trim();
+          const count = StringUtils_1.StringUtils.trim(m[1]);
           let min = null;
           let max = null;
           if (count.length === 0 || count === "*") {
@@ -2537,8 +2557,8 @@
             if (parts.length !== 2) {
               throw new ValidationException_1.ValidationException(lineNumber, "CARDINALITY_NOT_VALID", `Invalid count ${count} in line: ${rawLine}`);
             }
-            const aNum = _ChildLineParser.parseCount(parts[0].trim(), count, rawLine, lineNumber);
-            const bNum = _ChildLineParser.parseCount(parts[1].trim(), count, rawLine, lineNumber);
+            const aNum = _ChildLineParser.parseCount(StringUtils_1.StringUtils.trim(parts[0]), count, rawLine, lineNumber);
+            const bNum = _ChildLineParser.parseCount(StringUtils_1.StringUtils.trim(parts[1]), count, rawLine, lineNumber);
             if (aNum > bNum) {
               throw new ValidationException_1.ValidationException(lineNumber, "MIN_GREATER_THAN_MAX", `Min ${aNum} greater than Max ${bNum} in line: ${rawLine}`);
             }
@@ -2554,7 +2574,7 @@
             const parts = valuesStr.split(",");
             const list = [];
             for (let part of parts) {
-              part = part.trim();
+              part = StringUtils_1.StringUtils.trim(part);
               if (part.length === 0 && parts.length > 1) {
                 throw new ValidationException_1.ValidationException(lineNumber, "VALUE_EMPTY", `Empty ENUM value in ${valuesStr}`);
               }
@@ -2568,7 +2588,7 @@
             }
             values = list;
           }
-          return new ChildLine_1.ChildLine(type ?? null, min, max, values);
+          return new ChildLine_1.ChildLine(type, min, max, values);
         }
         // num, min and max must be non-negative integers, with no trailing text (STXT-TEMPLATE-SPEC 7.1)
         static parseCount(num, count, rawLine, lineNumber) {
@@ -2579,7 +2599,7 @@
         }
       };
       exports.ChildLineParser = ChildLineParser;
-      ChildLineParser.CHILD_LINE_PATTERN = /^\s*(?:\(\s*([^()\s][^)]*?)\s*\)\s*)?([^()[\]]*)?(?:\[\s*([^]*?)\s*\]\s*)?\s*$/;
+      ChildLineParser.CHILD_LINE_PATTERN = /^[ \t]*(?:\([ \t]*([^() \t][^)]*?)[ \t]*\)[ \t]*)?([^()[\]]*)?(?:\[[ \t]*([^]*?)[ \t]*\][ \t]*)?[ \t]*$/;
     }
   });
 
@@ -2601,13 +2621,13 @@
       var ParseException_1 = require_ParseException();
       var TypeRegistry_1 = require_TypeRegistry();
       var NamespaceValidator_1 = require_NamespaceValidator();
-      exports.TEMPLATE_NAMESPACE = "@stxt.template";
+      exports.TEMPLATE_NAMESPACE = Schema_1.Schema.TEMPLATE_NAMESPACE;
       function transformTemplateNodeToSchema2(node) {
         if (node.getCanonicalName() !== "template" || node.getNamespace() !== exports.TEMPLATE_NAMESPACE) {
           throw new ValidationException_1.ValidationException(node.getLine(), "TEMPLATE_ROOT_NOT_VALID", `Expected template(${exports.TEMPLATE_NAMESPACE}) but got ${node.getCanonicalName()}(${node.getNamespace()})`);
         }
         const targetNamespace = StringUtils_1.StringUtils.lowerCase(node.getText());
-        if (!targetNamespace || targetNamespace.trim().length === 0) {
+        if (!targetNamespace || StringUtils_1.StringUtils.trim(targetNamespace).length === 0) {
           throw new ValidationException_1.ValidationException(node.getLine(), "TEMPLATE_NAMESPACE_EMPTY", "Template namespace is empty");
         }
         if (!NamespaceValidator_1.NamespaceValidator.isValid(targetNamespace)) {
@@ -2657,86 +2677,94 @@
         if (!(node instanceof InlineNode_1.InlineNode)) {
           throw new ValidationException_1.ValidationException(node.getLine(), "STRUCTURE_LINE_NOT_VALID", "Template Structure lines must use ':'");
         }
+        const cl = ChildLineParser_1.ChildLineParser.parse(node.getValue(), node.getLine());
         let namespace = node.getNamespace();
-        const name2 = node.getName();
-        let cl = ChildLineParser_1.ChildLineParser.parse(node.getValue(), node.getLine());
         if (!namespace || namespace === "") {
           namespace = schema.getNamespace();
         }
         if (namespace !== schema.getNamespace()) {
-          const type = cl.getType();
-          if (type && type.trim().length > 0) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "TYPE_NOT_ALLOWED_IN_EXTERNAL_NAMESPACE", "Not allowed type definition in external namespaces");
-          }
-          const values = cl.getValues();
-          if (values) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "VALUES_NOT_ALLOWED_IN_EXTERNAL_NAMESPACE", `Not allowed values in external namespaces (node ${node.getName()})`);
-          }
-          if (node.getChildren().length > 0) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "CHILDREN_NOT_ALLOWED_IN_EXTERNAL_NAMESPACE", `Not allowed children in external namespaces (node ${node.getName()})`);
-          }
+          validateExternalNode(node, cl);
           return;
         }
-        let schemaNode = schema.getNodeDefinition(name2);
-        if (!schemaNode) {
-          const type = cl.getType() ?? "INLINE";
-          if (type.startsWith("@")) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "REFERENCE_NOT_FOUND", `Reference '${type}' does not point to a previous definition or an open ancestor`);
-          }
-          schemaNode = new NodeDefinition_1.NodeDefinition(node.getName(), type, node.getLine(), void 0);
-          schema.addNodeDefinition(schemaNode);
-          if (!TypeRegistry_1.TypeRegistry.get(type)) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "TYPE_NOT_VALID", `Type not valid: ${type}`);
-          }
-          const values = cl.getValues();
-          if (values) {
-            if (type !== "ENUM") {
-              throw new ValidationException_1.ValidationException(node.getLine(), "VALUES_NOT_ALLOWED_FOR_TYPE", `Values only supported for type ENUM, not for type ${type}`);
-            }
-            for (const v of values) {
-              schemaNode.addValue(v, node.getLine());
-            }
-          }
-          if (type === "ENUM" && (!values || values.length === 0)) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "VALUES_REQUIRED", "ENUM Type must include values");
-          }
-        } else {
-          const type = cl.getType();
-          if (!type || !type.startsWith("@")) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "REFERENCE_REQUIRED", `Multiple node reference must start with @: ${node.getName()}`);
-          }
-          const reference = type.substring(1).trim();
-          const explicitType = referenceType(reference, node.getCanonicalName());
-          if (explicitType) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "REFERENCE_WITH_TYPE_NOT_ALLOWED", `Reference '@${node.getName()}' can not declare a type: ${explicitType}`);
-          }
-          if (StringUtils_1.StringUtils.normalize(reference) !== node.getCanonicalName()) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "REFERENCE_NAME_NOT_VALID", `Reference must be '@${node.getName()}', not '${reference}'`);
-          }
-          const values = cl.getValues();
-          if (values) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "VALUES_NOT_ALLOWED_IN_REFERENCE", `Reference '@${node.getName()}' can not redefine ENUM values`);
-          }
-          if (node.getChildren().length > 0) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "CHILDREN_NOT_ALLOWED_IN_REFERENCE", `Reference '@${node.getName()}' can not redefine children`);
-          }
+        let schemaNode = schema.getNodeDefinition(node.getName());
+        if (schemaNode) {
+          validateReference(node, cl);
           return;
         }
-        const childrenNode = node.getChildren();
-        if (childrenNode.length > 0 && !TypeRegistry_1.TypeRegistry.admitsChildren(schemaNode.getType())) {
+        schemaNode = createDefinition(schema, node, cl);
+        addChildren(schema, schemaNode, node);
+      }
+      function validateExternalNode(node, cl) {
+        const type = cl.getType();
+        if (type && StringUtils_1.StringUtils.trim(type).length > 0) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "TYPE_NOT_ALLOWED_IN_EXTERNAL_NAMESPACE", "Not allowed type definition in external namespaces");
+        }
+        if (cl.getValues()) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "VALUES_NOT_ALLOWED_IN_EXTERNAL_NAMESPACE", `Not allowed values in external namespaces (node ${node.getName()})`);
+        }
+        if (node.getChildren().length > 0) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "CHILDREN_NOT_ALLOWED_IN_EXTERNAL_NAMESPACE", `Not allowed children in external namespaces (node ${node.getName()})`);
+        }
+      }
+      function createDefinition(schema, node, cl) {
+        const type = cl.getType() ?? "INLINE";
+        if (type.startsWith("@")) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "REFERENCE_NOT_FOUND", `Reference '${type}' does not point to a previous definition or an open ancestor`);
+        }
+        const schemaNode = new NodeDefinition_1.NodeDefinition(node.getName(), type, node.getLine(), void 0);
+        schema.addNodeDefinition(schemaNode);
+        if (!TypeRegistry_1.TypeRegistry.get(type)) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "TYPE_NOT_VALID", `Type not valid: ${type}`);
+        }
+        const values = cl.getValues();
+        if (values) {
+          if (type !== "ENUM") {
+            throw new ValidationException_1.ValidationException(node.getLine(), "VALUES_NOT_ALLOWED_FOR_TYPE", `Values only supported for type ENUM, not for type ${type}`);
+          }
+          for (const v of values) {
+            schemaNode.addValue(v, node.getLine());
+          }
+        }
+        if (type === "ENUM" && (!values || values.length === 0)) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "VALUES_REQUIRED", "ENUM Type must include values");
+        }
+        return schemaNode;
+      }
+      function validateReference(node, cl) {
+        const type = cl.getType();
+        if (!type || !type.startsWith("@")) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "REFERENCE_REQUIRED", `Multiple node reference must start with @: ${node.getName()}`);
+        }
+        const reference = StringUtils_1.StringUtils.trim(type.substring(1));
+        const explicitType = referenceType(reference, node.getCanonicalName());
+        if (explicitType) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "REFERENCE_WITH_TYPE_NOT_ALLOWED", `Reference '@${node.getName()}' can not declare a type: ${explicitType}`);
+        }
+        if (StringUtils_1.StringUtils.normalize(reference) !== node.getCanonicalName()) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "REFERENCE_NAME_NOT_VALID", `Reference must be '@${node.getName()}', not '${reference}'`);
+        }
+        if (cl.getValues()) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "VALUES_NOT_ALLOWED_IN_REFERENCE", `Reference '@${node.getName()}' can not redefine ENUM values`);
+        }
+        if (node.getChildren().length > 0) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "CHILDREN_NOT_ALLOWED_IN_REFERENCE", `Reference '@${node.getName()}' can not redefine children`);
+        }
+      }
+      function addChildren(schema, schemaNode, node) {
+        const children = node.getChildren();
+        if (children.length > 0 && !TypeRegistry_1.TypeRegistry.admitsChildren(schemaNode.getType())) {
           throw new ValidationException_1.ValidationException(node.getLine(), "CHILDREN_NOT_ALLOWED_FOR_TYPE", `Type ${schemaNode.getType()} does not allow children (node ${node.getName()})`);
         }
-        for (const child of childrenNode) {
+        for (const child of children) {
           if (!(child instanceof InlineNode_1.InlineNode)) {
             throw new ValidationException_1.ValidationException(child.getLine(), "STRUCTURE_LINE_NOT_VALID", "Template Structure lines must use ':'");
           }
-          cl = ChildLineParser_1.ChildLineParser.parse(child.getValue(), child.getLine());
-          const childName = child.getName();
+          const childCl = ChildLineParser_1.ChildLineParser.parse(child.getValue(), child.getLine());
           let childNamespace = child.getNamespace();
           if (!childNamespace || childNamespace === "") {
             childNamespace = schema.getNamespace();
           }
-          const schChild = new ChildDefinition_1.ChildDefinition(childName, childNamespace, cl.getMin(), cl.getMax(), child.getLine());
+          const schChild = new ChildDefinition_1.ChildDefinition(child.getName(), childNamespace, childCl.getMin(), childCl.getMax(), child.getLine());
           schemaNode.addChildDefinition(schChild);
           addToSchema(schema, child);
         }
@@ -2746,7 +2774,7 @@
         if (cut < 0) {
           return null;
         }
-        const candidate = reference.substring(cut + 1).trim();
+        const candidate = StringUtils_1.StringUtils.trim(reference.substring(cut + 1));
         const rest = reference.substring(0, cut);
         if (TypeRegistry_1.TypeRegistry.get(candidate) && StringUtils_1.StringUtils.normalize(rest) === normalizedName) {
           return candidate;
@@ -2785,21 +2813,26 @@
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.MetaTemplateSchemaProvider = void 0;
       var Parser_1 = require_Parser();
+      var Schema_1 = require_Schema();
+      var ParseException_1 = require_ParseException();
       var ValidationException_1 = require_ValidationException();
       var TemplateParser_1 = require_TemplateParser();
       var MetaTemplateSchemaProvider = class _MetaTemplateSchemaProvider {
         /**
-         * Parses the meta-template and keeps the schema it produces ready to be served.
+         * Compiles the meta-template the first time and keeps the schema it produces ready to be served.
          *
          * @throws ValidationException with code `META_SCHEMA_INVALID` if the meta-template does not produce exactly one document.
          */
         constructor() {
-          const parser = new Parser_1.Parser();
-          const nodes = parser.parse(_MetaTemplateSchemaProvider.META_TEXT);
-          if (nodes.length !== 1) {
-            throw new ValidationException_1.ValidationException(0, "META_SCHEMA_INVALID", `Meta schema must produce exactly 1 document, got ${nodes.length}`);
+          if (!_MetaTemplateSchemaProvider.compiledMeta) {
+            const parser = new Parser_1.Parser();
+            const nodes = parser.parse(_MetaTemplateSchemaProvider.META_TEXT);
+            if (nodes.length !== 1) {
+              throw new ValidationException_1.ValidationException(ParseException_1.ParseException.NO_LINE, "META_SCHEMA_INVALID", `Meta schema must produce exactly 1 document, got ${nodes.length}`);
+            }
+            _MetaTemplateSchemaProvider.compiledMeta = (0, TemplateParser_1.transformTemplateNodeToSchema)(nodes[0]);
           }
-          this.meta = (0, TemplateParser_1.transformTemplateNodeToSchema)(nodes[0]);
+          this.meta = _MetaTemplateSchemaProvider.compiledMeta;
         }
         /**
          * Serves the meta-schema of the template language.
@@ -2812,11 +2845,8 @@
          * @returns the meta-schema of the template language, or `null` for any other namespace.
          */
         getSchema(namespace) {
-          if (namespace !== "@stxt.template") {
+          if (namespace !== Schema_1.Schema.TEMPLATE_NAMESPACE) {
             return null;
-          }
-          if (!this.meta) {
-            throw new ValidationException_1.ValidationException(0, "META_SCHEMA_NOT_AVAILABLE", "Meta schema not available");
           }
           return this.meta;
         }
@@ -2839,12 +2869,13 @@
       exports.UnifiedSchemaProvider = void 0;
       var Parser_1 = require_Parser();
       var StringUtils_1 = require_StringUtils();
+      var Schema_1 = require_Schema();
+      var DefinitionCompiler_1 = require_DefinitionCompiler();
       var SchemaProviderMeta_1 = require_SchemaProviderMeta();
       var SchemaParser_1 = require_SchemaParser();
-      var SchemaValidator_1 = require_SchemaValidator();
       var MetaTemplateSchemaProvider_1 = require_MetaTemplateSchemaProvider();
       var TemplateParser_1 = require_TemplateParser();
-      var UnifiedSchemaProvider2 = class _UnifiedSchemaProvider {
+      var UnifiedSchemaProvider2 = class {
         /** Creates an empty provider, with the two meta-schemas already loaded. */
         constructor() {
           this.schemas = /* @__PURE__ */ new Map();
@@ -2860,13 +2891,12 @@
          */
         getSchema(namespace) {
           const key = StringUtils_1.StringUtils.lowerCase(namespace);
-          if (namespace === "@stxt.template") {
+          if (key === Schema_1.Schema.TEMPLATE_NAMESPACE) {
             return this.templateMeta.getSchema(key);
-          } else if (namespace === "@stxt.schema") {
+          } else if (key === Schema_1.Schema.SCHEMA_NAMESPACE) {
             return this.schemaMeta.getSchema(key);
           }
-          let result = this.schemas.get(key);
-          return result;
+          return this.schemas.get(key);
         }
         /**
          * Parses a document and registers every schema or template it defines, each one under its own
@@ -2881,32 +2911,18 @@
           const nodes = parser.parse(text);
           for (const node of nodes) {
             const namespace = node.getNamespace();
-            if (namespace === "@stxt.template") {
-              this.addTemplateNode(node);
-            } else if (namespace === "@stxt.schema") {
-              this.addSchemaNode(node);
+            if (namespace === Schema_1.Schema.TEMPLATE_NAMESPACE) {
+              this.addNode(node, this.templateMeta, TemplateParser_1.transformTemplateNodeToSchema);
+            } else if (namespace === Schema_1.Schema.SCHEMA_NAMESPACE) {
+              this.addNode(node, this.schemaMeta, SchemaParser_1.transformNodeToSchema);
             }
           }
         }
-        addTemplateNode(node) {
-          const schemaValidator = new SchemaValidator_1.SchemaValidator(this.templateMeta, true);
-          _UnifiedSchemaProvider.throwIfInvalid(schemaValidator.validate(node));
-          const schema = (0, TemplateParser_1.transformTemplateNodeToSchema)(node);
-          const key = StringUtils_1.StringUtils.lowerCase(schema.getNamespace());
-          this.schemas.set(key, schema);
-        }
-        addSchemaNode(node) {
-          const schemaValidator = new SchemaValidator_1.SchemaValidator(this.schemaMeta, true);
-          _UnifiedSchemaProvider.throwIfInvalid(schemaValidator.validate(node));
-          const schema = (0, SchemaParser_1.transformNodeToSchema)(node);
-          const key = StringUtils_1.StringUtils.lowerCase(schema.getNamespace());
-          this.schemas.set(key, schema);
-        }
-        // A schema/template that does not validate against its meta-schema must not be loaded
-        static throwIfInvalid(errors) {
-          if (errors.length > 0) {
-            throw errors[0];
-          }
+        // Compiles a definition root through the shared pipeline (see DefinitionCompiler)
+        // and registers it; a definition that does not validate is never registered.
+        addNode(node, meta2, transform) {
+          const schema = (0, DefinitionCompiler_1.compileDefinitionNode)(node, meta2, transform);
+          this.schemas.set(StringUtils_1.StringUtils.lowerCase(schema.getNamespace()), schema);
         }
         /** Removes every schema and template registered in this provider. */
         clear() {
@@ -3207,9 +3223,7 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.TemplateSchemaProviderMemory = void 0;
-      var Parser_1 = require_Parser();
-      var SchemaValidator_1 = require_SchemaValidator();
-      var ValidationException_1 = require_ValidationException();
+      var DefinitionCompiler_1 = require_DefinitionCompiler();
       var MetaTemplateSchemaProvider_1 = require_MetaTemplateSchemaProvider();
       var SchemaProviderMemory_1 = require_SchemaProviderMemory();
       var TemplateParser_1 = require_TemplateParser();
@@ -3237,18 +3251,8 @@
          *         template does not validate against the template meta-schema.
          */
         addTemplate(template) {
-          const parser = new Parser_1.Parser();
-          const nodes = parser.parse(template);
-          if (nodes.length !== 1) {
-            throw new ValidationException_1.ValidationException(0, "TEMPLATE_MULTIPLE_ROOTS", `A template document must hold exactly 1 root node, got ${nodes.length}`);
-          }
-          const schemaValidator = new SchemaValidator_1.SchemaValidator(new MetaTemplateSchemaProvider_1.MetaTemplateSchemaProvider(), true);
-          const errors = schemaValidator.validate(nodes[0]);
-          if (errors.length > 0) {
-            throw errors[0];
-          }
-          const sch = (0, TemplateParser_1.transformTemplateNodeToSchema)(nodes[0]);
-          this.schemas.set(sch.getNamespace(), sch);
+          const schema = (0, DefinitionCompiler_1.compileDefinitionDocument)(template, new MetaTemplateSchemaProvider_1.MetaTemplateSchemaProvider(), TemplateParser_1.transformTemplateNodeToSchema, "TEMPLATE_MULTIPLE_ROOTS", "template");
+          this.schemas.set(schema.getNamespace(), schema);
         }
       };
       exports.TemplateSchemaProviderMemory = TemplateSchemaProviderMemory;
@@ -3292,6 +3296,7 @@
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.DiscoveryResult = void 0;
       var StringUtils_1 = require_StringUtils();
+      var Schema_1 = require_Schema();
       var DiscoveryResult = class {
         /**
          * Creates a result. Built by {@link DiscoveryResolver}; not meant to be constructed
@@ -3314,10 +3319,11 @@
          * @returns the schema of the namespace, or null if the chain has no definition for it.
          */
         getSchema(namespace) {
-          if (namespace === "@stxt.template") {
-            return this.templateMeta.getSchema(namespace);
-          } else if (namespace === "@stxt.schema") {
-            return this.schemaMeta.getSchema(namespace);
+          const key = StringUtils_1.StringUtils.lowerCase(namespace);
+          if (key === Schema_1.Schema.TEMPLATE_NAMESPACE) {
+            return this.templateMeta.getSchema(key);
+          } else if (key === Schema_1.Schema.SCHEMA_NAMESPACE) {
+            return this.schemaMeta.getSchema(key);
           }
           return this.getDefinition(namespace)?.schema ?? null;
         }
@@ -3405,8 +3411,9 @@
       var Parser_1 = require_Parser();
       var StringUtils_1 = require_StringUtils();
       var ParseException_1 = require_ParseException();
+      var Schema_1 = require_Schema();
+      var DefinitionCompiler_1 = require_DefinitionCompiler();
       var SchemaProviderMeta_1 = require_SchemaProviderMeta();
-      var SchemaValidator_1 = require_SchemaValidator();
       var SchemaParser_1 = require_SchemaParser();
       var MetaTemplateSchemaProvider_1 = require_MetaTemplateSchemaProvider();
       var TemplateParser_1 = require_TemplateParser();
@@ -3415,6 +3422,7 @@
       var STXT_DIR = ".stxt";
       var STXT_EXTENSION = ".stxt";
       var DEFAULT_MAX_ASCENT = 32;
+      var DEFAULT_MAX_DESCENT = 32;
       var DiscoveryResolver = class {
         /**
          * Creates a resolver.
@@ -3514,13 +3522,29 @@
           return level;
         }
         // Collects every file under a directory, recursively, sorted by path so that results
-        // and error messages do not depend on the listing order of the file system.
+        // and error messages do not depend on the listing order of the file system. The descent
+        // is bounded by DEFAULT_MAX_DESCENT and tolerant of listing failures (STXT-DISCOVERY-SPEC
+        // sections 3 and 10): a subdirectory that reaches the depth limit or cannot be listed
+        // contributes no files, never an exception. Together with adapters that do not follow
+        // directory symlinks, this stops symlink loops and pathological trees from turning
+        // resolution into unbounded recursion or an escaping error.
         async collectFiles(dir) {
+          return this.collectFilesAt(dir, 0);
+        }
+        async collectFilesAt(dir, depth) {
           const files = [];
-          const entries = [...await this.fs.listDirectory(dir)].sort((a, b) => a.path < b.path ? -1 : 1);
+          if (depth >= DEFAULT_MAX_DESCENT) {
+            return files;
+          }
+          let entries;
+          try {
+            entries = [...await this.fs.listDirectory(dir)].sort((a, b) => a.path < b.path ? -1 : 1);
+          } catch {
+            return files;
+          }
           for (const entry of entries) {
             if (entry.isDirectory) {
-              files.push(...await this.collectFiles(entry.path));
+              files.push(...await this.collectFilesAt(entry.path, depth + 1));
             } else {
               files.push(entry.path);
             }
@@ -3555,10 +3579,10 @@
           const namespace = node.getNamespace();
           let schema;
           try {
-            if (namespace === "@stxt.template") {
-              schema = this.compile(node, this.templateMeta, TemplateParser_1.transformTemplateNodeToSchema);
-            } else if (namespace === "@stxt.schema") {
-              schema = this.compile(node, this.schemaMeta, SchemaParser_1.transformNodeToSchema);
+            if (namespace === Schema_1.Schema.TEMPLATE_NAMESPACE) {
+              schema = (0, DefinitionCompiler_1.compileDefinitionNode)(node, this.templateMeta, TemplateParser_1.transformTemplateNodeToSchema);
+            } else if (namespace === Schema_1.Schema.SCHEMA_NAMESPACE) {
+              schema = (0, DefinitionCompiler_1.compileDefinitionNode)(node, this.schemaMeta, SchemaParser_1.transformNodeToSchema);
             } else {
               level.errors.push(new DiscoveryError_1.DiscoveryError(DiscoveryError_1.DiscoveryError.NOT_A_DEFINITION, file, `Root node belongs to '${namespace ?? ""}', not to @stxt.schema or @stxt.template: ${file}`));
               return;
@@ -3586,15 +3610,6 @@
             levelDir: level.dir
           };
           level.definitions.set(key, definition);
-        }
-        // Validates a root node against a meta-schema and transforms it into a Schema,
-        // throwing the first validation error (same policy as UnifiedSchemaProvider).
-        compile(node, meta2, transform) {
-          const errors = new SchemaValidator_1.SchemaValidator(meta2, true).validate(node);
-          if (errors.length > 0) {
-            throw errors[0];
-          }
-          return transform(node);
         }
       };
       exports.DiscoveryResolver = DiscoveryResolver;
@@ -17912,7 +17927,7 @@
       return null;
     }
     if (context.isValue) {
-      const node = analysis.nodeByLine.get(line);
+      const node = analysis.nodeByLineIndex.get(line);
       return node ? { from: context.from, suggestions: findEnumValues(registry, node, context.prefix) } : null;
     }
     if (context.level === 0) {
@@ -17926,7 +17941,7 @@
   }
   function getLastNode(analysis, line) {
     for (let search = line - 1; search >= 0; search--) {
-      const node = analysis.nodeByLine.get(search);
+      const node = analysis.nodeByLineIndex.get(search);
       if (node) {
         return node;
       }
@@ -17935,7 +17950,7 @@
   }
   function getParentNode(analysis, line, level) {
     for (let search = line - 1; search >= 0; search--) {
-      const node = analysis.nodeByLine.get(search);
+      const node = analysis.nodeByLineIndex.get(search);
       if (node?.getLevel() === level - 1) {
         return node instanceof import_core.InlineNode ? node : void 0;
       }
@@ -18204,7 +18219,7 @@
 
   // src/analysis/definition.ts
   function findDefinition(analysis, registry, line, character) {
-    const node = analysis.nodeByLine.get(line);
+    const node = analysis.nodeByLineIndex.get(line);
     if (!node) {
       return void 0;
     }
@@ -18366,7 +18381,7 @@
   // src/analysis/nodeInfo.ts
   var import_core4 = __toESM(require_all());
   function describeNodeAtLine(analysis, registry, line) {
-    const node = analysis.nodeByLine.get(line);
+    const node = analysis.nodeByLineIndex.get(line);
     if (!node) {
       return void 0;
     }
@@ -18436,32 +18451,34 @@
   var TokenGeneratorObserver = class _TokenGeneratorObserver {
     constructor() {
       this.tokens = [];
-      this.nodeByLine = /* @__PURE__ */ new Map();
+      this.nodeByLineIndex = /* @__PURE__ */ new Map();
       this.commentLines = /* @__PURE__ */ new Set();
-      this.textLineByLineNumber = /* @__PURE__ */ new Map();
-      this.blockLineByLineNumber = /* @__PURE__ */ new Map();
-      this.templateNodeByLine = /* @__PURE__ */ new Map();
+      this.textNodeByLineIndex = /* @__PURE__ */ new Map();
+      this.blockLineByLineIndex = /* @__PURE__ */ new Map();
+      // The source Line of each text line of an open Structure/Description block, 1-based:
+      // parseTemplateContent maps the inner tokens back to absolute line numbers
+      this.templateLineByLineNumber = /* @__PURE__ */ new Map();
     }
     onTextLine(node, lineNumber, lineString, line) {
       const lineIndex = lineNumber - 1;
-      this.textLineByLineNumber.set(lineIndex, node);
-      this.blockLineByLineNumber.set(lineIndex, line);
+      this.textNodeByLineIndex.set(lineIndex, node);
+      this.blockLineByLineIndex.set(lineIndex, line);
       if (this.isTemplateContentNode(node)) {
-        this.templateNodeByLine.set(lineNumber, line);
+        this.templateLineByLineNumber.set(lineNumber, line);
       }
     }
     onCreate(node, line) {
       const lineIndex = node.getLine() - 1;
-      this.nodeByLine.set(lineIndex, node);
+      this.nodeByLineIndex.set(lineIndex, node);
       this.generateTokensForNode(node, lineIndex, line);
       if (this.isTemplateContentNode(node)) {
-        this.templateNodeByLine.clear();
+        this.templateLineByLineNumber.clear();
       }
     }
     onFinish(node) {
       if (this.isTemplateContentNode(node)) {
         this.parseTemplateContent(node);
-        this.templateNodeByLine.clear();
+        this.templateLineByLineNumber.clear();
       }
     }
     isTemplateContentNode(node) {
@@ -18485,7 +18502,7 @@
         const innerTokens = innerObserver.getTokens();
         for (const token of innerTokens) {
           const absoluteLineNumber = lineOffset + token.line + 1;
-          const originalLine = this.templateNodeByLine.get(absoluteLineNumber);
+          const originalLine = this.templateLineByLineNumber.get(absoluteLineNumber);
           const offset = originalLine ? originalLine.contentStart : 0;
           this.tokens.push({
             line: token.line + lineOffset,
@@ -18494,7 +18511,7 @@
             type: token.type
           });
         }
-      } catch (e) {
+      } catch {
       }
     }
     onComment(lineNumber, line) {
@@ -18513,56 +18530,55 @@
     getTokens() {
       return this.tokens;
     }
-    getNodeByLine() {
-      return this.nodeByLine;
+    getNodeByLineIndex() {
+      return this.nodeByLineIndex;
     }
     getCommentLines() {
       return this.commentLines;
     }
-    getTextLineByLineNumber() {
-      return this.textLineByLineNumber;
+    getTextNodeByLineIndex() {
+      return this.textNodeByLineIndex;
     }
-    /** @returns every text line of a block, by 0-based line, split into indentation and content. */
-    getBlockLineByLineNumber() {
-      return this.blockLineByLineNumber;
+    /** @returns every text line of a block, by 0-based line index, split into indentation and content. */
+    getBlockLineByLineIndex() {
+      return this.blockLineByLineIndex;
     }
     generateTokensForNode(node, lineIndex, line) {
       if (node.isTextNode()) {
-        const sepIndx = line.indexOf(">>");
-        if (sepIndx === -1) {
+        const sepIndex = line.indexOf(import_core6.Constants.SEP_TEXT_NODE);
+        if (sepIndex === -1) {
           return;
         }
-        const head = line.substring(0, sepIndx);
-        const nsOpen = head.indexOf("(");
-        const nsClose = head.indexOf(")");
-        if (nsOpen !== -1 && nsClose !== -1) {
-          this.tokens.push({ line: lineIndex, startChar: 0, length: nsOpen, type: "macro" });
-          this.tokens.push({ line: lineIndex, startChar: nsOpen, length: nsClose - nsOpen + 1, type: "namespace" });
-          this.tokens.push({ line: lineIndex, startChar: nsClose + 1, length: line.length - nsClose - 1, type: "macro" });
-        } else {
-          this.tokens.push({ line: lineIndex, startChar: 0, length: sepIndx, type: "macro" });
-          this.tokens.push({ line: lineIndex, startChar: sepIndx, length: 2, type: "macro" });
-        }
+        this.pushHeadTokens(lineIndex, line, sepIndex, import_core6.Constants.SEP_TEXT_NODE.length, line.length, "macro");
       } else {
-        const colon = line.indexOf(":");
-        if (colon === -1) {
+        const sepIndex = line.indexOf(import_core6.Constants.SEP_NODE);
+        if (sepIndex === -1) {
           return;
         }
-        const head = line.substring(0, colon);
-        const nsOpen = head.indexOf("(");
-        const nsClose = head.indexOf(")");
-        if (nsOpen !== -1 && nsClose !== -1) {
-          this.tokens.push({ line: lineIndex, startChar: 0, length: nsOpen, type: "property" });
-          this.tokens.push({ line: lineIndex, startChar: nsOpen, length: nsClose - nsOpen + 1, type: "namespace" });
-          this.tokens.push({ line: lineIndex, startChar: nsClose + 1, length: colon - (nsClose + 1) + 1, type: "property" });
-        } else {
-          this.tokens.push({ line: lineIndex, startChar: 0, length: colon, type: "property" });
-          this.tokens.push({ line: lineIndex, startChar: colon, length: 1, type: "property" });
-        }
-        const valueStart = colon + 1;
+        this.pushHeadTokens(lineIndex, line, sepIndex, import_core6.Constants.SEP_NODE.length, sepIndex + 1, "property");
+        const valueStart = sepIndex + 1;
         if (valueStart < line.length) {
           this.tokens.push({ line: lineIndex, startChar: valueStart, length: line.length - valueStart, type: "string" });
         }
+      }
+    }
+    /**
+     * The tokens of a node line's head: the name (coloured `type`), the namespace when the
+     * line declares one, and the separator. With a namespace, everything from the closing
+     * parenthesis up to `tailEnd` (the end of the line for a block, the separator inclusive
+     * for an inline node) is one token; without one, the name and the separator are two.
+     */
+    pushHeadTokens(lineIndex, line, sepIndex, sepLength, tailEnd, type) {
+      const head = line.substring(0, sepIndex);
+      const nsOpen = head.indexOf("(");
+      const nsClose = head.indexOf(")");
+      if (nsOpen !== -1 && nsClose !== -1) {
+        this.tokens.push({ line: lineIndex, startChar: 0, length: nsOpen, type });
+        this.tokens.push({ line: lineIndex, startChar: nsOpen, length: nsClose - nsOpen + 1, type: "namespace" });
+        this.tokens.push({ line: lineIndex, startChar: nsClose + 1, length: tailEnd - nsClose - 1, type });
+      } else {
+        this.tokens.push({ line: lineIndex, startChar: 0, length: sepIndex, type });
+        this.tokens.push({ line: lineIndex, startChar: sepIndex, length: sepLength, type });
       }
     }
   };
@@ -18587,10 +18603,6 @@
         this.validation = enabled;
         this.refreshAll();
       }
-    }
-    /** @returns whether schema validation is enabled. */
-    isValidationEnabled() {
-      return this.validation;
     }
     /**
      * Adds a document to the workspace, or replaces its text. Re-parses only that document, and
@@ -18635,10 +18647,6 @@
      */
     getAnalysis(id) {
       return this.analyses.get(id);
-    }
-    /** @returns the identifiers of every document of the workspace, in insertion order. */
-    getDocumentIds() {
-      return Array.from(this.parsed.keys());
     }
     /**
      * Grammar-driven completions for a cursor position of a document (see `completion.ts`).
@@ -18706,10 +18714,10 @@
         text,
         roots,
         tokens: observer.getTokens(),
-        nodeByLine: observer.getNodeByLine(),
+        nodeByLineIndex: observer.getNodeByLineIndex(),
         commentLines: observer.getCommentLines(),
-        textLineByLineNumber: observer.getTextLineByLineNumber(),
-        blockLineByLineNumber: observer.getBlockLineByLineNumber(),
+        textNodeByLineIndex: observer.getTextNodeByLineIndex(),
+        blockLineByLineIndex: observer.getBlockLineByLineIndex(),
         syntaxDiagnostics,
         grammarRoots: roots.filter(isGrammarRoot)
       };
@@ -18752,9 +18760,9 @@
       return {
         tokens: this.withMarkdownTokens(parsed),
         roots: parsed.roots,
-        nodeByLine: parsed.nodeByLine,
+        nodeByLineIndex: parsed.nodeByLineIndex,
         commentLines: parsed.commentLines,
-        textLineByLineNumber: parsed.textLineByLineNumber,
+        textNodeByLineIndex: parsed.textNodeByLineIndex,
         grammars: parsed.grammarRoots.map((root) => ({
           // A grammar root is `Name (@stxt.schema): namespace`; a block form is a broken grammar
           // the registry reports on its own, and declares no namespace here.
@@ -18776,8 +18784,8 @@
       const tokens = [...parsed.tokens];
       let current;
       let state = null;
-      for (const [lineIndex, line] of parsed.blockLineByLineNumber) {
-        const node = parsed.textLineByLineNumber.get(lineIndex);
+      for (const [lineIndex, line] of parsed.blockLineByLineIndex) {
+        const node = parsed.textNodeByLineIndex.get(lineIndex);
         if (node !== current) {
           current = node;
           state = node && this.isMarkdown(node) ? newMarkdownState() : null;
@@ -24740,7 +24748,7 @@ ${indentation}${unit}` : suggestion.text
   }
 
   // src/editor/stxtEditor.ts
-  var INDENT_UNITS = { tabs: "	", spaces: "    " };
+  var INDENT_UNITS = { tabs: TAB_UNIT, spaces: SPACES_UNIT };
   var indentCompartment = new Compartment();
   var insertIndentUnit = (view) => {
     const { state } = view;
@@ -25103,8 +25111,7 @@ Book (stxt.play.library):
         if (focused !== void 0 && renaming === null) {
           list.querySelector(`.doc[data-id="${CSS.escape(focused)}"]`)?.focus();
         }
-      },
-      startRename
+      }
     };
   }
 
@@ -25198,6 +25205,65 @@ Book (stxt.play.library):
     await open(root, field);
   }
 
+  // src/ui/headerSwitches.ts
+  function toCmChanges(doc2, changes) {
+    return changes.map((change) => {
+      const line = doc2.line(change.line + 1);
+      return { from: line.from + change.from, to: line.from + change.to, insert: change.insert };
+    });
+  }
+  function setupHeaderSwitches(options) {
+    const { elements, settings, workspace, analyzer, editor, states } = options;
+    const view = editor.view;
+    const renderSwitches = () => {
+      elements.indentTabs.setAttribute("aria-pressed", String(settings.indent === "tabs"));
+      elements.indentSpaces.setAttribute("aria-pressed", String(settings.indent === "spaces"));
+      elements.validationToggle.setAttribute("aria-checked", String(settings.validation));
+    };
+    const reindentAll = (mode) => {
+      const unit = mode === "tabs" ? TAB_UNIT : SPACES_UNIT;
+      for (const document2 of workspace.getDocuments()) {
+        const changes = analyzer.getIndentChanges(document2.id, unit);
+        if (changes.length === 0) {
+          continue;
+        }
+        if (document2.id === options.shownId()) {
+          view.dispatch({ changes: toCmChanges(view.state.doc, changes), userEvent: "reindent" });
+          continue;
+        }
+        const parked = states.get(document2.id);
+        if (parked) {
+          const next = parked.update({ changes: toCmChanges(parked.doc, changes), userEvent: "reindent" }).state;
+          states.set(document2.id, next);
+          workspace.setText(document2.id, next.doc.toString());
+        } else {
+          workspace.setText(document2.id, applyIndentChanges(document2.text, changes));
+        }
+      }
+    };
+    const setIndent = (mode) => {
+      if (settings.indent !== mode) {
+        settings.indent = mode;
+        editor.setIndentMode(mode);
+        reindentAll(mode);
+        renderSwitches();
+        options.persistSettings();
+      }
+      view.focus();
+    };
+    elements.indentTabs.addEventListener("click", () => setIndent("tabs"));
+    elements.indentSpaces.addEventListener("click", () => setIndent("spaces"));
+    elements.validationToggle.addEventListener("click", () => {
+      settings.validation = !settings.validation;
+      analyzer.setValidation(settings.validation);
+      options.refreshAfterValidation();
+      renderSwitches();
+      options.persistSettings();
+      view.focus();
+    });
+    renderSwitches();
+  }
+
   // src/ui/problemsPanel.ts
   var SOURCE_TITLES = {
     syntax: "Syntax: the document does not parse (STXT-SPEC)",
@@ -25241,6 +25307,10 @@ Book (stxt.play.library):
   }
 
   // src/ui/viewTabs.ts
+  var PLAYGROUND_VIEWS = ["documents", "editor", "problems"];
+  function isPlaygroundView(value) {
+    return PLAYGROUND_VIEWS.includes(value ?? "");
+  }
   var NARROW_QUERY = "(max-width: 720px)";
   function createViewTabs(nav2, onShow) {
     const buttons = Array.from(nav2.querySelectorAll("button[data-view]"));
@@ -25254,7 +25324,12 @@ Book (stxt.play.library):
       onShow?.(view);
     };
     for (const button2 of buttons) {
-      button2.addEventListener("click", () => show(button2.dataset.view));
+      button2.addEventListener("click", () => {
+        const view = button2.dataset.view;
+        if (isPlaygroundView(view)) {
+          show(view);
+        }
+      });
     }
     show("editor");
     return {
@@ -25424,24 +25499,47 @@ Book (stxt.play.library):
       return { active: this.active, documents: this.getDocuments() };
     }
     /**
-     * Replaces the whole workspace with a snapshot, reporting the change document by document.
-     * A snapshot whose active id is missing activates the first document instead.
+     * Replaces the whole workspace: every current document is removed (reported one by one) and
+     * the given ones are added in order, with fresh identifiers unless one comes with the
+     * document. The document at `activeIndex` (the first, by default) ends up active. This is
+     * the single place with the "replace everything" semantics: the seed, Clear, a share link
+     * and {@link Workspace.load} all go through it.
+     *
+     * @param documents the new content of the workspace, in order; missing fields take the
+     * {@link Workspace.addDocument} defaults.
+     * @param activeIndex position of the document to activate; clamped, ignored when empty.
+     * @returns the added documents, in order.
+     */
+    replaceAll(documents, activeIndex = 0) {
+      for (const document2 of this.getDocuments()) {
+        this.removeDocument(document2.id);
+      }
+      const added = [];
+      for (const document2 of documents) {
+        const created = {
+          id: document2.id ?? this.generateId(),
+          title: document2.title?.trim() || this.nextUntitled(),
+          text: document2.text ?? ""
+        };
+        this.documents.push(created);
+        added.push(created);
+        this.emit({ kind: "added", id: created.id });
+      }
+      if (added.length > 0) {
+        const index = Math.max(0, Math.min(Math.trunc(activeIndex), added.length - 1));
+        this.setActive(added[index].id);
+      }
+      return added;
+    }
+    /**
+     * Replaces the whole workspace with a snapshot, keeping its identifiers. A snapshot whose
+     * active id is missing activates the first document instead.
      *
      * @param snapshot the workspace to load.
      */
     load(snapshot) {
-      for (const document2 of this.getDocuments()) {
-        this.removeDocument(document2.id);
-      }
-      for (const document2 of snapshot.documents) {
-        this.documents.push({ id: document2.id, title: document2.title, text: document2.text });
-        this.emit({ kind: "added", id: document2.id });
-      }
-      const first = this.documents[0];
-      const active = snapshot.active !== null && this.getDocument(snapshot.active) ? snapshot.active : first?.id;
-      if (active !== void 0) {
-        this.setActive(active);
-      }
+      const activeIndex = snapshot.documents.findIndex((document2) => document2.id === snapshot.active);
+      this.replaceAll(snapshot.documents, activeIndex >= 0 ? activeIndex : 0);
     }
     indexOf(id) {
       return this.documents.findIndex((document2) => document2.id === id);
@@ -25462,6 +25560,147 @@ Book (stxt.play.library):
       }
     }
   };
+
+  // src/workspace/links.ts
+  function loadSharedSnapshot(workspace, snapshot) {
+    const activeIndex = snapshot.documents.findIndex((document2) => document2.id === snapshot.active);
+    workspace.replaceAll(
+      snapshot.documents.map((document2) => ({ title: document2.title, text: document2.text })),
+      activeIndex >= 0 ? activeIndex : 0
+    );
+  }
+  function freeTitle(workspace, title) {
+    const titles = new Set(workspace.getDocuments().map((document2) => document2.title));
+    let candidate = title;
+    for (let n = 2; titles.has(candidate); n++) {
+      candidate = `${title} (${n})`;
+    }
+    return candidate;
+  }
+  function openLinked(workspace, text, title) {
+    const existing = workspace.getDocuments().find((document2) => document2.text === text);
+    if (existing) {
+      workspace.setActive(existing.id);
+      return "existing";
+    }
+    const added = workspace.addDocument(text, title ? freeTitle(workspace, title) : void 0);
+    workspace.setActive(added.id);
+    return "added";
+  }
+
+  // src/workspace/storage.ts
+  var WORKSPACE_STORAGE_KEY = "stxt-play.workspace";
+  var WORKSPACE_STORAGE_VERSION = 1;
+  var SETTINGS_STORAGE_KEY = "stxt-play.settings";
+  var DEFAULT_SETTINGS = { indent: "tabs", validation: true };
+  function loadWorkspace(storage) {
+    let raw;
+    try {
+      raw = storage.getItem(WORKSPACE_STORAGE_KEY);
+    } catch {
+      return void 0;
+    }
+    if (raw === null) {
+      return void 0;
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return void 0;
+    }
+    return toWorkspaceSnapshot(parsed);
+  }
+  function saveWorkspace(storage, snapshot) {
+    try {
+      storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(fromWorkspaceSnapshot(snapshot)));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  function loadSettings(storage) {
+    let parsed;
+    try {
+      const raw = storage.getItem(SETTINGS_STORAGE_KEY);
+      parsed = raw === null ? void 0 : JSON.parse(raw);
+    } catch {
+      return { ...DEFAULT_SETTINGS };
+    }
+    if (typeof parsed !== "object" || parsed === null) {
+      return { ...DEFAULT_SETTINGS };
+    }
+    const candidate = parsed;
+    return {
+      indent: candidate.indent === "spaces" || candidate.indent === "tabs" ? candidate.indent : DEFAULT_SETTINGS.indent,
+      validation: typeof candidate.validation === "boolean" ? candidate.validation : DEFAULT_SETTINGS.validation
+    };
+  }
+  function saveSettings(storage, settings) {
+    try {
+      storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  function toWorkspaceSnapshot(value) {
+    return isStoredWorkspace(value) ? { active: value.active, documents: value.documents } : void 0;
+  }
+  function fromWorkspaceSnapshot(snapshot) {
+    return {
+      version: WORKSPACE_STORAGE_VERSION,
+      active: snapshot.active,
+      documents: snapshot.documents.map(({ id, title, text }) => ({ id, title, text }))
+    };
+  }
+  function isStoredWorkspace(value) {
+    if (typeof value !== "object" || value === null) {
+      return false;
+    }
+    const candidate = value;
+    if (candidate.version !== WORKSPACE_STORAGE_VERSION) {
+      return false;
+    }
+    if (candidate.active !== null && typeof candidate.active !== "string") {
+      return false;
+    }
+    if (!Array.isArray(candidate.documents)) {
+      return false;
+    }
+    return candidate.documents.every((document2) => {
+      if (typeof document2 !== "object" || document2 === null) {
+        return false;
+      }
+      const fields = document2;
+      return typeof fields.id === "string" && typeof fields.title === "string" && typeof fields.text === "string";
+    });
+  }
+
+  // src/workspace/persistence.ts
+  var PERSIST_DELAY_MS = 300;
+  function createWorkspacePersistence(workspace, storage, delayMs = PERSIST_DELAY_MS) {
+    let timer;
+    const persistNow = () => {
+      if (timer !== void 0) {
+        clearTimeout(timer);
+        timer = void 0;
+      }
+      if (storage) {
+        saveWorkspace(storage, workspace.toSnapshot());
+      }
+    };
+    const schedulePersist = () => {
+      if (!storage) {
+        return;
+      }
+      if (timer !== void 0) {
+        clearTimeout(timer);
+      }
+      timer = setTimeout(persistNow, delayMs);
+    };
+    return { persistNow, schedulePersist };
+  }
 
   // src/workspace/share.ts
   var import_core8 = __toESM(require_all());
@@ -25581,105 +25820,8 @@ Book (stxt.play.library):
     return value && value.length > 0 ? value : void 0;
   }
 
-  // src/workspace/storage.ts
-  var WORKSPACE_STORAGE_KEY = "stxt-play.workspace";
-  var WORKSPACE_STORAGE_VERSION = 1;
-  var SETTINGS_STORAGE_KEY = "stxt-play.settings";
-  var DEFAULT_SETTINGS = { indent: "tabs", validation: true };
-  function loadWorkspace(storage) {
-    let raw;
-    try {
-      raw = storage.getItem(WORKSPACE_STORAGE_KEY);
-    } catch {
-      return void 0;
-    }
-    if (raw === null) {
-      return void 0;
-    }
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      return void 0;
-    }
-    return toWorkspaceSnapshot(parsed);
-  }
-  function saveWorkspace(storage, snapshot) {
-    try {
-      storage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(fromWorkspaceSnapshot(snapshot)));
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  function loadSettings(storage) {
-    let parsed;
-    try {
-      const raw = storage.getItem(SETTINGS_STORAGE_KEY);
-      parsed = raw === null ? void 0 : JSON.parse(raw);
-    } catch {
-      return { ...DEFAULT_SETTINGS };
-    }
-    if (typeof parsed !== "object" || parsed === null) {
-      return { ...DEFAULT_SETTINGS };
-    }
-    const candidate = parsed;
-    return {
-      indent: candidate.indent === "spaces" || candidate.indent === "tabs" ? candidate.indent : DEFAULT_SETTINGS.indent,
-      validation: typeof candidate.validation === "boolean" ? candidate.validation : DEFAULT_SETTINGS.validation
-    };
-  }
-  function saveSettings(storage, settings) {
-    try {
-      storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  function toWorkspaceSnapshot(value) {
-    return isStoredWorkspace(value) ? { active: value.active, documents: value.documents } : void 0;
-  }
-  function fromWorkspaceSnapshot(snapshot) {
-    const stored = {
-      version: WORKSPACE_STORAGE_VERSION,
-      active: snapshot.active,
-      documents: snapshot.documents.map(({ id, title, text }) => ({ id, title, text }))
-    };
-    return stored;
-  }
-  function isStoredWorkspace(value) {
-    if (typeof value !== "object" || value === null) {
-      return false;
-    }
-    const candidate = value;
-    if (candidate.version !== WORKSPACE_STORAGE_VERSION) {
-      return false;
-    }
-    if (candidate.active !== null && typeof candidate.active !== "string") {
-      return false;
-    }
-    if (!Array.isArray(candidate.documents)) {
-      return false;
-    }
-    return candidate.documents.every((document2) => {
-      if (typeof document2 !== "object" || document2 === null) {
-        return false;
-      }
-      const fields = document2;
-      return typeof fields.id === "string" && typeof fields.title === "string" && typeof fields.text === "string";
-    });
-  }
-
   // src/index.ts
-  var PERSIST_DELAY_MS = 300;
   var STATUS_MS = 2500;
-  function toCmChanges(doc2, changes) {
-    return changes.map((change) => {
-      const line = doc2.line(change.line + 1);
-      return { from: line.from + change.from, to: line.from + change.to, insert: change.insert };
-    });
-  }
   function toCmDiagnostics(view, diagnostics) {
     const doc2 = view.state.doc;
     return diagnostics.map((diagnostic) => {
@@ -25742,29 +25884,11 @@ Book (stxt.play.library):
     const analyzer = new Analyzer();
     const workspace = new Workspace();
     const storage = browserStorage();
-    const settings = storage ? loadSettings(storage) : { indent: "tabs", validation: true };
+    const settings = storage ? loadSettings(storage) : { ...DEFAULT_SETTINGS };
     analyzer.setValidation(settings.validation);
     const states = /* @__PURE__ */ new Map();
     let shownId = null;
-    let persistTimer;
-    const persistNow = () => {
-      if (persistTimer !== void 0) {
-        window.clearTimeout(persistTimer);
-        persistTimer = void 0;
-      }
-      if (storage) {
-        saveWorkspace(storage, workspace.toSnapshot());
-      }
-    };
-    const schedulePersist = () => {
-      if (!storage) {
-        return;
-      }
-      if (persistTimer !== void 0) {
-        window.clearTimeout(persistTimer);
-      }
-      persistTimer = window.setTimeout(persistNow, PERSIST_DELAY_MS);
-    };
+    const { persistNow, schedulePersist } = createWorkspacePersistence(workspace, storage);
     window.addEventListener("pagehide", persistNow);
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") {
@@ -25901,60 +26025,25 @@ Book (stxt.play.library):
       editor.showState(state);
       refreshView();
     };
-    const renderSwitches = () => {
-      indentTabs.setAttribute("aria-pressed", String(settings.indent === "tabs"));
-      indentSpaces.setAttribute("aria-pressed", String(settings.indent === "spaces"));
-      validationToggle.setAttribute("aria-checked", String(settings.validation));
-    };
-    const persistSettings = () => {
-      if (storage) {
-        saveSettings(storage, settings);
-      }
-    };
-    const reindentAll = (mode) => {
-      const unit = mode === "tabs" ? TAB_UNIT : SPACES_UNIT;
-      for (const document2 of workspace.getDocuments()) {
-        const changes = analyzer.getIndentChanges(document2.id, unit);
-        if (changes.length === 0) {
-          continue;
+    setupHeaderSwitches({
+      elements: { indentTabs, indentSpaces, validationToggle },
+      settings,
+      workspace,
+      analyzer,
+      editor,
+      states,
+      shownId: () => shownId,
+      persistSettings: () => {
+        if (storage) {
+          saveSettings(storage, settings);
         }
-        if (document2.id === shownId) {
-          view.dispatch({ changes: toCmChanges(view.state.doc, changes), userEvent: "reindent" });
-          continue;
-        }
-        const parked = states.get(document2.id);
-        if (parked) {
-          const next = parked.update({ changes: toCmChanges(parked.doc, changes), userEvent: "reindent" }).state;
-          states.set(document2.id, next);
-          workspace.setText(document2.id, next.doc.toString());
-        } else {
-          workspace.setText(document2.id, applyIndentChanges(document2.text, changes));
-        }
+      },
+      refreshAfterValidation: () => {
+        refreshView();
+        renderPanel();
+        renderList();
       }
-    };
-    const setIndent = (mode) => {
-      if (settings.indent !== mode) {
-        settings.indent = mode;
-        editor.setIndentMode(mode);
-        reindentAll(mode);
-        renderSwitches();
-        persistSettings();
-      }
-      view.focus();
-    };
-    indentTabs.addEventListener("click", () => setIndent("tabs"));
-    indentSpaces.addEventListener("click", () => setIndent("spaces"));
-    validationToggle.addEventListener("click", () => {
-      settings.validation = !settings.validation;
-      analyzer.setValidation(settings.validation);
-      refreshView();
-      renderPanel();
-      renderList();
-      renderSwitches();
-      persistSettings();
-      view.focus();
     });
-    renderSwitches();
     workspace.subscribe((event) => {
       switch (event.kind) {
         case "added": {
@@ -26005,16 +26094,7 @@ Book (stxt.play.library):
       schedulePersist();
     });
     const loadSeed = () => {
-      for (const document2 of workspace.getDocuments()) {
-        workspace.removeDocument(document2.id);
-      }
-      for (const seed of SEED_DOCUMENTS) {
-        workspace.addDocument(seed.text, seed.title);
-      }
-      const first = workspace.getDocuments()[0];
-      if (first) {
-        workspace.setActive(first.id);
-      }
+      workspace.replaceAll(SEED_DOCUMENTS.map((seed) => ({ title: seed.title, text: seed.text })));
     };
     docReset.addEventListener("click", () => {
       void confirmDialog({
@@ -26031,10 +26111,7 @@ Book (stxt.play.library):
       });
     });
     const clearDocuments = () => {
-      for (const document2 of workspace.getDocuments()) {
-        workspace.removeDocument(document2.id);
-      }
-      workspace.addDocument();
+      workspace.replaceAll([{}]);
     };
     docClear.addEventListener("click", () => {
       void confirmDialog({
@@ -26065,20 +26142,6 @@ Book (stxt.play.library):
         }
       });
     });
-    const loadShared = (snapshot) => {
-      for (const document2 of workspace.getDocuments()) {
-        workspace.removeDocument(document2.id);
-      }
-      let activeId;
-      for (const document2 of snapshot.documents) {
-        const added = workspace.addDocument(document2.text, document2.title);
-        if (document2.id === snapshot.active) {
-          activeId = added.id;
-        }
-      }
-      const first = workspace.getDocuments()[0];
-      workspace.setActive(activeId ?? first?.id ?? "");
-    };
     const stored = storage ? loadWorkspace(storage) : void 0;
     if (stored && stored.documents.length > 0) {
       workspace.load(stored);
@@ -26087,25 +26150,6 @@ Book (stxt.play.library):
     }
     const consumeFragment = () => {
       history.replaceState(null, "", `${location.pathname}${location.search}`);
-    };
-    const freeTitle = (title) => {
-      const titles = new Set(workspace.getDocuments().map((document2) => document2.title));
-      let candidate = title;
-      for (let n = 2; titles.has(candidate); n++) {
-        candidate = `${title} (${n})`;
-      }
-      return candidate;
-    };
-    const openLinked = (text, title) => {
-      const existing = workspace.getDocuments().find((document2) => document2.text === text);
-      if (existing) {
-        workspace.setActive(existing.id);
-        showStatus("The document of the link was already in the workspace.");
-        return;
-      }
-      const added = workspace.addDocument(text, title ? freeTitle(title) : void 0);
-      workspace.setActive(added.id);
-      showStatus("Document opened from the link.");
     };
     const handleFragment = (ownContent) => {
       const payload = sharePayloadOf(location.hash);
@@ -26124,7 +26168,7 @@ Book (stxt.play.library):
             danger: true
           });
           if (replace2) {
-            loadShared(shared);
+            loadSharedSnapshot(workspace, shared);
             showStatus("Shared workspace loaded.");
           }
         });
@@ -26135,7 +26179,8 @@ Book (stxt.play.library):
             showStatus("The link does not carry a valid document.");
             return;
           }
-          openLinked(linked.text, linked.title);
+          const outcome = openLinked(workspace, linked.text, linked.title);
+          showStatus(outcome === "existing" ? "The document of the link was already in the workspace." : "Document opened from the link.");
         });
       }
     };

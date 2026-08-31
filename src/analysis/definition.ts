@@ -33,7 +33,7 @@ export function findDefinition(
 	line: number,
 	character: number
 ): DefinitionLocation | undefined {
-	const node = analysis.nodeByLine.get(line);
+	const node = analysis.nodeByLineIndex.get(line);
 	if (!node) {
 		return undefined;
 	}

@@ -85,8 +85,14 @@ describe("Analyzer: MARKDOWN blocks", () => {
 		"",
 	].join("\n");
 
+	function analysisOf(analyzer: Analyzer, id: string) {
+		const analysis = analyzer.getAnalysis(id);
+		assert.ok(analysis, `no analysis for ${id}`);
+		return analysis;
+	}
+
 	function markdownTokens(analyzer: Analyzer, id: string): string[] {
-		return analyzer.getAnalysis(id)!.tokens.filter((t) => t.type.startsWith("markdown")).map(describeToken);
+		return analysisOf(analyzer, id).tokens.filter((t) => t.type.startsWith("markdown")).map(describeToken);
 	}
 
 	it("colours the content of a MARKDOWN block at the position of each line, and not that of a TEXT block", () => {
@@ -107,7 +113,7 @@ describe("Analyzer: MARKDOWN blocks", () => {
 		analyzer.setDocument("grammar", TEMPLATE);
 		analyzer.setDocument("doc", DOC);
 
-		const tokens = analyzer.getAnalysis("doc")!.tokens;
+		const tokens = analysisOf(analyzer, "doc").tokens;
 		for (let i = 1; i < tokens.length; i++) {
 			const previous = tokens[i - 1];
 			const token = tokens[i];

@@ -42,12 +42,12 @@ export interface DocumentAnalysis {
 	tokens: StxtToken[];
 	/** Root nodes of the document, as far as it parsed. */
 	roots: Node[];
-	/** Node opened at each line. */
-	nodeByLine: Map<number, Node>;
+	/** Node opened at each line, by 0-based line index. */
+	nodeByLineIndex: Map<number, Node>;
 	/** Lines that are comments. */
 	commentLines: Set<number>;
-	/** For each text line of a block, the BLOCK node it belongs to. */
-	textLineByLineNumber: Map<number, TextNode>;
+	/** The BLOCK node each text line of a block belongs to, by 0-based line index. */
+	textNodeByLineIndex: Map<number, TextNode>;
 	/**
 	 * Grammars this document defines, in document order. Empty for plain documents; non-empty
 	 * marks the document as a schema/template in the document list, where its namespace — not a
@@ -63,10 +63,10 @@ interface ParsedDocument {
 	text: string;
 	roots: Node[];
 	tokens: StxtToken[];
-	nodeByLine: Map<number, Node>;
+	nodeByLineIndex: Map<number, Node>;
 	commentLines: Set<number>;
-	textLineByLineNumber: Map<number, TextNode>;
-	blockLineByLineNumber: Map<number, Line>;
+	textNodeByLineIndex: Map<number, TextNode>;
+	blockLineByLineIndex: Map<number, Line>;
 	syntaxDiagnostics: Diagnostic[];
 	grammarRoots: Node[];
 }
@@ -101,11 +101,6 @@ export class Analyzer {
 			this.validation = enabled;
 			this.refreshAll();
 		}
-	}
-
-	/** @returns whether schema validation is enabled. */
-	isValidationEnabled(): boolean {
-		return this.validation;
 	}
 
 	/**
@@ -158,11 +153,6 @@ export class Analyzer {
 	 */
 	getAnalysis(id: string): DocumentAnalysis | undefined {
 		return this.analyses.get(id);
-	}
-
-	/** @returns the identifiers of every document of the workspace, in insertion order. */
-	getDocumentIds(): string[] {
-		return Array.from(this.parsed.keys());
 	}
 
 	/**
@@ -239,10 +229,10 @@ export class Analyzer {
 			text,
 			roots,
 			tokens: observer.getTokens(),
-			nodeByLine: observer.getNodeByLine(),
+			nodeByLineIndex: observer.getNodeByLineIndex(),
 			commentLines: observer.getCommentLines(),
-			textLineByLineNumber: observer.getTextLineByLineNumber(),
-			blockLineByLineNumber: observer.getBlockLineByLineNumber(),
+			textNodeByLineIndex: observer.getTextNodeByLineIndex(),
+			blockLineByLineIndex: observer.getBlockLineByLineIndex(),
 			syntaxDiagnostics,
 			grammarRoots: roots.filter(isGrammarRoot),
 		};
@@ -294,9 +284,9 @@ export class Analyzer {
 		return {
 			tokens: this.withMarkdownTokens(parsed),
 			roots: parsed.roots,
-			nodeByLine: parsed.nodeByLine,
+			nodeByLineIndex: parsed.nodeByLineIndex,
 			commentLines: parsed.commentLines,
-			textLineByLineNumber: parsed.textLineByLineNumber,
+			textNodeByLineIndex: parsed.textNodeByLineIndex,
 			grammars: parsed.grammarRoots.map((root) => ({
 				// A grammar root is `Name (@stxt.schema): namespace`; a block form is a broken grammar
 				// the registry reports on its own, and declares no namespace here.
@@ -321,8 +311,8 @@ export class Analyzer {
 		let state: MarkdownState | null = null;
 
 		// Map iteration follows insertion order, that is, document order
-		for (const [lineIndex, line] of parsed.blockLineByLineNumber) {
-			const node = parsed.textLineByLineNumber.get(lineIndex);
+		for (const [lineIndex, line] of parsed.blockLineByLineIndex) {
+			const node = parsed.textNodeByLineIndex.get(lineIndex);
 			if (node !== current) {
 				current = node;
 				state = node && this.isMarkdown(node) ? newMarkdownState() : null;

@@ -35,9 +35,9 @@ describe("Analyzer: parsing products", () => {
 		assert.ok(analysis, "the document must be analyzed");
 
 		assert.ok(analysis.commentLines.has(0), "line 0 is a comment");
-		assert.ok(analysis.nodeByLine.has(1), "line 1 opens the Greeting node");
-		assert.ok(analysis.nodeByLine.has(2), "line 2 opens the Note block");
-		assert.strictEqual(analysis.textLineByLineNumber.get(3)?.getName(), "Note",
+		assert.ok(analysis.nodeByLineIndex.has(1), "line 1 opens the Greeting node");
+		assert.ok(analysis.nodeByLineIndex.has(2), "line 2 opens the Note block");
+		assert.strictEqual(analysis.textNodeByLineIndex.get(3)?.getName(), "Note",
 			"line 3 is a text line of the Note block");
 
 		const typesAt = (line: number) => analysis.tokens.filter((t) => t.line === line).map((t) => t.type);

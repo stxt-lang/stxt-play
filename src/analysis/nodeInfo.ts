@@ -46,7 +46,7 @@ export interface NodeDefinitionInfo {
  * @returns the description, or undefined when the line opens no node.
  */
 export function describeNodeAtLine(analysis: DocumentAnalysis, registry: GrammarRegistry, line: number): NodeInfo | undefined {
-	const node = analysis.nodeByLine.get(line);
+	const node = analysis.nodeByLineIndex.get(line);
 	if (!node) {
 		return undefined;
 	}

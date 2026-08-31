@@ -4,6 +4,7 @@
  */
 
 export {
+	NewWorkspaceDocument,
 	UNTITLED,
 	Workspace,
 	WorkspaceDocument,
@@ -11,6 +12,8 @@ export {
 	WorkspaceListener,
 	WorkspaceSnapshot,
 } from "./Workspace";
+export { freeTitle, loadSharedSnapshot, openLinked, OpenLinkedResult } from "./links";
+export { createWorkspacePersistence, PERSIST_DELAY_MS, WorkspacePersistence } from "./persistence";
 export {
 	decodeOpen,
 	decodeShare,
@@ -28,7 +31,6 @@ export {
 	toShareDocument,
 } from "./share";
 export {
-	clearWorkspace,
 	DEFAULT_SETTINGS,
 	fromWorkspaceSnapshot,
 	IndentMode,
@@ -39,6 +41,7 @@ export {
 	saveSettings,
 	saveWorkspace,
 	SETTINGS_STORAGE_KEY,
+	StoredWorkspace,
 	toWorkspaceSnapshot,
 	WORKSPACE_STORAGE_KEY,
 	WORKSPACE_STORAGE_VERSION,

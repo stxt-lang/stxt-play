@@ -632,6 +632,7 @@
       Constants3.DEFAULT_MAX_NESTING = 100;
       Constants3.DEFAULT_MAX_LINE_LENGTH = 1e4;
       Constants3.DEFAULT_MAX_INPUT_SIZE = 1e7;
+      Constants3.MAX_CARDINALITY = 4294967295;
     }
   });
 
@@ -1565,9 +1566,9 @@
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.EMAIL = void 0;
       var regexType_1 = require_regexType();
-      var ADDRESS = "(?=.{1,256}$)(?=.{1,64}@.{1,255}$)(?=.{1,64}@.{1,63}\\..{1,63}$)[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}";
-      var BRACKETED = "(?=[^>]{1,256}>$)(?=[^>]{1,64}@[^>]{1,255}>$)(?=[^>]{1,64}@[^>]{1,63}\\.[^>]{1,63}>$)[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}";
-      exports.EMAIL = (0, regexType_1.regexType)("EMAIL", new RegExp(`^(?:[^<>]*[^<>\\s]\\s*<${BRACKETED}>|${ADDRESS})$`), "Invalid email");
+      var ADDRESS = "(?=.{1,254}$)(?=[^@]{1,64}@)[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,63}";
+      var BRACKETED = "(?=[^>]{1,254}>$)(?=[^@>]{1,64}@)[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,63}";
+      exports.EMAIL = (0, regexType_1.regexType)("EMAIL", new RegExp(`^(?:[^<>]*[^<> \\t][ \\t]*<${BRACKETED}>|${ADDRESS})$`), "Invalid email");
     }
   });
 
@@ -2166,6 +2167,7 @@
       var ValidationException_1 = require_ValidationException();
       var NamespaceValidator_1 = require_NamespaceValidator();
       var StringUtils_1 = require_StringUtils();
+      var Constants_1 = require_Constants();
       var NameNamespaceParser_1 = require_NameNamespaceParser();
       var TypeRegistry_1 = require_TypeRegistry();
       function transformNodeToSchema2(node) {
@@ -2271,6 +2273,9 @@
         const parsed = Number.parseInt(raw, 10);
         if (Number.isNaN(parsed)) {
           throw new ValidationException_1.ValidationException(node.getLine(), "CARDINALITY_NOT_VALID", `Integer not valid: ${raw}`);
+        }
+        if (parsed > Constants_1.Constants.MAX_CARDINALITY) {
+          throw new ValidationException_1.ValidationException(node.getLine(), "CARDINALITY_NOT_VALID", `Cardinality above ${Constants_1.Constants.MAX_CARDINALITY}: ${raw}`);
         }
         return parsed;
       }
@@ -2509,6 +2514,7 @@
       exports.ChildLineParser = void 0;
       var ValidationException_1 = require_ValidationException();
       var StringUtils_1 = require_StringUtils();
+      var Constants_1 = require_Constants();
       var ChildLine_1 = require_ChildLine();
       var ChildLineParser = class _ChildLineParser {
         constructor() {
@@ -2590,12 +2596,17 @@
           }
           return new ChildLine_1.ChildLine(type, min, max, values);
         }
-        // num, min and max must be non-negative integers, with no trailing text (STXT-TEMPLATE-SPEC 7.1)
+        // num, min and max must be non-negative integers, with no trailing text, bounded to
+        // 2^32 - 1 like Min/Max in a schema (STXT-TEMPLATE-SPEC 7.1)
         static parseCount(num, count, rawLine, lineNumber) {
           if (!/^\d+$/.test(num)) {
             throw new ValidationException_1.ValidationException(lineNumber, "CARDINALITY_NOT_VALID", `Invalid count ${count} in line: ${rawLine}`);
           }
-          return parseInt(num, 10);
+          const parsed = parseInt(num, 10);
+          if (parsed > Constants_1.Constants.MAX_CARDINALITY) {
+            throw new ValidationException_1.ValidationException(lineNumber, "CARDINALITY_NOT_VALID", `Invalid count ${count} in line: ${rawLine}`);
+          }
+          return parsed;
         }
       };
       exports.ChildLineParser = ChildLineParser;

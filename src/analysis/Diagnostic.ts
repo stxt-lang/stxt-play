@@ -25,7 +25,7 @@ export interface Diagnostic {
 	code: string;
 	/** Human readable message, in English like every message of the ecosystem. */
 	message: string;
-	/** Severity: syntax and grammar problems are errors, validation problems are warnings. */
+	/** Severity: syntax and grammar problems are errors; validation problems are warnings, save for unexpected validator failures (`UNEXPECTED_ERROR`), reported as errors. */
 	severity: DiagnosticSeverity;
 	/** Layer that produced the diagnostic. */
 	source: DiagnosticSource;

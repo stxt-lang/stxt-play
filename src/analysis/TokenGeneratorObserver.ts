@@ -91,7 +91,7 @@ export class TokenGeneratorObserver implements Observer {
 					type: token.type,
 				});
 			}
-		} catch (e) {
+		} catch {
 			// If the block content does not parse, it simply gets no tokens
 		}
 	}

@@ -115,7 +115,7 @@ export function tokenizeMarkdownLine(content: string, state: MarkdownState): Mar
 }
 
 /** Adds one span covering the line from its first non-blank character to its end, if any. */
-function pushWholeLine(spans: MarkdownSpan[], content: string, type: MarkdownTokenType, offset: number = 0): void {
+function pushWholeLine(spans: MarkdownSpan[], content: string, type: MarkdownTokenType, offset = 0): void {
 	const start = content.search(/\S/);
 	if (start !== -1) {
 		spans.push({ startChar: offset + start, length: content.trimEnd().length - start, type });
@@ -131,10 +131,10 @@ function tokenizeInline(spans: MarkdownSpan[], text: string, offset: number): vo
 		const groups = match.groups ?? {};
 		const type: MarkdownTokenType | undefined =
 			groups.code !== undefined ? 'markdownCode' :
-			groups.link !== undefined ? 'markdownLink' :
-			groups.bold !== undefined ? 'markdownBold' :
-			groups.italic !== undefined ? 'markdownItalic' :
-			undefined;
+				groups.link !== undefined ? 'markdownLink' :
+					groups.bold !== undefined ? 'markdownBold' :
+						groups.italic !== undefined ? 'markdownItalic' :
+							undefined;
 
 		if (type !== undefined) {
 			spans.push({ startChar: offset + match.index, length: match[0].length, type });

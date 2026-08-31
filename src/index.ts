@@ -29,7 +29,7 @@ import {
 } from "./workspace";
 
 /**
- * Entry point of the playground (phase 6: seed content, reset and clear, share links, finish).
+ * Entry point of the playground.
  *
  * The wiring keeps a single flow of data: the workspace model is the source of truth for the
  * documents, the analyzer mirrors it (one cached parse per document), and everything visible —

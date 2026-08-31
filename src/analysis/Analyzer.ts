@@ -17,8 +17,6 @@ import { computeIndentChanges, IndentChange } from "./reindent";
 import { StxtToken } from "./Tokens";
 import { TokenGeneratorObserver } from "./TokenGeneratorObserver";
 
-/** Code SchemaValidator emits when it cannot resolve the schema of a namespace. */
-
 /** Schema type whose block content is coloured as Markdown (STXT-SCHEMA-SPEC 9.7). */
 const MARKDOWN = "MARKDOWN";
 

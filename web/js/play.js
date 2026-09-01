@@ -107,7 +107,7 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.StringUtils = void 0;
-      var StringUtils5 = class {
+      var StringUtils6 = class {
         constructor() {
         }
         /**
@@ -191,12 +191,12 @@
           return s;
         }
       };
-      exports.StringUtils = StringUtils5;
-      StringUtils5.NODE_NAME = /^[\p{L}\p{Nd}\p{Mn}\p{Mc}\-_ ]+$/u;
-      StringUtils5.NODE_NAME_LETTER_OR_DIGIT = /[\p{L}\p{Nd}]/u;
-      StringUtils5.LEADING_BLANKS = /^[ \t]+/;
-      StringUtils5.TRAILING_BLANKS = /[ \t]+$/;
-      StringUtils5.BLANK_RUN = /[ \t]+/g;
+      exports.StringUtils = StringUtils6;
+      StringUtils6.NODE_NAME = /^[\p{L}\p{Nd}\p{Mn}\p{Mc}\-_ ]+$/u;
+      StringUtils6.NODE_NAME_LETTER_OR_DIGIT = /[\p{L}\p{Nd}]/u;
+      StringUtils6.LEADING_BLANKS = /^[ \t]+/;
+      StringUtils6.TRAILING_BLANKS = /[ \t]+$/;
+      StringUtils6.BLANK_RUN = /[ \t]+/g;
     }
   });
 
@@ -209,7 +209,7 @@
       var ParseException_1 = require_ParseException();
       var NamespaceValidator_1 = require_NamespaceValidator();
       var StringUtils_1 = require_StringUtils();
-      var Node7 = class _Node {
+      var Node8 = class _Node {
         /**
          * Common initialisation, for the two concrete forms.
          *
@@ -346,8 +346,8 @@
           return s;
         }
       };
-      exports.Node = Node7;
-      Node7.NO_LINE = -1;
+      exports.Node = Node8;
+      Node8.NO_LINE = -1;
     }
   });
 
@@ -482,7 +482,7 @@
       var TextNode_1 = require_TextNode();
       var RuntimeException_1 = require_RuntimeException();
       var StringUtils_1 = require_StringUtils();
-      var InlineNode6 = class _InlineNode extends Node_1.Node {
+      var InlineNode7 = class _InlineNode extends Node_1.Node {
         constructor(name2, ...rest) {
           const [namespace, value, line] = rest.length <= 1 ? [null, rest[0], Node_1.Node.NO_LINE] : [rest[0], rest[1], rest[2] ?? Node_1.Node.NO_LINE];
           super(name2, namespace, line);
@@ -608,7 +608,7 @@
           return s;
         }
       };
-      exports.InlineNode = InlineNode6;
+      exports.InlineNode = InlineNode7;
     }
   });
 
@@ -984,7 +984,7 @@
       var ParseException_1 = require_ParseException();
       var ValidationException_1 = require_ValidationException();
       var LimitException_1 = require_LimitException();
-      var Parser6 = class {
+      var Parser7 = class {
         /**
          * Creates a parser, optionally with its own limits.
          *
@@ -1208,7 +1208,7 @@
           return content2.charCodeAt(0) === 65279 ? content2.slice(1) : content2;
         }
       };
-      exports.Parser = Parser6;
+      exports.Parser = Parser7;
     }
   });
 
@@ -25634,6 +25634,7 @@ Book (stxt.play.library):
   };
 
   // src/workspace/links.ts
+  var import_core8 = __toESM(require_all());
   function loadSharedSnapshot(workspace, snapshot) {
     const activeIndex = snapshot.documents.findIndex((document2) => document2.id === snapshot.active);
     workspace.replaceAll(
@@ -25658,6 +25659,53 @@ Book (stxt.play.library):
     const added = workspace.addDocument(text, title ? freeTitle(workspace, title) : void 0);
     workspace.setActive(added.id);
     return "added";
+  }
+  function planGrammars(workspace, grammarTexts) {
+    const plan = { add: [], replace: [] };
+    if (grammarTexts.length === 0) {
+      return plan;
+    }
+    const defined = /* @__PURE__ */ new Map();
+    for (const document2 of workspace.getDocuments()) {
+      for (const namespace of grammarNamespacesOf(document2.text)) {
+        if (!defined.has(namespace)) {
+          defined.set(namespace, document2);
+        }
+      }
+    }
+    const brought = /* @__PURE__ */ new Set();
+    for (const text of grammarTexts) {
+      const namespace = grammarNamespacesOf(text)[0];
+      if (namespace === void 0 || brought.has(namespace)) {
+        continue;
+      }
+      brought.add(namespace);
+      const existing = defined.get(namespace);
+      if (!existing) {
+        plan.add.push({ text, namespace });
+      } else if (existing.text !== text) {
+        plan.replace.push({ grammar: { text, namespace }, documentId: existing.id });
+      }
+    }
+    return plan;
+  }
+  function grammarNamespacesOf(text) {
+    let roots;
+    try {
+      roots = new import_core8.Parser({ maxNesting: -1, maxLineLength: -1, maxInputSize: -1 }).parse(text);
+    } catch {
+      return [];
+    }
+    const namespaces = [];
+    for (const root of roots) {
+      if (isGrammarRoot(root) && root instanceof import_core8.InlineNode) {
+        const namespace = import_core8.StringUtils.lowerCase(root.getValue().trim());
+        if (namespace.length > 0) {
+          namespaces.push(namespace);
+        }
+      }
+    }
+    return namespaces;
   }
 
   // src/workspace/storage.ts
@@ -25779,13 +25827,14 @@ Book (stxt.play.library):
   }
 
   // src/workspace/share.ts
-  var import_core8 = __toESM(require_all());
+  var import_core9 = __toESM(require_all());
   var SHARE_PARAM = "w";
   var SHARE_NAMESPACE = "stxt.play.share";
   var SHARE_VERSION = "1";
   var SHARE_HEADER = "# STXT Playground workspace \u2014 https://play.stxt.dev\n";
   var OPEN_PARAM = "d";
   var OPEN_TITLE_PARAM = "t";
+  var OPEN_GRAMMAR_PARAM = "g";
   function toBase64Url(bytes) {
     let binary = "";
     for (const byte of bytes) {
@@ -25806,28 +25855,35 @@ Book (stxt.play.library):
     const response = new Response(new Blob([bytes]).stream().pipeThrough(stream));
     return new Uint8Array(await response.arrayBuffer());
   }
+  async function compressText(text) {
+    return toBase64Url(await pipe(new TextEncoder().encode(text), new CompressionStream("deflate-raw")));
+  }
+  async function decompressText(payload) {
+    const bytes = await pipe(fromBase64Url(payload), new DecompressionStream("deflate-raw"));
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  }
   function toShareDocument(snapshot) {
-    const root = new import_core8.InlineNode("Workspace", SHARE_NAMESPACE, null);
-    root.addChild(new import_core8.InlineNode("Version", SHARE_VERSION));
+    const root = new import_core9.InlineNode("Workspace", SHARE_NAMESPACE, null);
+    root.addChild(new import_core9.InlineNode("Version", SHARE_VERSION));
     for (const document2 of snapshot.documents) {
-      const entry = new import_core8.InlineNode("Document", document2.title);
+      const entry = new import_core9.InlineNode("Document", document2.title);
       if (document2.id === snapshot.active) {
-        entry.addChild(new import_core8.InlineNode("Active", "true"));
+        entry.addChild(new import_core9.InlineNode("Active", "true"));
       }
-      entry.addChild(new import_core8.TextNode("Text", document2.text));
+      entry.addChild(new import_core9.TextNode("Text", document2.text));
       root.addChild(entry);
     }
-    return SHARE_HEADER + import_core8.NodeWriter.toSTXT(root);
+    return SHARE_HEADER + import_core9.NodeWriter.toSTXT(root);
   }
   function fromShareDocument(text) {
     let roots;
     try {
-      roots = new import_core8.Parser({ maxNesting: -1, maxLineLength: -1, maxInputSize: -1 }).parse(text);
+      roots = new import_core9.Parser({ maxNesting: -1, maxLineLength: -1, maxInputSize: -1 }).parse(text);
     } catch {
       return void 0;
     }
     const root = roots.find(
-      (node) => node instanceof import_core8.InlineNode && node.getCanonicalName() === "workspace" && node.getNamespace() === SHARE_NAMESPACE
+      (node) => node instanceof import_core9.InlineNode && node.getCanonicalName() === "workspace" && node.getNamespace() === SHARE_NAMESPACE
     );
     if (!root || firstValue(root, "Version") !== SHARE_VERSION) {
       return void 0;
@@ -25835,7 +25891,7 @@ Book (stxt.play.library):
     const documents = [];
     let active = null;
     for (const child of root.getChildrenByName("Document")) {
-      if (!(child instanceof import_core8.InlineNode)) {
+      if (!(child instanceof import_core9.InlineNode)) {
         continue;
       }
       const id = `s${documents.length + 1}`;
@@ -25847,23 +25903,20 @@ Book (stxt.play.library):
     return { active: active ?? documents[0]?.id ?? null, documents };
   }
   function firstValue(node, name2) {
-    const child = node.getChildrenByName(name2).find((candidate) => candidate instanceof import_core8.InlineNode);
+    const child = node.getChildrenByName(name2).find((candidate) => candidate instanceof import_core9.InlineNode);
     return child === void 0 ? void 0 : child.getValue();
   }
   function textOf(entry) {
-    const block = entry.getChildrenByName("Text").find((candidate) => candidate instanceof import_core8.TextNode);
+    const block = entry.getChildrenByName("Text").find((candidate) => candidate instanceof import_core9.TextNode);
     const lines = block === void 0 ? [] : block.getTextLines();
     return lines.length === 0 ? "" : lines.join("\n") + "\n";
   }
   async function encodeShare(snapshot) {
-    const stxt = toShareDocument(snapshot);
-    const compressed = await pipe(new TextEncoder().encode(stxt), new CompressionStream("deflate-raw"));
-    return toBase64Url(compressed);
+    return compressText(toShareDocument(snapshot));
   }
   async function decodeShare(payload) {
     try {
-      const bytes = await pipe(fromBase64Url(payload), new DecompressionStream("deflate-raw"));
-      return fromShareDocument(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+      return fromShareDocument(await decompressText(payload));
     } catch {
       return void 0;
     }
@@ -25877,14 +25930,28 @@ Book (stxt.play.library):
     if (!payload) {
       return void 0;
     }
+    let text;
     try {
-      const bytes = await pipe(fromBase64Url(payload), new DecompressionStream("deflate-raw"));
-      const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-      const title = nonEmpty(params.get(OPEN_TITLE_PARAM)?.trim());
-      return title === void 0 ? { text } : { text, title };
+      text = await decompressText(payload);
     } catch {
       return void 0;
     }
+    const grammars = [];
+    for (const grammarPayload of params.getAll(OPEN_GRAMMAR_PARAM)) {
+      try {
+        grammars.push(await decompressText(grammarPayload));
+      } catch {
+      }
+    }
+    const title = nonEmpty(params.get(OPEN_TITLE_PARAM)?.trim());
+    const document2 = { text };
+    if (title !== void 0) {
+      document2.title = title;
+    }
+    if (grammars.length > 0) {
+      document2.grammars = grammars;
+    }
+    return document2;
   }
   function isOpenLink(hash) {
     return nonEmpty(fragmentParams(hash).get(OPEN_PARAM)) !== void 0;
@@ -26267,14 +26334,34 @@ Book (stxt.play.library):
           }
         });
       } else if (isOpenLink(location.hash)) {
-        void decodeOpen(location.hash).then((linked) => {
+        void decodeOpen(location.hash).then(async (linked) => {
           consumeFragment();
           if (!linked) {
             showStatus("The link does not carry a valid document.");
             return;
           }
+          const plan = planGrammars(workspace, linked.grammars ?? []);
+          let grammars = 0;
+          for (const grammar of plan.add) {
+            workspace.addDocument(grammar.text, grammar.namespace);
+            grammars++;
+          }
+          for (const { grammar, documentId } of plan.replace) {
+            const replace2 = await confirmDialog({
+              title: "Replace the grammar?",
+              message: `The link brings a grammar for '${grammar.namespace}', and the workspace already has a different one for that namespace.`,
+              confirmLabel: "Replace",
+              cancelLabel: "Keep mine",
+              danger: true
+            });
+            if (replace2) {
+              workspace.setText(documentId, grammar.text);
+              grammars++;
+            }
+          }
           const outcome = openLinked(workspace, linked.text, linked.title);
-          showStatus(outcome === "existing" ? "The document of the link was already in the workspace." : "Document opened from the link.");
+          const base2 = outcome === "existing" ? "The document of the link was already in the workspace." : "Document opened from the link.";
+          showStatus(grammars === 0 ? base2 : `${base2} The link also brought ${grammars} grammar${grammars === 1 ? "" : "s"}.`);
         });
       }
     };

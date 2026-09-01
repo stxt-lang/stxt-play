@@ -6,6 +6,7 @@ import {
 	loadWorkspace,
 	KeyValueStorage,
 	openLinked,
+	planGrammars,
 	Workspace,
 	WorkspaceSnapshot,
 } from "../src/workspace";
@@ -122,6 +123,70 @@ describe("openLinked", () => {
 		assert.strictEqual(outcome, "existing");
 		assert.strictEqual(workspace.getActiveId(), existing.id);
 		assert.strictEqual(workspace.getDocuments().length, 2, "nothing is added");
+	});
+});
+
+describe("planGrammars", () => {
+	const template = "Template (@stxt.template): com.acme.book\n"
+		+ "\tStructure >>\n\t\tBook:\n\t\t\tTitle: (1)\n";
+	const schema = "Schema (@stxt.schema): com.acme.book\n"
+		+ "\tNode: Book\n\t\tChildren:\n\t\t\tChild: Title\n";
+
+	it("adds a grammar whose namespace nothing defines yet", () => {
+		const workspace = new Workspace(sequentialIds());
+		workspace.addDocument("Book (com.acme.book): One\n", "Doc");
+
+		const plan = planGrammars(workspace, [template]);
+
+		assert.deepStrictEqual(plan.replace, []);
+		assert.deepStrictEqual(plan.add, [{ text: template, namespace: "com.acme.book" }]);
+	});
+
+	it("drops a grammar identical to the one already defining its namespace", () => {
+		const workspace = new Workspace(sequentialIds());
+		workspace.addDocument(template, "Grammar");
+
+		const plan = planGrammars(workspace, [template]);
+
+		assert.deepStrictEqual(plan, { add: [], replace: [] });
+	});
+
+	it("plans a replacement when the namespace is defined with a different text", () => {
+		const workspace = new Workspace(sequentialIds());
+		const existing = workspace.addDocument(template, "Grammar");
+
+		const plan = planGrammars(workspace, [schema]);
+
+		assert.deepStrictEqual(plan.add, []);
+		assert.deepStrictEqual(plan.replace, [
+			{ grammar: { text: schema, namespace: "com.acme.book" }, documentId: existing.id },
+		]);
+	});
+
+	it("matches namespaces case-insensitively, as the language does", () => {
+		const workspace = new Workspace(sequentialIds());
+		workspace.addDocument(template, "Grammar");
+
+		const upper = "Template (@stxt.template): COM.ACME.BOOK\n\tStructure >>\n\t\tBook:\n";
+		const plan = planGrammars(workspace, [upper]);
+
+		assert.strictEqual(plan.add.length, 0, "same namespace: never a second definition");
+		assert.strictEqual(plan.replace.length, 1);
+		assert.strictEqual(plan.replace[0].grammar.namespace, "com.acme.book");
+	});
+
+	it("ignores payloads that are not grammars, do not parse, or repeat a namespace of the link", () => {
+		const workspace = new Workspace(sequentialIds());
+
+		const plan = planGrammars(workspace, [
+			"Book (com.acme.book): not a grammar\n",
+			"\tbroken: indentation\n",
+			template,
+			schema, // same namespace as the template above: the first one of the link wins
+		]);
+
+		assert.deepStrictEqual(plan.replace, []);
+		assert.deepStrictEqual(plan.add, [{ text: template, namespace: "com.acme.book" }]);
 	});
 });
 

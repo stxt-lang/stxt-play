@@ -12,7 +12,15 @@ export {
 	WorkspaceListener,
 	WorkspaceSnapshot,
 } from "./Workspace";
-export { freeTitle, loadSharedSnapshot, openLinked, OpenLinkedResult } from "./links";
+export {
+	freeTitle,
+	GrammarPlan,
+	LinkedGrammar,
+	loadSharedSnapshot,
+	openLinked,
+	OpenLinkedResult,
+	planGrammars,
+} from "./links";
 export { createWorkspacePersistence, PERSIST_DELAY_MS, WorkspacePersistence } from "./persistence";
 export {
 	decodeOpen,
@@ -21,6 +29,7 @@ export {
 	encodeShare,
 	fromShareDocument,
 	isOpenLink,
+	OPEN_GRAMMAR_PARAM,
 	OPEN_PARAM,
 	OPEN_TITLE_PARAM,
 	OpenLinkDocument,

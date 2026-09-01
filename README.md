@@ -111,6 +111,13 @@ const payload = require("node:zlib").deflateRawSync(Buffer.from(text, "utf8")).t
 const url = `https://play.stxt.dev/#d=${payload}&t=${encodeURIComponent(title)}`;
 ```
 
+The link may also carry the grammars the document needs to validate: zero or more `&g=<payload>`
+parameters, each one a schema or template document encoded exactly like the `d=` payload. Each
+grammar arrives as its own workspace document, and the workspace keeps one definition per
+namespace: a grammar for a namespace nothing defines is added silently; one identical to the
+definition already there does nothing; one that differs asks before replacing it. A `g=` payload
+that is not a grammar, or does not decode, is ignored — the document of the link always opens.
+
 ## Beyond the playground
 
 The editor is not meant to be single-use. Two follow-ups shape the design:

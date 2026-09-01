@@ -1,9 +1,12 @@
-import { Workspace, WorkspaceSnapshot } from "./Workspace";
+import { InlineNode, Node, Parser, StringUtils } from "@stxt-lang/core";
+import { isGrammarRoot } from "../analysis/GrammarRegistry";
+import { Workspace, WorkspaceDocument, WorkspaceSnapshot } from "./Workspace";
 
 /**
  * What a link does to the workspace once its payload is decoded: a share link (`#w=`) replaces
- * the documents, an open link (`#d=`) adds one. The decoding itself lives in `share.ts`; this
- * module is the workspace side, DOM-free so it is testable in Node.
+ * the documents, an open link (`#d=`) adds one, along with the grammars it may carry. The
+ * decoding itself lives in `share.ts`; this module is the workspace side, DOM-free so it is
+ * testable in Node.
  */
 
 /**
@@ -60,4 +63,90 @@ export function openLinked(workspace: Workspace, text: string, title: string | u
 	const added = workspace.addDocument(text, title ? freeTitle(workspace, title) : undefined);
 	workspace.setActive(added.id);
 	return "added";
+}
+
+/** A grammar that came in an open link: its text and the namespace its first grammar root defines. */
+export interface LinkedGrammar {
+	/** Full text of the grammar document. */
+	text: string;
+	/** Namespace it defines, trimmed and lowercased. */
+	namespace: string;
+}
+
+/**
+ * How the workspace is to receive the grammars of an open link. A grammar whose namespace is
+ * already defined by a document with the very same text is left out: there is nothing to do.
+ */
+export interface GrammarPlan {
+	/** Namespace not defined in the workspace yet: the grammar is added without asking. */
+	add: LinkedGrammar[];
+	/** Namespace already defined with a different text: that document is replaced, after asking. */
+	replace: { grammar: LinkedGrammar; documentId: string }[];
+}
+
+/**
+ * Decides what to do with the grammars of an open link, against the grammars the workspace
+ * already has. Namespaces follow the workspace discovery rule (one definition per namespace),
+ * so the plan never adds a second definition: an unknown namespace is an addition, a known one
+ * with a different text is a replacement — of the first document that defines it — for the
+ * caller to confirm. A payload that is not a grammar, or repeats a namespace already brought by
+ * this same link, is ignored.
+ *
+ * @param workspace the workspace the link opens into.
+ * @param grammarTexts texts of the grammars the link carried, in order.
+ * @returns the additions and replacements to perform.
+ */
+export function planGrammars(workspace: Workspace, grammarTexts: readonly string[]): GrammarPlan {
+	const plan: GrammarPlan = { add: [], replace: [] };
+	if (grammarTexts.length === 0) {
+		return plan;
+	}
+
+	const defined = new Map<string, WorkspaceDocument>();
+	for (const document of workspace.getDocuments()) {
+		for (const namespace of grammarNamespacesOf(document.text)) {
+			if (!defined.has(namespace)) {
+				defined.set(namespace, document);
+			}
+		}
+	}
+
+	const brought = new Set<string>();
+	for (const text of grammarTexts) {
+		const namespace = grammarNamespacesOf(text)[0];
+		if (namespace === undefined || brought.has(namespace)) {
+			continue;
+		}
+		brought.add(namespace);
+
+		const existing = defined.get(namespace);
+		if (!existing) {
+			plan.add.push({ text, namespace });
+		} else if (existing.text !== text) {
+			plan.replace.push({ grammar: { text, namespace }, documentId: existing.id });
+		}
+	}
+	return plan;
+}
+
+/** Namespaces defined by the grammar roots of a text, in order; empty when it does not parse. */
+function grammarNamespacesOf(text: string): string[] {
+	let roots: ReadonlyArray<Node>;
+	try {
+		// Same policy as the share decode: the workspace judges each document once loaded
+		roots = new Parser({ maxNesting: -1, maxLineLength: -1, maxInputSize: -1 }).parse(text);
+	} catch {
+		return [];
+	}
+
+	const namespaces: string[] = [];
+	for (const root of roots) {
+		if (isGrammarRoot(root) && root instanceof InlineNode) {
+			const namespace = StringUtils.lowerCase(root.getValue().trim());
+			if (namespace.length > 0) {
+				namespaces.push(namespace);
+			}
+		}
+	}
+	return namespaces;
 }

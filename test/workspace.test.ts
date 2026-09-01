@@ -386,6 +386,27 @@ describe("Open links", () => {
 		assert.ok(/^d=[A-Za-z0-9_-]+$/.test(fragment), fragment);
 	});
 
+	it("round-trips the grammars that go along, one g= parameter each", async () => {
+		const template = "Template (@stxt.template): com.example.cooking\n\tStructure >>\n\t\tRecipe:\n";
+		const other = "Schema (@stxt.schema): com.example.other\n\tNode: Other\n";
+
+		const fragment = await encodeOpen(text, "Tutorial", [template, other]);
+		assert.strictEqual(fragment.split("&g=").length, 3, `two grammar parameters: ${fragment}`);
+		assert.deepStrictEqual(await decodeOpen(`#${fragment}`), {
+			text,
+			title: "Tutorial",
+			grammars: [template, other],
+		});
+	});
+
+	it("skips a grammar payload that does not decode, keeping the document and the rest", async () => {
+		const template = "Template (@stxt.template): com.example.cooking\n";
+		const fragment = await encodeOpen(text, undefined, [template]);
+
+		assert.deepStrictEqual(await decodeOpen(`#${fragment}&g=%%%`), { text, grammars: [template] });
+		assert.deepStrictEqual(await decodeOpen(`#${await encodeOpen(text)}&g=garbage`), { text });
+	});
+
 	it("reads nothing from garbage, from an empty payload or from other fragments", async () => {
 		assert.strictEqual(await decodeOpen("#d=not-a-payload"), undefined);
 		assert.strictEqual(await decodeOpen("#d="), undefined);

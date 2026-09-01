@@ -12,7 +12,10 @@ import { WorkspaceDocument, WorkspaceSnapshot } from "./Workspace";
  * - Open links, `#d=` followed by the base64url of the raw-deflate of the UTF-8 text of one STXT
  *   document, plus an optional `&t=` with its title: the document is added to whatever workspace
  *   the browser already has and selected. This is what "Open in the playground" on stxt.dev
- *   uses, and anyone can build one to hand a snippet to the playground.
+ *   uses, and anyone can build one to hand a snippet to the playground. Zero or more `&g=`
+ *   parameters may come along, each one a grammar document (a schema or a template) encoded like
+ *   the `d=` payload: the grammars the document needs to validate, which the workspace receives
+ *   as separate documents (see `links.ts` for how an already-defined namespace is handled).
  */
 
 /** Parameter name of the workspace inside the URL fragment. */
@@ -33,12 +36,17 @@ export const OPEN_PARAM = "d";
 /** Parameter name of the title that may accompany {@link OPEN_PARAM}. */
 export const OPEN_TITLE_PARAM = "t";
 
+/** Parameter name, repeatable, of a grammar that may accompany {@link OPEN_PARAM}. */
+export const OPEN_GRAMMAR_PARAM = "g";
+
 /** A document that came in an open link. */
 export interface OpenLinkDocument {
 	/** Full text of the document. */
 	text: string;
 	/** Title, if the link carried one; undefined otherwise. */
 	title?: string;
+	/** Texts of the grammars the link carried, in order; undefined when it carried none. */
+	grammars?: string[];
 }
 
 /** Encodes bytes as base64url (RFC 4648 §5, no padding), safe inside a URL fragment. */
@@ -63,6 +71,17 @@ function fromBase64Url(text: string): Uint8Array {
 async function pipe(bytes: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
 	const response = new Response(new Blob([bytes as BlobPart]).stream().pipeThrough(stream));
 	return new Uint8Array(await response.arrayBuffer());
+}
+
+/** Deflates a text and encodes it as base64url: the payload form every parameter here uses. */
+async function compressText(text: string): Promise<string> {
+	return toBase64Url(await pipe(new TextEncoder().encode(text), new CompressionStream("deflate-raw")));
+}
+
+/** The reverse of {@link compressText}. Throws on garbage; callers turn that into undefined. */
+async function decompressText(payload: string): Promise<string> {
+	const bytes = await pipe(fromBase64Url(payload), new DecompressionStream("deflate-raw"));
+	return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 }
 
 /**
@@ -167,9 +186,7 @@ function textOf(entry: InlineNode): string {
  * @returns the payload to put after `#w=`.
  */
 export async function encodeShare(snapshot: WorkspaceSnapshot): Promise<string> {
-	const stxt = toShareDocument(snapshot);
-	const compressed = await pipe(new TextEncoder().encode(stxt), new CompressionStream("deflate-raw"));
-	return toBase64Url(compressed);
+	return compressText(toShareDocument(snapshot));
 }
 
 /**
@@ -180,8 +197,7 @@ export async function encodeShare(snapshot: WorkspaceSnapshot): Promise<string> 
  */
 export async function decodeShare(payload: string): Promise<WorkspaceSnapshot | undefined> {
 	try {
-		const bytes = await pipe(fromBase64Url(payload), new DecompressionStream("deflate-raw"));
-		return fromShareDocument(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+		return fromShareDocument(await decompressText(payload));
 	} catch {
 		return undefined;
 	}
@@ -202,21 +218,25 @@ export function sharePayloadOf(hash: string): string | undefined {
  *
  * @param text the full text of the document.
  * @param title optional title; omitted when blank.
- * @returns the fragment without the leading `#`: `d=<payload>` or `d=<payload>&t=<title>`.
+ * @param grammars optional grammar documents that go along, one `g=` parameter each.
+ * @returns the fragment without the leading `#`: `d=<payload>`, plus `&t=` and `&g=` as given.
  */
-export async function encodeOpen(text: string, title?: string): Promise<string> {
-	const compressed = await pipe(new TextEncoder().encode(text), new CompressionStream("deflate-raw"));
+export async function encodeOpen(text: string, title?: string, grammars: readonly string[] = []): Promise<string> {
 	const params = new URLSearchParams();
-	params.set(OPEN_PARAM, toBase64Url(compressed));
+	params.set(OPEN_PARAM, await compressText(text));
 	if (title && title.trim().length > 0) {
 		params.set(OPEN_TITLE_PARAM, title.trim());
+	}
+	for (const grammar of grammars) {
+		params.append(OPEN_GRAMMAR_PARAM, await compressText(grammar));
 	}
 	// Form encoding leaves the base64url alphabet untouched and escapes whatever the title needs
 	return params.toString();
 }
 
 /**
- * Reads the document of an open link back from a URL fragment.
+ * Reads the document of an open link back from a URL fragment. A `g=` grammar that does not
+ * decode is skipped, so a damaged grammar never loses the document of the link.
  *
  * @param hash `location.hash`, with or without the leading `#`.
  * @returns the document, or undefined when the fragment carries no valid document. Never throws.
@@ -227,14 +247,31 @@ export async function decodeOpen(hash: string): Promise<OpenLinkDocument | undef
 	if (!payload) {
 		return undefined;
 	}
+	let text: string;
 	try {
-		const bytes = await pipe(fromBase64Url(payload), new DecompressionStream("deflate-raw"));
-		const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-		const title = nonEmpty(params.get(OPEN_TITLE_PARAM)?.trim());
-		return title === undefined ? { text } : { text, title };
+		text = await decompressText(payload);
 	} catch {
 		return undefined;
 	}
+
+	const grammars: string[] = [];
+	for (const grammarPayload of params.getAll(OPEN_GRAMMAR_PARAM)) {
+		try {
+			grammars.push(await decompressText(grammarPayload));
+		} catch {
+			// Skipped: see above
+		}
+	}
+
+	const title = nonEmpty(params.get(OPEN_TITLE_PARAM)?.trim());
+	const document: OpenLinkDocument = { text };
+	if (title !== undefined) {
+		document.title = title;
+	}
+	if (grammars.length > 0) {
+		document.grammars = grammars;
+	}
+	return document;
 }
 
 /**

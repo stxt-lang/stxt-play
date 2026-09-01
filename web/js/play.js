@@ -26240,6 +26240,18 @@ Book (stxt.play.library):
           const document2 = workspace.getDocument(event.id);
           if (document2) {
             analyzer.setDocument(event.id, document2.text);
+            if (event.id === shownId) {
+              if (view.state.doc.toString() !== document2.text) {
+                view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: document2.text } });
+              }
+            } else {
+              const parked = states.get(event.id);
+              if (parked && parked.doc.toString() !== document2.text) {
+                states.set(event.id, parked.update({
+                  changes: { from: 0, to: parked.doc.length, insert: document2.text }
+                }).state);
+              }
+            }
           }
           if (event.id === shownId) {
             refreshView();

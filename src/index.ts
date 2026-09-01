@@ -377,6 +377,22 @@ function main(): void {
 				const document = workspace.getDocument(event.id);
 				if (document) {
 					analyzer.setDocument(event.id, document.text);
+					// The text may change outside the editor (a grammar replaced by an open
+					// link): the editor state has to follow, as a regular change so it stays
+					// undoable. When the editor itself was the origin — typing, or a reindent,
+					// which updates the state first — the texts already match and nothing moves.
+					if (event.id === shownId) {
+						if (view.state.doc.toString() !== document.text) {
+							view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: document.text } });
+						}
+					} else {
+						const parked = states.get(event.id);
+						if (parked && parked.doc.toString() !== document.text) {
+							states.set(event.id, parked.update({
+								changes: { from: 0, to: parked.doc.length, insert: document.text },
+							}).state);
+						}
+					}
 				}
 				if (event.id === shownId) {
 					refreshView();

@@ -73,15 +73,14 @@ export interface LinkedGrammar {
 	namespace: string;
 }
 
-/**
- * How the workspace is to receive the grammars of an open link. A grammar whose namespace is
- * already defined by a document with the very same text is left out: there is nothing to do.
- */
+/** How the workspace is to receive the grammars of an open link. */
 export interface GrammarPlan {
 	/** Namespace not defined in the workspace yet: the grammar is added without asking. */
 	add: LinkedGrammar[];
 	/** Namespace already defined with a different text: that document is replaced, after asking. */
 	replace: { grammar: LinkedGrammar; documentId: string }[];
+	/** Namespace already defined with the very same text: nothing to change in that document. */
+	keep: { grammar: LinkedGrammar; documentId: string }[];
 }
 
 /**
@@ -89,15 +88,16 @@ export interface GrammarPlan {
  * already has. Namespaces follow the workspace discovery rule (one definition per namespace),
  * so the plan never adds a second definition: an unknown namespace is an addition, a known one
  * with a different text is a replacement — of the first document that defines it — for the
- * caller to confirm. A payload that is not a grammar, or repeats a namespace already brought by
- * this same link, is ignored.
+ * caller to confirm, and a known one with the very same text is a keep, pointing at the
+ * document that already holds it. A payload that is not a grammar, or repeats a namespace
+ * already brought by this same link, is ignored.
  *
  * @param workspace the workspace the link opens into.
  * @param grammarTexts texts of the grammars the link carried, in order.
- * @returns the additions and replacements to perform.
+ * @returns the additions, replacements and keeps, one entry per grammar of the link.
  */
 export function planGrammars(workspace: Workspace, grammarTexts: readonly string[]): GrammarPlan {
-	const plan: GrammarPlan = { add: [], replace: [] };
+	const plan: GrammarPlan = { add: [], replace: [], keep: [] };
 	if (grammarTexts.length === 0) {
 		return plan;
 	}
@@ -124,21 +124,47 @@ export function planGrammars(workspace: Workspace, grammarTexts: readonly string
 			plan.add.push({ text, namespace });
 		} else if (existing.text !== text) {
 			plan.replace.push({ grammar: { text, namespace }, documentId: existing.id });
+		} else {
+			plan.keep.push({ grammar: { text, namespace }, documentId: existing.id });
 		}
 	}
 	return plan;
 }
 
-/** Namespaces defined by the grammar roots of a text, in order; empty when it does not parse. */
-function grammarNamespacesOf(text: string): string[] {
-	let roots: ReadonlyArray<Node>;
+/**
+ * Whether a text is a grammar document: it parses, it has at least one root, every root is a
+ * grammar (a schema or a template), and at least one declares its namespace. This is what
+ * decides that the document of an open link gets the one-definition-per-namespace treatment of
+ * {@link planGrammars} instead of entering as a plain document; the mixed form — a document
+ * sharing the file with its grammars — is a plain document.
+ *
+ * @param text the full text of the linked document.
+ */
+export function isGrammarDocument(text: string): boolean {
+	const roots = parseRoots(text);
+	return roots !== undefined && roots.length > 0
+		&& roots.every(isGrammarRoot)
+		&& namespacesOfGrammarRoots(roots).length > 0;
+}
+
+/** The roots of a text, or undefined when it does not parse. */
+function parseRoots(text: string): ReadonlyArray<Node> | undefined {
 	try {
 		// Same policy as the share decode: the workspace judges each document once loaded
-		roots = new Parser({ maxNesting: -1, maxLineLength: -1, maxInputSize: -1 }).parse(text);
+		return new Parser({ maxNesting: -1, maxLineLength: -1, maxInputSize: -1 }).parse(text);
 	} catch {
-		return [];
+		return undefined;
 	}
+}
 
+/** Namespaces defined by the grammar roots of a text, in order; empty when it does not parse. */
+function grammarNamespacesOf(text: string): string[] {
+	const roots = parseRoots(text);
+	return roots === undefined ? [] : namespacesOfGrammarRoots(roots);
+}
+
+/** Namespaces defined by the grammar roots among the given roots, in order. */
+function namespacesOfGrammarRoots(roots: ReadonlyArray<Node>): string[] {
 	const namespaces: string[] = [];
 	for (const root of roots) {
 		if (isGrammarRoot(root) && root instanceof InlineNode) {

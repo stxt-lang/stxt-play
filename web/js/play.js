@@ -25661,7 +25661,7 @@ Book (stxt.play.library):
     return "added";
   }
   function planGrammars(workspace, grammarTexts) {
-    const plan = { add: [], replace: [] };
+    const plan = { add: [], replace: [], keep: [] };
     if (grammarTexts.length === 0) {
       return plan;
     }
@@ -25685,17 +25685,28 @@ Book (stxt.play.library):
         plan.add.push({ text, namespace });
       } else if (existing.text !== text) {
         plan.replace.push({ grammar: { text, namespace }, documentId: existing.id });
+      } else {
+        plan.keep.push({ grammar: { text, namespace }, documentId: existing.id });
       }
     }
     return plan;
   }
-  function grammarNamespacesOf(text) {
-    let roots;
+  function isGrammarDocument(text) {
+    const roots = parseRoots(text);
+    return roots !== void 0 && roots.length > 0 && roots.every(isGrammarRoot) && namespacesOfGrammarRoots(roots).length > 0;
+  }
+  function parseRoots(text) {
     try {
-      roots = new import_core8.Parser({ maxNesting: -1, maxLineLength: -1, maxInputSize: -1 }).parse(text);
+      return new import_core8.Parser({ maxNesting: -1, maxLineLength: -1, maxInputSize: -1 }).parse(text);
     } catch {
-      return [];
+      return void 0;
     }
+  }
+  function grammarNamespacesOf(text) {
+    const roots = parseRoots(text);
+    return roots === void 0 ? [] : namespacesOfGrammarRoots(roots);
+  }
+  function namespacesOfGrammarRoots(roots) {
     const namespaces = [];
     for (const root of roots) {
       if (isGrammarRoot(root) && root instanceof import_core8.InlineNode) {
@@ -26340,6 +26351,13 @@ Book (stxt.play.library):
             showStatus("The link does not carry a valid document.");
             return;
           }
+          const askReplace = (namespace) => confirmDialog({
+            title: "Replace the grammar?",
+            message: `The link brings a grammar for '${namespace}', and the workspace already has a different one for that namespace.`,
+            confirmLabel: "Replace",
+            cancelLabel: "Keep mine",
+            danger: true
+          });
           const plan = planGrammars(workspace, linked.grammars ?? []);
           let grammars = 0;
           for (const grammar of plan.add) {
@@ -26347,20 +26365,33 @@ Book (stxt.play.library):
             grammars++;
           }
           for (const { grammar, documentId } of plan.replace) {
-            const replace2 = await confirmDialog({
-              title: "Replace the grammar?",
-              message: `The link brings a grammar for '${grammar.namespace}', and the workspace already has a different one for that namespace.`,
-              confirmLabel: "Replace",
-              cancelLabel: "Keep mine",
-              danger: true
-            });
-            if (replace2) {
+            if (await askReplace(grammar.namespace)) {
               workspace.setText(documentId, grammar.text);
               grammars++;
             }
           }
-          const outcome = openLinked(workspace, linked.text, linked.title);
-          const base2 = outcome === "existing" ? "The document of the link was already in the workspace." : "Document opened from the link.";
+          let base2;
+          if (isGrammarDocument(linked.text)) {
+            const main2 = planGrammars(workspace, [linked.text]);
+            if (main2.add.length > 0) {
+              workspace.addDocument(main2.add[0].text, main2.add[0].namespace);
+              base2 = "Grammar opened from the link.";
+            } else if (main2.keep.length > 0) {
+              workspace.setActive(main2.keep[0].documentId);
+              base2 = "The grammar of the link was already in the workspace.";
+            } else {
+              const { grammar, documentId } = main2.replace[0];
+              const replace2 = await askReplace(grammar.namespace);
+              if (replace2) {
+                workspace.setText(documentId, grammar.text);
+              }
+              workspace.setActive(documentId);
+              base2 = replace2 ? "Grammar replaced from the link." : "Your grammar was kept.";
+            }
+          } else {
+            const outcome = openLinked(workspace, linked.text, linked.title);
+            base2 = outcome === "existing" ? "The document of the link was already in the workspace." : "Document opened from the link.";
+          }
           showStatus(grammars === 0 ? base2 : `${base2} The link also brought ${grammars} grammar${grammars === 1 ? "" : "s"}.`);
         });
       }

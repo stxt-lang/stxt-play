@@ -15,6 +15,7 @@ export {
 export {
 	freeTitle,
 	GrammarPlan,
+	isGrammarDocument,
 	LinkedGrammar,
 	loadSharedSnapshot,
 	openLinked,

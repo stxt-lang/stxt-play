@@ -17,6 +17,7 @@ import {
 	decodeShare,
 	DEFAULT_SETTINGS,
 	encodeShare,
+	isGrammarDocument,
 	isOpenLink,
 	KeyValueStorage,
 	loadSettings,
@@ -519,9 +520,18 @@ function main(): void {
 					return;
 				}
 
-				// The grammars come first, so the document added last is the one left active;
-				// an identical grammar is already dropped from the plan, and a replacement
-				// overwrites a document of this browser, so it asks
+				// A replacement overwrites a document of this browser, so it asks
+				const askReplace = (namespace: string): Promise<boolean> => confirmDialog({
+					title: "Replace the grammar?",
+					message: `The link brings a grammar for '${namespace}', `
+						+ "and the workspace already has a different one for that namespace.",
+					confirmLabel: "Replace",
+					cancelLabel: "Keep mine",
+					danger: true,
+				});
+
+				// The grammars come first, so the document handled last is the one left active;
+				// an identical grammar is kept as it is
 				const plan = planGrammars(workspace, linked.grammars ?? []);
 				let grammars = 0;
 				for (const grammar of plan.add) {
@@ -529,24 +539,38 @@ function main(): void {
 					grammars++;
 				}
 				for (const { grammar, documentId } of plan.replace) {
-					const replace = await confirmDialog({
-						title: "Replace the grammar?",
-						message: `The link brings a grammar for '${grammar.namespace}', `
-							+ "and the workspace already has a different one for that namespace.",
-						confirmLabel: "Replace",
-						cancelLabel: "Keep mine",
-						danger: true,
-					});
-					if (replace) {
+					if (await askReplace(grammar.namespace)) {
 						workspace.setText(documentId, grammar.text);
 						grammars++;
 					}
 				}
 
-				const outcome = openLinked(workspace, linked.text, linked.title);
-				const base = outcome === "existing"
-					? "The document of the link was already in the workspace."
-					: "Document opened from the link.";
+				let base: string;
+				if (isGrammarDocument(linked.text)) {
+					// A grammar follows the one-definition-per-namespace rule instead of
+					// entering as a plain document, and ends up selected either way
+					const main = planGrammars(workspace, [linked.text]);
+					if (main.add.length > 0) {
+						workspace.addDocument(main.add[0].text, main.add[0].namespace);
+						base = "Grammar opened from the link.";
+					} else if (main.keep.length > 0) {
+						workspace.setActive(main.keep[0].documentId);
+						base = "The grammar of the link was already in the workspace.";
+					} else {
+						const { grammar, documentId } = main.replace[0];
+						const replace = await askReplace(grammar.namespace);
+						if (replace) {
+							workspace.setText(documentId, grammar.text);
+						}
+						workspace.setActive(documentId);
+						base = replace ? "Grammar replaced from the link." : "Your grammar was kept.";
+					}
+				} else {
+					const outcome = openLinked(workspace, linked.text, linked.title);
+					base = outcome === "existing"
+						? "The document of the link was already in the workspace."
+						: "Document opened from the link.";
+				}
 				showStatus(grammars === 0 ? base
 					: `${base} The link also brought ${grammars} grammar${grammars === 1 ? "" : "s"}.`);
 			});

@@ -118,6 +118,12 @@ namespace: a grammar for a namespace nothing defines is added silently; one iden
 definition already there does nothing; one that differs asks before replacing it. A `g=` payload
 that is not a grammar, or does not decode, is ignored — the document of the link always opens.
 
+A `d=` document that is itself a grammar — every root a schema or a template — follows the same
+rule instead of entering as a plain document: an unknown namespace is added (listed by its
+namespace), an identical definition is selected, and a differing one asks before being replaced.
+Either way that grammar ends up selected, so no link can ever leave the workspace with two
+definitions of the same namespace.
+
 ## Beyond the playground
 
 The editor is not meant to be single-use. Two follow-ups shape the design:

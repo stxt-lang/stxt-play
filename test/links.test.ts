@@ -3,6 +3,7 @@ import {
 	createWorkspacePersistence,
 	freeTitle,
 	loadSharedSnapshot,
+	isGrammarDocument,
 	loadWorkspace,
 	KeyValueStorage,
 	openLinked,
@@ -138,17 +139,24 @@ describe("planGrammars", () => {
 
 		const plan = planGrammars(workspace, [template]);
 
-		assert.deepStrictEqual(plan.replace, []);
-		assert.deepStrictEqual(plan.add, [{ text: template, namespace: "com.acme.book" }]);
+		assert.deepStrictEqual(plan, {
+			add: [{ text: template, namespace: "com.acme.book" }],
+			replace: [],
+			keep: [],
+		});
 	});
 
-	it("drops a grammar identical to the one already defining its namespace", () => {
+	it("keeps a grammar identical to the one already defining its namespace, pointing at it", () => {
 		const workspace = new Workspace(sequentialIds());
-		workspace.addDocument(template, "Grammar");
+		const existing = workspace.addDocument(template, "Grammar");
 
 		const plan = planGrammars(workspace, [template]);
 
-		assert.deepStrictEqual(plan, { add: [], replace: [] });
+		assert.deepStrictEqual(plan, {
+			add: [],
+			replace: [],
+			keep: [{ grammar: { text: template, namespace: "com.acme.book" }, documentId: existing.id }],
+		});
 	});
 
 	it("plans a replacement when the namespace is defined with a different text", () => {
@@ -157,10 +165,11 @@ describe("planGrammars", () => {
 
 		const plan = planGrammars(workspace, [schema]);
 
-		assert.deepStrictEqual(plan.add, []);
-		assert.deepStrictEqual(plan.replace, [
-			{ grammar: { text: schema, namespace: "com.acme.book" }, documentId: existing.id },
-		]);
+		assert.deepStrictEqual(plan, {
+			add: [],
+			replace: [{ grammar: { text: schema, namespace: "com.acme.book" }, documentId: existing.id }],
+			keep: [],
+		});
 	});
 
 	it("matches namespaces case-insensitively, as the language does", () => {
@@ -185,8 +194,23 @@ describe("planGrammars", () => {
 			schema, // same namespace as the template above: the first one of the link wins
 		]);
 
-		assert.deepStrictEqual(plan.replace, []);
-		assert.deepStrictEqual(plan.add, [{ text: template, namespace: "com.acme.book" }]);
+		assert.deepStrictEqual(plan, {
+			add: [{ text: template, namespace: "com.acme.book" }],
+			replace: [],
+			keep: [],
+		});
+	});
+
+	it("isGrammarDocument tells a pure grammar apart from a plain or mixed document", () => {
+		assert.strictEqual(isGrammarDocument(template), true);
+		assert.strictEqual(isGrammarDocument(template + "\n" + schema), true, "several grammars, still pure");
+
+		assert.strictEqual(isGrammarDocument("Book (com.acme.book): One\n"), false, "a plain document");
+		assert.strictEqual(isGrammarDocument("Book (com.acme.book): One\n\n" + template), false,
+			"the mixed form stays a plain document");
+		assert.strictEqual(isGrammarDocument("Template (@stxt.template):\n"), false, "no namespace declared");
+		assert.strictEqual(isGrammarDocument(""), false, "no roots");
+		assert.strictEqual(isGrammarDocument("\tbroken: indentation\n"), false, "does not parse");
 	});
 });
 

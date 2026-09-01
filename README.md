@@ -55,7 +55,9 @@ a real editor, not a form or a viewer.
   is validated. Switching the indentation converts the
   **structural** indentation of every document (levels only — comments, values and the relative
   indentation inside text blocks are left as they are), and it is undoable in each document.
-- The document list can be **reordered** by dragging rows, or with Alt+Up/Down.
+- The document list can be **reordered** by dragging rows, or with Alt+Up/Down, and **resized**
+  by dragging the divider between the list and the editor (arrow keys move it when it has the
+  focus; a double click brings the default width back). The width is remembered between visits.
 
 The playground is **not** a JSON converter: showing the canonical STXT-TREE-SPEC tree was on the
 list and was dropped — it may come back as a secondary view, but it is not what the product is

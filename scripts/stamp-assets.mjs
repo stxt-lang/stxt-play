@@ -3,7 +3,9 @@
 // The served files keep their fixed names (css/site.css, js/play.js, the favicons), so a browser
 // or a CDN could hold on to an old copy after a new build; with the hash in the query string the
 // URL changes whenever the content does, and index.html — which is never cached, see web/_headers —
-// always points at the current one. Runs as the last step of `npm run build`; idempotent.
+// always points at the current one. Also stamps the package version into the header's
+// `#app-version` span, so the visible version cannot drift from package.json. Runs as the last
+// step of `npm run build`; idempotent.
 
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -30,5 +32,8 @@ for (const asset of ASSETS) {
 		return `${before}${asset}?v=${version}${after}`;
 	});
 }
+const { version } = JSON.parse(readFileSync(join(web, "..", "package.json"), "utf8"));
+html = html.replace(/(<span id="app-version"[^>]*>)[^<]*(<\/span>)/, `$1v${version}$2`);
+
 writeFileSync(indexPath, html);
-console.log(`stamp-assets: ${stamped} reference(s) versioned in web/index.html`);
+console.log(`stamp-assets: ${stamped} reference(s) versioned in web/index.html, version v${version}`);

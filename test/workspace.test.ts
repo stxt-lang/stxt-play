@@ -236,9 +236,19 @@ describe("Settings persistence", () => {
 		assert.strictEqual(saveSettings(storage, { indent: "spaces", validation: false }), true);
 		assert.deepStrictEqual(loadSettings(storage), { indent: "spaces", validation: false });
 
+		assert.strictEqual(saveSettings(storage, { indent: "spaces", validation: false, sidebarWidth: 300 }), true);
+		assert.deepStrictEqual(loadSettings(storage), { indent: "spaces", validation: false, sidebarWidth: 300 });
+
 		storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ indent: "elephants", validation: false }));
 		assert.deepStrictEqual(loadSettings(storage), { indent: "tabs", validation: false },
 			"a malformed field falls back to its default, the rest is kept");
+
+		storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ indent: "tabs", validation: true, sidebarWidth: "wide" }));
+		assert.deepStrictEqual(loadSettings(storage), DEFAULT_SETTINGS,
+			"a malformed width is dropped: its default is the stylesheet's, not a number");
+
+		storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ indent: "tabs", validation: true, sidebarWidth: -5 }));
+		assert.deepStrictEqual(loadSettings(storage), DEFAULT_SETTINGS, "so is a width that is not positive");
 
 		storage.setItem(SETTINGS_STORAGE_KEY, "{oops");
 		assert.deepStrictEqual(loadSettings(storage), DEFAULT_SETTINGS, "corrupt JSON: defaults");

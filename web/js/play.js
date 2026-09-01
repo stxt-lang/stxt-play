@@ -25317,6 +25317,67 @@ Book (stxt.play.library):
     };
   }
 
+  // src/ui/splitter.ts
+  var MIN_SIDEBAR_WIDTH = 160;
+  var MIN_EDITOR_WIDTH = 320;
+  var KEY_STEP = 16;
+  function setupSplitter(options) {
+    const { handle, sidebar, onWidthChange } = options;
+    const clamp = (width) => {
+      const total = sidebar.parentElement?.getBoundingClientRect().width ?? 0;
+      const max = Math.max(MIN_SIDEBAR_WIDTH, total - MIN_EDITOR_WIDTH);
+      return Math.round(Math.min(max, Math.max(MIN_SIDEBAR_WIDTH, width)));
+    };
+    let current;
+    const apply = (width) => {
+      current = width;
+      if (width === void 0) {
+        sidebar.style.removeProperty("--sidebar-width");
+        handle.removeAttribute("aria-valuenow");
+      } else {
+        sidebar.style.setProperty("--sidebar-width", `${width}px`);
+        handle.setAttribute("aria-valuenow", String(width));
+      }
+    };
+    if (options.width !== void 0) {
+      apply(clamp(options.width));
+    }
+    let dragFrom;
+    handle.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      handle.setPointerCapture(event.pointerId);
+      dragFrom = { x: event.clientX, width: sidebar.getBoundingClientRect().width };
+      handle.classList.add("splitter-active");
+    });
+    handle.addEventListener("pointermove", (event) => {
+      if (dragFrom) {
+        apply(clamp(dragFrom.width + event.clientX - dragFrom.x));
+      }
+    });
+    const endDrag = () => {
+      if (dragFrom) {
+        dragFrom = void 0;
+        handle.classList.remove("splitter-active");
+        onWidthChange(current);
+      }
+    };
+    handle.addEventListener("pointerup", endDrag);
+    handle.addEventListener("pointercancel", endDrag);
+    handle.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+        return;
+      }
+      event.preventDefault();
+      const from = current ?? sidebar.getBoundingClientRect().width;
+      apply(clamp(from + (event.key === "ArrowRight" ? KEY_STEP : -KEY_STEP)));
+      onWidthChange(current);
+    });
+    handle.addEventListener("dblclick", () => {
+      apply(void 0);
+      onWidthChange(void 0);
+    });
+  }
+
   // src/ui/viewTabs.ts
   var PLAYGROUND_VIEWS = ["documents", "editor", "problems"];
   function isPlaygroundView(value) {
@@ -25642,10 +25703,14 @@ Book (stxt.play.library):
       return { ...DEFAULT_SETTINGS };
     }
     const candidate = parsed;
-    return {
+    const settings = {
       indent: candidate.indent === "spaces" || candidate.indent === "tabs" ? candidate.indent : DEFAULT_SETTINGS.indent,
       validation: typeof candidate.validation === "boolean" ? candidate.validation : DEFAULT_SETTINGS.validation
     };
+    if (typeof candidate.sidebarWidth === "number" && Number.isFinite(candidate.sidebarWidth) && candidate.sidebarWidth > 0) {
+      settings.sidebarWidth = candidate.sidebarWidth;
+    }
+    return settings;
   }
   function saveSettings(storage, settings) {
     try {
@@ -25880,7 +25945,9 @@ Book (stxt.play.library):
     const shareButton = document.getElementById("share");
     const status = document.getElementById("status");
     const viewTabsNav = document.getElementById("view-tabs");
-    if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount || !indentTabs || !indentSpaces || !validationToggle || !docReset || !docClear || !shareButton || !status || !viewTabsNav) {
+    const sidebar = document.getElementById("sidebar");
+    const splitter = document.getElementById("splitter");
+    if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount || !indentTabs || !indentSpaces || !validationToggle || !docReset || !docClear || !shareButton || !status || !viewTabsNav || !sidebar || !splitter) {
       return;
     }
     let statusTimer;
@@ -26036,6 +26103,22 @@ Book (stxt.play.library):
       editor.showState(state);
       refreshView();
     };
+    setupSplitter({
+      handle: splitter,
+      sidebar,
+      width: settings.sidebarWidth,
+      onWidthChange: (width) => {
+        if (width === void 0) {
+          delete settings.sidebarWidth;
+        } else {
+          settings.sidebarWidth = width;
+        }
+        if (storage) {
+          saveSettings(storage, settings);
+        }
+        view.requestMeasure();
+      }
+    });
     setupHeaderSwitches({
       elements: { indentTabs, indentSpaces, validationToggle },
       settings,

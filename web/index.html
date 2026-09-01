@@ -13,16 +13,16 @@
 	<link rel="icon" href="favicon.ico?v=e17de22759" sizes="any">
 	<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=0bc3ca3a91">
 	<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=804f660991">
-	<link rel="apple-touch-icon" href="apple-touch-icon.png?v=6526ef64fc">
+	<link rel="apple-touch-icon" href="apple-touch-icon.png?v=190cfbd9f4">
 	<!-- Russo One: the identity font of the STXT wordmark, the same source as the portal (stxt.dev) -->
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-	<link rel="stylesheet" href="css/site.css?v=3207547e1f">
+	<link rel="stylesheet" href="css/site.css?v=85bcb368c5">
 </head>
 <body>
 	<header class="topbar">
-		<span class="brand"><a class="brand-name" href="https://stxt.dev" title="STXT — the language site">STXT</a> <span class="brand-sub">Playground</span></span>
+		<span class="brand"><a class="brand-name" href="https://stxt.dev" title="STXT — the language site">STXT</a> <span class="brand-sub">Playground</span> <span id="app-version" class="brand-version" title="Playground version">v1.0.1</span></span>
 		<span id="doc-title" class="doc-title"></span>
 		<div class="topbar-controls">
 			<div class="segmented" role="group" aria-label="Indentation">
@@ -48,7 +48,7 @@
 		<button type="button" data-view="problems" aria-selected="false">Problems <span class="view-tab-count" hidden>0</span></button>
 	</nav>
 	<div class="workbench">
-		<aside class="sidebar" aria-label="Documents">
+		<aside id="sidebar" class="sidebar" aria-label="Documents">
 			<header class="sidebar-header">
 				<span class="sidebar-title">Documents</span>
 				<button id="doc-reset" type="button" class="sidebar-button" title="Reset the workspace to the example documents" aria-label="Reset workspace">↺</button>
@@ -58,12 +58,13 @@
 			<ul id="doc-list" class="doc-list" role="listbox" aria-label="Workspace documents"></ul>
 			<footer class="sidebar-footer">Everything runs in your browser · saved locally</footer>
 		</aside>
+		<div id="splitter" class="splitter" role="separator" aria-orientation="vertical" aria-label="Resize the document list" tabindex="0" title="Drag to resize the document list (double-click resets it)"></div>
 		<main id="editor" class="editor" aria-label="STXT editor"></main>
 	</div>
 	<section class="problems" aria-label="Problems">
 		<header class="problems-header">Problems <span id="problems-count" class="problems-count" aria-live="polite" aria-label="Number of problems">0</span></header>
 		<ul id="problems-list" class="problems-list"></ul>
 	</section>
-	<script src="js/play.js?v=aa0ed1b957"></script>
+	<script src="js/play.js?v=29232c5e23"></script>
 </body>
 </html>

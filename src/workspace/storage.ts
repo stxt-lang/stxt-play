@@ -18,12 +18,14 @@ export const SETTINGS_STORAGE_KEY = "stxt-play.settings";
 /** How the editor indents: a real tab per level, or four spaces. STXT accepts both. */
 export type IndentMode = "tabs" | "spaces";
 
-/** The user preferences of the playground: the two switches of the header. */
+/** The user preferences of the playground: the two switches of the header and the layout. */
 export interface PlaygroundSettings {
 	/** What the Tab key inserts; switching re-indents the structural indentation of the workspace. */
 	indent: IndentMode;
 	/** Whether documents are validated against the workspace grammars. */
 	validation: boolean;
+	/** Width of the document list in CSS pixels, set by dragging the divider; absent = the stylesheet default. */
+	sidebarWidth?: number;
 }
 
 /** Settings of a fresh playground. */
@@ -103,10 +105,15 @@ export function loadSettings(storage: KeyValueStorage): PlaygroundSettings {
 		return { ...DEFAULT_SETTINGS };
 	}
 	const candidate = parsed as Record<string, unknown>;
-	return {
+	const settings: PlaygroundSettings = {
 		indent: candidate.indent === "spaces" || candidate.indent === "tabs" ? candidate.indent : DEFAULT_SETTINGS.indent,
 		validation: typeof candidate.validation === "boolean" ? candidate.validation : DEFAULT_SETTINGS.validation,
 	};
+	// Optional, and its default is the stylesheet's: a malformed width is dropped, not replaced
+	if (typeof candidate.sidebarWidth === "number" && Number.isFinite(candidate.sidebarWidth) && candidate.sidebarWidth > 0) {
+		settings.sidebarWidth = candidate.sidebarWidth;
+	}
+	return settings;
 }
 
 /**

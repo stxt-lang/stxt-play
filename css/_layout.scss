@@ -66,6 +66,13 @@ body {
 		opacity: 0.85;
 	}
 
+	// The playground version, stamped from package.json by the build (scripts/stamp-assets.mjs)
+	.brand-version {
+		font-weight: 400;
+		font-size: 0.7rem;
+		opacity: 0.6;
+	}
+
 	.topbar-button {
 		padding: 0.15rem 0.6rem;
 		border: 1px solid rgba(#fff, 0.6);
@@ -238,6 +245,28 @@ body {
 	display: flex;
 	flex: 1;
 	min-height: 0; // let the editor scroll instead of growing the page
+}
+
+// Drag handle between the document list and the editor (src/ui/splitter.ts): an invisible strip
+// straddling the sidebar border, lit while hovered, focused or dragged. Wide screens only.
+.splitter {
+	flex: none;
+	width: 7px;
+	margin: 0 -3px;
+	z-index: 1;
+	background: transparent;
+	cursor: col-resize;
+	touch-action: none; // the drag must not scroll the page on touch screens
+
+	&:hover,
+	&:focus-visible,
+	&.splitter-active {
+		background: rgba($color1, 0.35);
+	}
+
+	&:focus-visible {
+		outline: none; // the lit strip is the focus indicator: an outline on 7px reads as noise
+	}
 }
 
 // View tabs: Documents · Editor · Problems. Hidden on wide screens, where the three panes
@@ -419,6 +448,7 @@ body {
 		padding: 0.4rem 1rem;
 
 		.brand-sub,
+		.brand-version,
 		.topbar-links {
 			display: none;
 		}
@@ -442,6 +472,11 @@ body {
 
 	.workbench {
 		flex-direction: column;
+	}
+
+	// One pane at a time: there are no side-by-side panes to trade width between
+	.splitter {
+		display: none;
 	}
 
 	// Every pane takes the whole space under the tabs; only the chosen one is displayed

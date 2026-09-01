@@ -9,6 +9,7 @@ import { createDocumentList, DocumentListEntry, DocumentListKind } from "./ui/do
 import { confirmDialog, linkDialog } from "./ui/dialog";
 import { setupHeaderSwitches } from "./ui/headerSwitches";
 import { createProblemsPanel } from "./ui/problemsPanel";
+import { setupSplitter } from "./ui/splitter";
 import { createViewTabs } from "./ui/viewTabs";
 import {
 	createWorkspacePersistence,
@@ -38,7 +39,8 @@ import {
  * highlighting, underlines, the problems panel, the document list, the header — reads from the
  * analysis. The editor shows one document at a time; every workspace document keeps its own
  * CodeMirror state, so switching preserves undo history and selection. The two header switches
- * — indentation mode and validation on/off — are settings, persisted apart from the workspace.
+ * — indentation mode and validation on/off — and the width of the document list are settings,
+ * persisted apart from the workspace.
  */
 
 /** How long a status message stays on screen. */
@@ -108,9 +110,11 @@ function main(): void {
 	const shareButton = document.getElementById("share");
 	const status = document.getElementById("status");
 	const viewTabsNav = document.getElementById("view-tabs");
+	const sidebar = document.getElementById("sidebar");
+	const splitter = document.getElementById("splitter");
 	if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount
 		|| !indentTabs || !indentSpaces || !validationToggle || !docReset || !docClear || !shareButton
-		|| !status || !viewTabsNav) {
+		|| !status || !viewTabsNav || !sidebar || !splitter) {
 		return;
 	}
 
@@ -303,6 +307,25 @@ function main(): void {
 		editor.showState(state);
 		refreshView();
 	};
+
+	// --- Splitter: the divider between the document list and the editor -----------------------
+
+	setupSplitter({
+		handle: splitter,
+		sidebar,
+		width: settings.sidebarWidth,
+		onWidthChange: (width) => {
+			if (width === undefined) {
+				delete settings.sidebarWidth;
+			} else {
+				settings.sidebarWidth = width;
+			}
+			if (storage) {
+				saveSettings(storage, settings);
+			}
+			view.requestMeasure();
+		},
+	});
 
 	// --- Header switches ----------------------------------------------------------------------
 

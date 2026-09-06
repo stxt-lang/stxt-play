@@ -25821,7 +25821,8 @@ Book (stxt.play.library):
     } catch {
       return void 0;
     }
-    return toWorkspaceSnapshot(parsed);
+    const snapshot = toWorkspaceSnapshot(parsed);
+    return snapshot && snapshot.documents.length > 0 ? snapshot : void 0;
   }
   function saveWorkspace(storage, snapshot) {
     try {
@@ -26290,6 +26291,8 @@ Book (stxt.play.library):
       this.storage = storage;
       this.analyzer = new Analyzer();
       this.workspace = new Workspace();
+      /** The links being applied, in order: a link waits for the dialogs of the previous one. */
+      this.links = Promise.resolve();
       /** The questions a link may ask, as the playground's dialogs. */
       this.dialogs = {
         loadSharedWorkspace: (count) => confirmDialog({
@@ -26419,13 +26422,13 @@ Book (stxt.play.library):
         }
       });
       const stored = this.storage ? loadWorkspace(this.storage) : void 0;
-      if (stored && stored.documents.length > 0) {
+      if (stored) {
         this.workspace.load(stored);
       } else {
         this.loadSeed();
       }
-      void this.handleFragment(stored !== void 0);
-      window.addEventListener("hashchange", () => void this.handleFragment(true));
+      this.handleFragment(stored !== void 0);
+      window.addEventListener("hashchange", () => this.handleFragment(true));
     }
     // --- Painting: everything visible reads the workspace and the analysis --------------------
     get view() {
@@ -26571,21 +26574,26 @@ Book (stxt.play.library):
      * Acts on the fragment of the current URL: a share link (`#w=`) or an open link (`#d=`).
      * Runs at start and again on every `hashchange`, because a page that reuses this tab
      * (the "Open in the playground" links of stxt.dev share a window name) only changes the
-     * fragment, and the browser does not reload on that.
+     * fragment, and the browser does not reload on that. The fragment is consumed at once, but
+     * the link is applied after the previous one has finished: a link may hold a dialog open,
+     * and the playground has a single dialog — two links running at the same time would answer
+     * each other's questions.
      *
      * @param ownContent whether the workspace holds the user's own documents (as opposed to the
      * seed): a share link then asks before replacing them.
      */
-    async handleFragment(ownContent) {
+    handleFragment(ownContent) {
       const link = linkOf(location.hash);
       if (!link) {
         return;
       }
       history.replaceState(null, "", `${location.pathname}${location.search}`);
-      const status = await applyLink(link, this.workspace, ownContent, this.dialogs);
-      if (status !== void 0) {
-        this.showStatus(status);
-      }
+      this.links = this.links.then(async () => {
+        const status = await applyLink(link, this.workspace, ownContent, this.dialogs);
+        if (status !== void 0) {
+          this.showStatus(status);
+        }
+      });
     }
     persistSettings() {
       if (this.storage) {

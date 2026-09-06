@@ -57,6 +57,8 @@ export class Playground {
 	private readonly panel: ProblemsPanel;
 	private readonly list: DocumentList;
 	private readonly persistNow: () => void;
+	/** The links being applied, in order: a link waits for the dialogs of the previous one. */
+	private links: Promise<void> = Promise.resolve();
 
 	/** The questions a link may ask, as the playground's dialogs. */
 	private readonly dialogs: FragmentDialogs = {
@@ -221,15 +223,15 @@ export class Playground {
 		});
 
 		const stored = this.storage ? loadWorkspace(this.storage) : undefined;
-		if (stored && stored.documents.length > 0) {
+		if (stored) {
 			this.workspace.load(stored);
 		} else {
 			this.loadSeed();
 		}
 
-		void this.handleFragment(stored !== undefined);
+		this.handleFragment(stored !== undefined);
 		// Once running, whatever is in the workspace is the user's: a later share link always asks
-		window.addEventListener("hashchange", () => void this.handleFragment(true));
+		window.addEventListener("hashchange", () => this.handleFragment(true));
 	}
 
 	// --- Painting: everything visible reads the workspace and the analysis --------------------
@@ -399,12 +401,15 @@ export class Playground {
 	 * Acts on the fragment of the current URL: a share link (`#w=`) or an open link (`#d=`).
 	 * Runs at start and again on every `hashchange`, because a page that reuses this tab
 	 * (the "Open in the playground" links of stxt.dev share a window name) only changes the
-	 * fragment, and the browser does not reload on that.
+	 * fragment, and the browser does not reload on that. The fragment is consumed at once, but
+	 * the link is applied after the previous one has finished: a link may hold a dialog open,
+	 * and the playground has a single dialog — two links running at the same time would answer
+	 * each other's questions.
 	 *
 	 * @param ownContent whether the workspace holds the user's own documents (as opposed to the
 	 * seed): a share link then asks before replacing them.
 	 */
-	private async handleFragment(ownContent: boolean): Promise<void> {
+	private handleFragment(ownContent: boolean): void {
 		const link = linkOf(location.hash);
 		if (!link) {
 			return;
@@ -412,10 +417,12 @@ export class Playground {
 		// A link is consumed once, so a reload must not act on it again. `replaceState` fires no
 		// `hashchange`, so there is no loop.
 		history.replaceState(null, "", `${location.pathname}${location.search}`);
-		const status = await applyLink(link, this.workspace, ownContent, this.dialogs);
-		if (status !== undefined) {
-			this.showStatus(status);
-		}
+		this.links = this.links.then(async () => {
+			const status = await applyLink(link, this.workspace, ownContent, this.dialogs);
+			if (status !== undefined) {
+				this.showStatus(status);
+			}
+		});
 	}
 
 	private persistSettings(): void {

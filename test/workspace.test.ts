@@ -188,6 +188,12 @@ describe("Workspace: snapshots and persistence", () => {
 		assert.deepStrictEqual(loaded, { active: "d1", documents: [{ id: "d1", title: "Doc", text: "Root: x\n" }] });
 	});
 
+	it("counts a stored workspace without documents as nothing stored", () => {
+		const storage = memoryStorage();
+		saveWorkspace(storage, { active: null, documents: [] });
+		assert.strictEqual(loadWorkspace(storage), undefined);
+	});
+
 	it("returns nothing for an absent, corrupt or foreign store, without throwing", () => {
 		const storage = memoryStorage();
 		assert.strictEqual(loadWorkspace(storage), undefined, "nothing stored");

@@ -47,8 +47,9 @@ export interface StoredWorkspace extends WorkspaceSnapshot {
  * Reads the workspace back from the store.
  *
  * @param storage the store to read from.
- * @returns the snapshot, or undefined if nothing usable is stored (absent, corrupt, or another
- * version). Never throws: a broken store must not keep the playground from starting.
+ * @returns the snapshot, or undefined if nothing usable is stored (absent, corrupt, another
+ * version, or a workspace without documents: there is nothing of the user's in it, so it counts
+ * as nothing stored). Never throws: a broken store must not keep the playground from starting.
  */
 export function loadWorkspace(storage: KeyValueStorage): WorkspaceSnapshot | undefined {
 	let raw: string | null;
@@ -67,7 +68,8 @@ export function loadWorkspace(storage: KeyValueStorage): WorkspaceSnapshot | und
 	} catch {
 		return undefined;
 	}
-	return toWorkspaceSnapshot(parsed);
+	const snapshot = toWorkspaceSnapshot(parsed);
+	return snapshot && snapshot.documents.length > 0 ? snapshot : undefined;
 }
 
 /**

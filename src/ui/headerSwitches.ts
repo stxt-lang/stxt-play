@@ -1,6 +1,7 @@
-import { ChangeSpec, EditorState, Text } from "@codemirror/state";
+import { ChangeSpec, Text } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { Analyzer, applyIndentChanges, IndentChange, SPACES_UNIT, TAB_UNIT } from "../analysis";
+import { DocumentStates } from "../editor/documentStates";
 import { IndentMode, PlaygroundSettings, Workspace } from "../workspace";
 
 /**
@@ -21,10 +22,8 @@ export interface HeaderSwitchesOptions {
 	analyzer: Analyzer;
 	/** The editor: its view, and the knob for what Tab inserts. */
 	editor: { view: EditorView; setIndentMode(mode: IndentMode): void };
-	/** The parked editor state of each workspace document not in the view. */
-	states: Map<string, EditorState>;
-	/** Identifier of the document currently in the view, if any. */
-	shownId(): string | null;
+	/** The editor states of the workspace documents: the one in the view and the parked ones. */
+	states: DocumentStates;
 	/** Saves the settings to the store. */
 	persistSettings(): void;
 	/** Repaints what the validation switch changes: the view, the panel and the list. */
@@ -64,19 +63,13 @@ export function setupHeaderSwitches(options: HeaderSwitchesOptions): void {
 			if (changes.length === 0) {
 				continue;
 			}
-			if (document.id === options.shownId()) {
-				// The update listener pushes the new text into the workspace
-				view.dispatch({ changes: toCmChanges(view.state.doc, changes), userEvent: "reindent" });
-				continue;
-			}
-			const parked = states.get(document.id);
-			if (parked) {
-				const next = parked.update({ changes: toCmChanges(parked.doc, changes), userEvent: "reindent" }).state;
-				states.set(document.id, next);
-				workspace.setText(document.id, next.doc.toString());
-			} else {
+			const outcome = states.change(document.id, (doc) => toCmChanges(doc, changes), "reindent");
+			if (outcome.where === "parked") {
+				workspace.setText(document.id, outcome.text);
+			} else if (outcome.where === "none") {
 				workspace.setText(document.id, applyIndentChanges(document.text, changes));
 			}
+			// In the view: the update listener pushes the new text into the workspace
 		}
 	};
 

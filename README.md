@@ -4,7 +4,7 @@ A web playground for [STXT](https://stxt.dev), the human-first hierarchical text
 in the browser, with its grammar next to it, and see errors as you type. Think VS Code, simplified —
 a real editor, not a form or a viewer.
 
-> **Live at [play.stxt.dev](https://play.stxt.dev).** Every phase of `ROADMAP.md` is done: analysis
+> **Live at [play.stxt.dev](https://play.stxt.dev).** Functionally complete: analysis
 > core, editor, multi-document workspace, header switches, autocompletion, hover and go to
 > definition, seed content, reset, share links, publication.
 
@@ -151,12 +151,17 @@ repository, with no build step in between.
 ```
 css/            SCSS sources         → compiled into web/css/
 src/            TypeScript sources   → bundled into web/js/
+src/index.ts    the entry point: starts the application once the page is parsed
+src/app/        the application: Playground.ts composes the page (the only file here with DOM), the rest is
+                what it composes without one — what a link does to the workspace, how a workspace event reaches
+                the analyzer, the editor states and the panels, labels, diagnostics — so it is tested in Node
 src/analysis/   the analysis core: tokens, diagnostics, workspace grammars, completion, node info, definitions (no DOM, no editor)
 src/workspace/  the workspace model, its localStorage persistence, share and open links (no DOM either)
 seed/           the example documents and grammars, bundled as text
-src/editor/     the CodeMirror layer: decorations from tokens, completion, hover, go to definition, editor setup
-src/ui/         the document list and the problems panel
-test/           mocha tests of the analysis core and the workspace
+src/editor/     the CodeMirror layer: decorations from tokens, completion, hover, go to definition, editor setup,
+                and the editor state of every workspace document (parked while another is shown)
+src/ui/         the document list, the problems panel, the dialogs, the header switches, the splitter, the view tabs
+test/           mocha tests of the analysis core, the workspace and the DOM-free parts of the application
 web/            exactly what gets served, committed as is
 compile_css.sh
 start_server.sh

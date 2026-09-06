@@ -5166,8 +5166,8 @@
     /**
     Extend this selection with an extra range.
     */
-    addRange(range, main2 = true) {
-      return _EditorSelection.create([range].concat(this.ranges), main2 ? 0 : this.mainIndex + 1);
+    addRange(range, main = true) {
+      return _EditorSelection.create([range].concat(this.ranges), main ? 0 : this.mainIndex + 1);
     }
     /**
     Replace a given range with another range, and then normalize the
@@ -5243,9 +5243,9 @@
     @internal
     */
     static normalized(ranges, mainIndex = 0) {
-      let main2 = ranges[mainIndex];
+      let main = ranges[mainIndex];
       ranges.sort((a, b) => a.from - b.from);
-      mainIndex = ranges.indexOf(main2);
+      mainIndex = ranges.indexOf(main);
       for (let i = 1; i < ranges.length; i++) {
         let range = ranges[i], prev = ranges[i - 1];
         if (range.empty ? range.from <= prev.to : range.from < prev.to) {
@@ -10271,21 +10271,21 @@
         return;
       let force = this.forceSelection;
       this.forceSelection = false;
-      let main2 = this.view.state.selection.main, anchor, head;
-      if (main2.empty) {
-        head = anchor = this.inlineDOMNearPos(main2.anchor, main2.assoc || 1);
+      let main = this.view.state.selection.main, anchor, head;
+      if (main.empty) {
+        head = anchor = this.inlineDOMNearPos(main.anchor, main.assoc || 1);
       } else {
-        head = this.inlineDOMNearPos(main2.head, main2.head == main2.from ? 1 : -1);
-        anchor = this.inlineDOMNearPos(main2.anchor, main2.anchor == main2.from ? 1 : -1);
+        head = this.inlineDOMNearPos(main.head, main.head == main.from ? 1 : -1);
+        anchor = this.inlineDOMNearPos(main.anchor, main.anchor == main.from ? 1 : -1);
       }
-      if (browser.gecko && main2.empty && !this.hasComposition && betweenUneditable(anchor)) {
+      if (browser.gecko && main.empty && !this.hasComposition && betweenUneditable(anchor)) {
         let dummy = document.createTextNode("");
         this.view.observer.ignore(() => anchor.node.insertBefore(dummy, anchor.node.childNodes[anchor.offset] || null));
         anchor = head = new DOMPos(dummy, 0);
         force = true;
       }
       let domSel = this.view.observer.selectionRange;
-      if (force || !domSel.focusNode || (!isEquivalentPosition(anchor.node, anchor.offset, domSel.anchorNode, domSel.anchorOffset) || !isEquivalentPosition(head.node, head.offset, domSel.focusNode, domSel.focusOffset)) && !this.suppressWidgetCursorChange(domSel, main2)) {
+      if (force || !domSel.focusNode || (!isEquivalentPosition(anchor.node, anchor.offset, domSel.anchorNode, domSel.anchorOffset) || !isEquivalentPosition(head.node, head.offset, domSel.focusNode, domSel.focusOffset)) && !this.suppressWidgetCursorChange(domSel, main)) {
         this.view.observer.ignore(() => {
           if (browser.android && browser.chrome && dom.contains(domSel.focusNode) && inUneditable(domSel.focusNode, dom)) {
             dom.blur();
@@ -10293,7 +10293,7 @@
           }
           let rawSel = getSelection(this.view.root);
           if (!rawSel) ;
-          else if (main2.empty) {
+          else if (main.empty) {
             if (browser.gecko) {
               let nextTo = nextToUneditable(anchor.node, anchor.offset);
               if (nextTo && nextTo != (1 | 2)) {
@@ -10303,8 +10303,8 @@
               }
             }
             rawSel.collapse(anchor.node, anchor.offset);
-            if (main2.bidiLevel != null && rawSel.caretBidiLevel !== void 0)
-              rawSel.caretBidiLevel = main2.bidiLevel;
+            if (main.bidiLevel != null && rawSel.caretBidiLevel !== void 0)
+              rawSel.caretBidiLevel = main.bidiLevel;
           } else if (rawSel.extend) {
             rawSel.collapse(anchor.node, anchor.offset);
             try {
@@ -10313,7 +10313,7 @@
             }
           } else {
             let range = document.createRange();
-            if (main2.anchor > main2.head)
+            if (main.anchor > main.head)
               [anchor, head] = [head, anchor];
             range.setEnd(head.node, head.offset);
             range.setStart(anchor.node, anchor.offset);
@@ -11892,8 +11892,8 @@
     return facet.length ? facet[0](event) : browser.mac ? !event.altKey : !event.ctrlKey;
   }
   function isInPrimarySelection(view, event) {
-    let { main: main2 } = view.state.selection;
-    if (main2.empty)
+    let { main } = view.state.selection;
+    if (main.empty)
       return false;
     let sel = getSelection(view.root);
     if (!sel || sel.rangeCount == 0)
@@ -12621,8 +12621,8 @@
       return this.spaceAbove && height < top2 + this.spaceAbove ? new BlockInfo(offset, 0, top2, this.spaceAbove, SpaceDeco) : this.mainBlock(top2, offset);
     }
     lineAt(_value, _type, oracle, top2, offset) {
-      let main2 = this.mainBlock(top2, offset);
-      return this.spaceAbove ? this.blockAt(0, oracle, top2, offset).join(main2) : main2;
+      let main = this.mainBlock(top2, offset);
+      return this.spaceAbove ? this.blockAt(0, oracle, top2, offset).join(main) : main;
     }
     forEachLine(from, to, oracle, top2, offset, f) {
       if (from <= offset + this.length && to >= offset)
@@ -13202,9 +13202,9 @@
       this.computeVisibleRanges();
     }
     updateForViewport() {
-      let viewports = [this.viewport], { main: main2 } = this.state.selection;
+      let viewports = [this.viewport], { main } = this.state.selection;
       for (let i = 0; i <= 1; i++) {
-        let pos = i ? main2.head : main2.anchor;
+        let pos = i ? main.head : main.anchor;
         if (!viewports.some(({ from, to }) => pos >= from && pos <= to)) {
           let { from, to } = this.lineBlockAt(pos);
           viewports.push(new Viewport(from, to));
@@ -13714,16 +13714,16 @@
   var baseLightID = /* @__PURE__ */ StyleModule.newName();
   var baseDarkID = /* @__PURE__ */ StyleModule.newName();
   var lightDarkIDs = { "&light": "." + baseLightID, "&dark": "." + baseDarkID };
-  function buildTheme(main2, spec, scopes) {
+  function buildTheme(main, spec, scopes) {
     return new StyleModule(spec, {
       finish(sel) {
         return /&/.test(sel) ? sel.replace(/&\w*/, (m) => {
           if (m == "&")
-            return main2;
+            return main;
           if (!scopes || !scopes[m])
             throw new RangeError(`Unsupported selector: ${m}`);
           return scopes[m];
-        }) : main2 + " " + sel;
+        }) : main + " " + sel;
       }
     });
   }
@@ -14479,7 +14479,7 @@
         selectionEnd: this.toContextPos(view.state.selection.main.head)
       });
       this.handlers.textupdate = (e) => {
-        let main2 = view.state.selection.main, { anchor, head } = main2;
+        let main = view.state.selection.main, { anchor, head } = main;
         let from = this.toEditorPos(e.updateRangeStart), to = this.toEditorPos(e.updateRangeEnd);
         if (view.inputState.composing >= 0 && !this.composing)
           this.composing = { contextBase: e.updateRangeStart, editorBase: from, drifted: false };
@@ -14488,10 +14488,10 @@
           from = anchor;
         else if (to == this.to && anchor > this.to)
           to = anchor;
-        let diff = findDiff(view.state.sliceDoc(from, to), e.text, (deletes ? main2.from : main2.to) - from, deletes ? "end" : null);
+        let diff = findDiff(view.state.sliceDoc(from, to), e.text, (deletes ? main.from : main.to) - from, deletes ? "end" : null);
         if (!diff) {
           let newSel = EditorSelection.single(this.toEditorPos(e.selectionStart), this.toEditorPos(e.selectionEnd));
-          if (!sameSelPos(newSel, main2))
+          if (!sameSelPos(newSel, main))
             view.dispatch({ selection: newSel, userEvent: "select" });
           return;
         }
@@ -14635,9 +14635,9 @@
       this.editContext.updateText(this.toContextPos(pending.from), this.toContextPos(pending.from + pending.insert.length), state.doc.sliceString(pending.from, pending.to));
     }
     setSelection(state) {
-      let { main: main2 } = state.selection;
-      let start = this.toContextPos(Math.max(this.from, Math.min(this.to, main2.anchor)));
-      let end = this.toContextPos(main2.head);
+      let { main } = state.selection;
+      let start = this.toContextPos(Math.max(this.from, Math.min(this.to, main.anchor)));
+      let end = this.toContextPos(main.head);
       if (this.editContext.selectionStart != start || this.editContext.selectionEnd != end)
         this.editContext.updateSelection(start, end);
     }
@@ -14832,9 +14832,9 @@
           if (scrollTarget)
             scrollTarget = scrollTarget.map(tr.changes);
           if (tr.scrollIntoView) {
-            let { main: main2 } = tr.state.selection;
+            let { main } = tr.state.selection;
             let { x, y } = this.state.facet(_EditorView.cursorScrollMargin);
-            scrollTarget = new ScrollTarget(main2.empty ? main2 : EditorSelection.cursor(main2.head, main2.head > main2.anchor ? -1 : 1), "nearest", "nearest", y, x);
+            scrollTarget = new ScrollTarget(main.empty ? main : EditorSelection.cursor(main.head, main.head > main.anchor ? -1 : 1), "nearest", "nearest", y, x);
           }
           for (let e of tr.effects)
             if (e.is(scrollIntoView))
@@ -18868,6 +18868,99 @@
     "string",
     ...MARKDOWN_TOKEN_TYPES
   ];
+
+  // src/editor/documentStates.ts
+  var DocumentStates = class {
+    /**
+     * @param host the view the states go in and out of.
+     * @param createState makes the state of a document shown for the first time.
+     */
+    constructor(host, createState) {
+      this.host = host;
+      this.createState = createState;
+      this.parked = /* @__PURE__ */ new Map();
+      this.shown = null;
+    }
+    /** @returns the identifier of the document in the view, or null when none is. */
+    shownId() {
+      return this.shown;
+    }
+    /**
+     * Puts a document in the view, parking the state of the one that was there. A document shown
+     * before comes back with its parked state; a new one gets a fresh state from its text.
+     *
+     * @param id identifier of the document.
+     * @param text its text, used only when it has no state yet.
+     */
+    show(id, text) {
+      if (this.shown !== null && this.shown !== id) {
+        this.parked.set(this.shown, this.host.state);
+      }
+      const state = this.parked.get(id) ?? this.createState(text);
+      this.parked.delete(id);
+      this.shown = id;
+      this.host.setState(state);
+    }
+    /**
+     * Brings the state of a document up to date with a text that changed in the model. When the
+     * texts already match — the editor itself was the origin: typing, or a reindent, which
+     * updates the state first — nothing moves. A document never shown has no state to update.
+     *
+     * @param id identifier of the document.
+     * @param text the text the model holds now.
+     * @returns whether a state changed.
+     */
+    syncText(id, text) {
+      if (id === this.shown) {
+        const doc2 = this.host.state.doc;
+        if (doc2.toString() === text) {
+          return false;
+        }
+        this.host.dispatch({ changes: { from: 0, to: doc2.length, insert: text } });
+        return true;
+      }
+      const parked = this.parked.get(id);
+      if (!parked || parked.doc.toString() === text) {
+        return false;
+      }
+      this.parked.set(id, parked.update({ changes: { from: 0, to: parked.doc.length, insert: text } }).state);
+      return true;
+    }
+    /**
+     * Applies changes to the state of a document, wherever it is: through the view when shown,
+     * through its parked state otherwise. Either way the change is undoable in that document.
+     *
+     * @param id identifier of the document.
+     * @param changes builds the change specs from the document as the state holds it.
+     * @param userEvent the user event annotation of the transaction, if any.
+     * @returns where the changes went; for a parked document, its new text.
+     */
+    change(id, changes, userEvent) {
+      if (id === this.shown) {
+        this.host.dispatch({ changes: changes(this.host.state.doc), userEvent });
+        return { where: "view" };
+      }
+      const parked = this.parked.get(id);
+      if (!parked) {
+        return { where: "none" };
+      }
+      const next = parked.update({ changes: changes(parked.doc), userEvent }).state;
+      this.parked.set(id, next);
+      return { where: "parked", text: next.doc.toString() };
+    }
+    /**
+     * Forgets a document. If it was the one in the view, the view keeps showing its state until
+     * another document is shown, but nothing is attributed to it any more.
+     *
+     * @param id identifier of the document.
+     */
+    drop(id) {
+      this.parked.delete(id);
+      if (this.shown === id) {
+        this.shown = null;
+      }
+    }
+  };
 
   // src/editor/highlight.ts
   var setTokensEffect = StateEffect.define();
@@ -23359,14 +23452,14 @@
   }
   var pickedCompletion = /* @__PURE__ */ Annotation.define();
   function insertCompletionText(state, text, from, to) {
-    let { main: main2 } = state.selection, fromOff = from - main2.from, toOff = to - main2.from;
+    let { main } = state.selection, fromOff = from - main.from, toOff = to - main.from;
     return {
       ...state.changeByRange((range) => {
-        if (range != main2 && from != to && state.sliceDoc(range.from + fromOff, range.from + toOff) != state.sliceDoc(from, to))
+        if (range != main && from != to && state.sliceDoc(range.from + fromOff, range.from + toOff) != state.sliceDoc(from, to))
           return { range };
         let lines = state.toText(text);
         return {
-          changes: { from: range.from + fromOff, to: to == main2.from ? range.to : range.from + toOff, insert: lines },
+          changes: { from: range.from + fromOff, to: to == main.from ? range.to : range.from + toOff, insert: lines },
           range: EditorSelection.cursor(range.from + fromOff + lines.length)
         };
       }),
@@ -24897,6 +24990,96 @@ Book (stxt.play.library):
     { title: "Config template", text: stxt_play_config_default }
   ];
 
+  // src/ui/dialog.ts
+  var dialog;
+  function element() {
+    if (!dialog) {
+      dialog = document.createElement("dialog");
+      dialog.className = "play-dialog";
+      document.body.appendChild(dialog);
+    }
+    return dialog;
+  }
+  function open(content2, focus) {
+    const host = element();
+    host.textContent = "";
+    host.appendChild(content2);
+    return new Promise((resolve) => {
+      const onClose = () => {
+        host.removeEventListener("close", onClose);
+        host.removeEventListener("click", onBackdrop);
+        resolve(host.returnValue);
+      };
+      const onBackdrop = (event) => {
+        if (event.target === host) {
+          host.close("");
+        }
+      };
+      host.addEventListener("close", onClose);
+      host.addEventListener("click", onBackdrop);
+      host.returnValue = "";
+      host.showModal();
+      focus?.focus();
+    });
+  }
+  function panel(title, message) {
+    const root = document.createElement("div");
+    root.className = "play-dialog-panel";
+    const heading2 = document.createElement("h2");
+    heading2.className = "play-dialog-title";
+    heading2.textContent = title;
+    const text = document.createElement("p");
+    text.className = "play-dialog-message";
+    text.textContent = message;
+    const actions = document.createElement("div");
+    actions.className = "play-dialog-actions";
+    root.append(heading2, text, actions);
+    return { root, actions };
+  }
+  function button(label, className, onClick) {
+    const control = document.createElement("button");
+    control.type = "button";
+    control.className = className;
+    control.textContent = label;
+    control.addEventListener("click", onClick);
+    return control;
+  }
+  async function confirmDialog(options) {
+    const { root, actions } = panel(options.title, options.message);
+    const cancel = button(options.cancelLabel ?? "Cancel", "play-dialog-button", () => element().close(""));
+    const confirm = button(
+      options.confirmLabel,
+      options.danger ? "play-dialog-button play-dialog-danger" : "play-dialog-button play-dialog-primary",
+      () => element().close("confirm")
+    );
+    actions.append(cancel, confirm);
+    return await open(root, options.danger ? cancel : confirm) === "confirm";
+  }
+  async function linkDialog(options) {
+    const { root, actions } = panel(options.title, options.message);
+    const field = document.createElement("input");
+    field.type = "text";
+    field.readOnly = true;
+    field.className = "play-dialog-field";
+    field.value = options.url;
+    field.addEventListener("focus", () => field.select());
+    root.insertBefore(field, actions);
+    const copy = button("Copy", "play-dialog-button play-dialog-primary", () => {
+      field.focus();
+      field.select();
+      void navigator.clipboard?.writeText(options.url).then(
+        () => {
+          copy.textContent = "Copied!";
+        },
+        () => {
+        }
+      );
+    });
+    const close = button("Close", "play-dialog-button", () => element().close(""));
+    actions.append(copy, close);
+    await open(root, field);
+  }
+
   // src/ui/documentList.ts
   var KIND_BADGE = {
     document: "\u2261",
@@ -25126,96 +25309,6 @@ Book (stxt.play.library):
     };
   }
 
-  // src/ui/dialog.ts
-  var dialog;
-  function element() {
-    if (!dialog) {
-      dialog = document.createElement("dialog");
-      dialog.className = "play-dialog";
-      document.body.appendChild(dialog);
-    }
-    return dialog;
-  }
-  function open(content2, focus) {
-    const host = element();
-    host.textContent = "";
-    host.appendChild(content2);
-    return new Promise((resolve) => {
-      const onClose = () => {
-        host.removeEventListener("close", onClose);
-        host.removeEventListener("click", onBackdrop);
-        resolve(host.returnValue);
-      };
-      const onBackdrop = (event) => {
-        if (event.target === host) {
-          host.close("");
-        }
-      };
-      host.addEventListener("close", onClose);
-      host.addEventListener("click", onBackdrop);
-      host.returnValue = "";
-      host.showModal();
-      focus?.focus();
-    });
-  }
-  function panel(title, message) {
-    const root = document.createElement("div");
-    root.className = "play-dialog-panel";
-    const heading2 = document.createElement("h2");
-    heading2.className = "play-dialog-title";
-    heading2.textContent = title;
-    const text = document.createElement("p");
-    text.className = "play-dialog-message";
-    text.textContent = message;
-    const actions = document.createElement("div");
-    actions.className = "play-dialog-actions";
-    root.append(heading2, text, actions);
-    return { root, actions };
-  }
-  function button(label, className, onClick) {
-    const control = document.createElement("button");
-    control.type = "button";
-    control.className = className;
-    control.textContent = label;
-    control.addEventListener("click", onClick);
-    return control;
-  }
-  async function confirmDialog(options) {
-    const { root, actions } = panel(options.title, options.message);
-    const cancel = button(options.cancelLabel ?? "Cancel", "play-dialog-button", () => element().close(""));
-    const confirm = button(
-      options.confirmLabel,
-      options.danger ? "play-dialog-button play-dialog-danger" : "play-dialog-button play-dialog-primary",
-      () => element().close("confirm")
-    );
-    actions.append(cancel, confirm);
-    return await open(root, options.danger ? cancel : confirm) === "confirm";
-  }
-  async function linkDialog(options) {
-    const { root, actions } = panel(options.title, options.message);
-    const field = document.createElement("input");
-    field.type = "text";
-    field.readOnly = true;
-    field.className = "play-dialog-field";
-    field.value = options.url;
-    field.addEventListener("focus", () => field.select());
-    root.insertBefore(field, actions);
-    const copy = button("Copy", "play-dialog-button play-dialog-primary", () => {
-      field.focus();
-      field.select();
-      void navigator.clipboard?.writeText(options.url).then(
-        () => {
-          copy.textContent = "Copied!";
-        },
-        () => {
-        }
-      );
-    });
-    const close = button("Close", "play-dialog-button", () => element().close(""));
-    actions.append(copy, close);
-    await open(root, field);
-  }
-
   // src/ui/headerSwitches.ts
   function toCmChanges(doc2, changes) {
     return changes.map((change) => {
@@ -25238,16 +25331,10 @@ Book (stxt.play.library):
         if (changes.length === 0) {
           continue;
         }
-        if (document2.id === options.shownId()) {
-          view.dispatch({ changes: toCmChanges(view.state.doc, changes), userEvent: "reindent" });
-          continue;
-        }
-        const parked = states.get(document2.id);
-        if (parked) {
-          const next = parked.update({ changes: toCmChanges(parked.doc, changes), userEvent: "reindent" }).state;
-          states.set(document2.id, next);
-          workspace.setText(document2.id, next.doc.toString());
-        } else {
+        const outcome = states.change(document2.id, (doc2) => toCmChanges(doc2, changes), "reindent");
+        if (outcome.where === "parked") {
+          workspace.setText(document2.id, outcome.text);
+        } else if (outcome.where === "none") {
           workspace.setText(document2.id, applyIndentChanges(document2.text, changes));
         }
       }
@@ -25974,10 +26061,8 @@ Book (stxt.play.library):
     return value && value.length > 0 ? value : void 0;
   }
 
-  // src/index.ts
-  var STATUS_MS = 2500;
-  function toCmDiagnostics(view, diagnostics) {
-    const doc2 = view.state.doc;
+  // src/app/diagnostics.ts
+  function toCmDiagnostics(doc2, diagnostics) {
     return diagnostics.map((diagnostic) => {
       const line = doc2.line(Math.min(diagnostic.line + 1, doc2.lines));
       return {
@@ -25989,6 +26074,105 @@ Book (stxt.play.library):
       };
     });
   }
+
+  // src/app/elements.ts
+  var IDS = {
+    editor: "editor",
+    docTitle: "doc-title",
+    docList: "doc-list",
+    docNew: "doc-new",
+    problemsList: "problems-list",
+    problemsCount: "problems-count",
+    indentTabs: "indent-tabs",
+    indentSpaces: "indent-spaces",
+    validationToggle: "validation-toggle",
+    docReset: "doc-reset",
+    docClear: "doc-clear",
+    share: "share",
+    status: "status",
+    viewTabs: "view-tabs",
+    sidebar: "sidebar",
+    splitter: "splitter"
+  };
+  function findElements(root) {
+    const found = {};
+    for (const key of Object.keys(IDS)) {
+      const element2 = root.getElementById(IDS[key]);
+      if (!element2) {
+        return void 0;
+      }
+      found[key] = element2;
+    }
+    return found;
+  }
+
+  // src/app/fragment.ts
+  function carriesLink(hash) {
+    return sharePayloadOf(hash) !== void 0 || isOpenLink(hash);
+  }
+  async function applyFragment(hash, workspace, ownContent, dialogs) {
+    const payload = sharePayloadOf(hash);
+    if (payload !== void 0) {
+      return applyShareLink(workspace, await decodeShare(payload), ownContent, dialogs);
+    }
+    if (isOpenLink(hash)) {
+      return applyOpenLink(workspace, await decodeOpen(hash), dialogs);
+    }
+    return void 0;
+  }
+  async function applyShareLink(workspace, shared, ownContent, dialogs) {
+    if (!shared || shared.documents.length === 0) {
+      return "The link does not carry a valid workspace.";
+    }
+    const replace2 = !ownContent || await dialogs.loadSharedWorkspace(shared.documents.length);
+    if (!replace2) {
+      return void 0;
+    }
+    loadSharedSnapshot(workspace, shared);
+    return "Shared workspace loaded.";
+  }
+  async function applyOpenLink(workspace, linked, dialogs) {
+    if (!linked) {
+      return "The link does not carry a valid document.";
+    }
+    const plan = planGrammars(workspace, linked.grammars ?? []);
+    let grammars = 0;
+    for (const grammar of plan.add) {
+      workspace.addDocument(grammar.text, grammar.namespace);
+      grammars++;
+    }
+    for (const { grammar, documentId } of plan.replace) {
+      if (await dialogs.replaceGrammar(grammar.namespace)) {
+        workspace.setText(documentId, grammar.text);
+        grammars++;
+      }
+    }
+    let base2;
+    if (isGrammarDocument(linked.text)) {
+      const main = planGrammars(workspace, [linked.text]);
+      if (main.add.length > 0) {
+        workspace.addDocument(main.add[0].text, main.add[0].namespace);
+        base2 = "Grammar opened from the link.";
+      } else if (main.keep.length > 0) {
+        workspace.setActive(main.keep[0].documentId);
+        base2 = "The grammar of the link was already in the workspace.";
+      } else {
+        const { grammar, documentId } = main.replace[0];
+        const replace2 = await dialogs.replaceGrammar(grammar.namespace);
+        if (replace2) {
+          workspace.setText(documentId, grammar.text);
+        }
+        workspace.setActive(documentId);
+        base2 = replace2 ? "Grammar replaced from the link." : "Your grammar was kept.";
+      }
+    } else {
+      const outcome = openLinked(workspace, linked.text, linked.title);
+      base2 = outcome === "existing" ? "The document of the link was already in the workspace." : "Document opened from the link.";
+    }
+    return grammars === 0 ? base2 : `${base2} The link also brought ${grammars} grammar${grammars === 1 ? "" : "s"}.`;
+  }
+
+  // src/app/labels.ts
   function labelOf(document2, analysis) {
     const grammars = analysis?.grammars ?? [];
     if (grammars.length === 0) {
@@ -26001,147 +26185,267 @@ Book (stxt.play.library):
       renamable: false
     };
   }
-  function browserStorage() {
-    try {
-      return window.localStorage;
-    } catch {
-      return void 0;
-    }
+
+  // src/app/status.ts
+  var STATUS_MS = 2500;
+  function createStatus(element2, durationMs = STATUS_MS) {
+    let timer;
+    return (message) => {
+      element2.textContent = message;
+      element2.classList.add("status-visible");
+      if (timer !== void 0) {
+        window.clearTimeout(timer);
+      }
+      timer = window.setTimeout(() => element2.classList.remove("status-visible"), durationMs);
+    };
   }
-  function main() {
-    const editorHost = document.getElementById("editor");
-    const docTitle = document.getElementById("doc-title");
-    const docList = document.getElementById("doc-list");
-    const docNew = document.getElementById("doc-new");
-    const problemsList = document.getElementById("problems-list");
-    const problemsCount = document.getElementById("problems-count");
-    const indentTabs = document.getElementById("indent-tabs");
-    const indentSpaces = document.getElementById("indent-spaces");
-    const validationToggle = document.getElementById("validation-toggle");
-    const docReset = document.getElementById("doc-reset");
-    const docClear = document.getElementById("doc-clear");
-    const shareButton = document.getElementById("share");
-    const status = document.getElementById("status");
-    const viewTabsNav = document.getElementById("view-tabs");
-    const sidebar = document.getElementById("sidebar");
-    const splitter = document.getElementById("splitter");
-    if (!editorHost || !docTitle || !docList || !docNew || !problemsList || !problemsCount || !indentTabs || !indentSpaces || !validationToggle || !docReset || !docClear || !shareButton || !status || !viewTabsNav || !sidebar || !splitter) {
-      return;
+
+  // src/app/workspaceSync.ts
+  var WorkspaceSync = class {
+    /**
+     * @param workspace the model.
+     * @param analyzer mirrors the model, one analysis per document.
+     * @param states the editor states of the documents.
+     * @param paint what to repaint after each event.
+     */
+    constructor(workspace, analyzer, states, paint) {
+      this.workspace = workspace;
+      this.analyzer = analyzer;
+      this.states = states;
+      this.paint = paint;
     }
-    let statusTimer;
-    const showStatus = (message) => {
-      status.textContent = message;
-      status.classList.add("status-visible");
-      if (statusTimer !== void 0) {
-        window.clearTimeout(statusTimer);
-      }
-      statusTimer = window.setTimeout(() => status.classList.remove("status-visible"), STATUS_MS);
-    };
-    const analyzer = new Analyzer();
-    const workspace = new Workspace();
-    const storage = browserStorage();
-    const settings = storage ? loadSettings(storage) : { ...DEFAULT_SETTINGS };
-    analyzer.setValidation(settings.validation);
-    const states = /* @__PURE__ */ new Map();
-    let shownId = null;
-    const { persistNow, schedulePersist } = createWorkspacePersistence(workspace, storage);
-    window.addEventListener("pagehide", persistNow);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") {
-        persistNow();
-      }
-    });
-    const editor = createStxtEditor({
-      parent: editorHost,
-      indent: settings.indent,
-      onDocChanged: (view2) => {
-        if (shownId !== null) {
-          workspace.setText(shownId, view2.state.doc.toString());
+    /**
+     * Subscribes to the workspace.
+     *
+     * @returns a function that unsubscribes.
+     */
+    attach() {
+      return this.workspace.subscribe((event) => this.handle(event));
+    }
+    /**
+     * Carries one workspace event to the analyzer, the states and the painters.
+     *
+     * @param event what changed.
+     */
+    handle(event) {
+      switch (event.kind) {
+        case "added": {
+          const document2 = this.workspace.getDocument(event.id);
+          if (document2) {
+            this.analyzer.setDocument(event.id, document2.text);
+          }
+          this.paint.list();
+          break;
         }
-      },
-      completions: (line, linePrefix) => shownId === null ? null : analyzer.getCompletions(shownId, line, linePrefix),
-      describeNode: (line) => shownId === null ? void 0 : analyzer.describeNode(shownId, line),
-      goToDefinition: (line, character) => goToDefinition(line, character)
-    });
-    const view = editor.view;
-    const goToLine = (line) => {
-      const docLine = view.state.doc.line(Math.min(line + 1, view.state.doc.lines));
-      view.dispatch({ selection: { anchor: docLine.from }, scrollIntoView: true });
-      view.focus();
-    };
-    const goToDefinition = (line, character) => {
-      const location2 = shownId === null ? void 0 : analyzer.findDefinition(shownId, line, character);
-      if (!location2) {
-        return false;
-      }
-      workspace.setActive(location2.documentId);
-      if (shownId !== location2.documentId) {
-        return false;
-      }
-      goToLine(location2.line);
-      return true;
-    };
-    const tabs = createViewTabs(viewTabsNav, (shown) => {
-      if (shown === "editor") {
-        view.requestMeasure();
-      }
-    });
-    const showEditor = () => {
-      if (tabs.isActive()) {
-        tabs.show("editor");
-      }
-    };
-    const panel2 = createProblemsPanel(problemsList, problemsCount, (line) => {
-      showEditor();
-      goToLine(line);
-    });
-    const list = createDocumentList(docList, docNew, {
-      onSelect: (id) => {
-        workspace.setActive(id);
-        showEditor();
-        view.focus();
-      },
-      onCreate: () => {
-        workspace.addDocument();
-        showEditor();
-        view.focus();
-      },
-      onRename: (id, title) => workspace.rename(id, title),
-      onDelete: (id) => {
-        const document2 = workspace.getDocument(id);
-        if (!document2) {
-          return;
+        case "removed":
+          this.analyzer.removeDocument(event.id);
+          this.states.drop(event.id);
+          this.paint.list();
+          this.paint.panel();
+          this.paint.header();
+          break;
+        case "text": {
+          const document2 = this.workspace.getDocument(event.id);
+          if (document2) {
+            this.analyzer.setDocument(event.id, document2.text);
+            this.states.syncText(event.id, document2.text);
+          }
+          if (event.id === this.states.shownId()) {
+            this.paint.view();
+          }
+          this.paint.panel();
+          this.paint.list();
+          this.paint.header();
+          break;
         }
-        const { label } = labelOf(document2, analyzer.getAnalysis(id));
-        void confirmDialog({
-          title: `Delete "${label}"?`,
-          message: "The document is removed from the workspace. This cannot be undone.",
-          confirmLabel: "Delete",
+        case "renamed":
+          this.paint.list();
+          this.paint.header();
+          break;
+        case "moved":
+          this.paint.list();
+          break;
+        case "activated": {
+          const document2 = this.workspace.getDocument(event.id);
+          if (document2) {
+            this.states.show(event.id, document2.text);
+            this.paint.view();
+          }
+          this.paint.panel();
+          this.paint.list();
+          this.paint.header();
+          break;
+        }
+      }
+    }
+  };
+
+  // src/app/Playground.ts
+  var Playground = class {
+    /**
+     * Builds the application on the page: creates the editor and the panels, and wires them to
+     * the workspace. Nothing is loaded yet: {@link start} does that.
+     *
+     * @param elements the page elements.
+     * @param storage where the workspace and the settings persist; undefined when the browser
+     * gives none.
+     */
+    constructor(elements, storage) {
+      this.elements = elements;
+      this.storage = storage;
+      this.analyzer = new Analyzer();
+      this.workspace = new Workspace();
+      /** The questions a link may ask, as the playground's dialogs. */
+      this.dialogs = {
+        loadSharedWorkspace: (count) => confirmDialog({
+          title: "Load the shared workspace?",
+          message: `The link carries ${count} document${count === 1 ? "" : "s"}. Your current documents in this browser are replaced.`,
+          confirmLabel: "Load",
+          cancelLabel: "Keep mine",
           danger: true
-        }).then((confirmed) => {
-          if (!confirmed || !workspace.getDocument(id)) {
-            return;
+        }),
+        // A replacement overwrites a document of this browser, so it asks
+        replaceGrammar: (namespace) => confirmDialog({
+          title: "Replace the grammar?",
+          message: `The link brings a grammar for '${namespace}', and the workspace already has a different one for that namespace.`,
+          confirmLabel: "Replace",
+          cancelLabel: "Keep mine",
+          danger: true
+        })
+      };
+      this.settings = storage ? loadSettings(storage) : { ...DEFAULT_SETTINGS };
+      this.analyzer.setValidation(this.settings.validation);
+      this.showStatus = createStatus(elements.status);
+      this.editor = createStxtEditor({
+        parent: elements.editor,
+        indent: this.settings.indent,
+        onDocChanged: (view2) => {
+          const shown = this.states.shownId();
+          if (shown !== null) {
+            this.workspace.setText(shown, view2.state.doc.toString());
           }
-          workspace.removeDocument(id);
-          if (workspace.getDocuments().length === 0) {
-            workspace.addDocument();
+        },
+        completions: (line, linePrefix) => {
+          const shown = this.states.shownId();
+          return shown === null ? null : this.analyzer.getCompletions(shown, line, linePrefix);
+        },
+        describeNode: (line) => {
+          const shown = this.states.shownId();
+          return shown === null ? void 0 : this.analyzer.describeNode(shown, line);
+        },
+        goToDefinition: (line, character) => this.goToDefinition(line, character)
+      });
+      const view = this.editor.view;
+      this.view = view;
+      this.states = new DocumentStates(
+        {
+          get state() {
+            return view.state;
+          },
+          setState: (state) => this.editor.showState(state),
+          dispatch: (spec) => view.dispatch(spec)
+        },
+        (text) => this.editor.createState(text)
+      );
+      this.tabs = createViewTabs(elements.viewTabs, (shown) => {
+        if (shown === "editor") {
+          view.requestMeasure();
+        }
+      });
+      this.panel = createProblemsPanel(elements.problemsList, elements.problemsCount, (line) => {
+        this.showEditorPane();
+        this.goToLine(line);
+      });
+      this.list = createDocumentList(elements.docList, elements.docNew, {
+        onSelect: (id) => {
+          this.workspace.setActive(id);
+          this.showEditorPane();
+          view.focus();
+        },
+        onCreate: () => {
+          this.workspace.addDocument();
+          this.showEditorPane();
+          view.focus();
+        },
+        onRename: (id, title) => this.workspace.rename(id, title),
+        onDelete: (id) => this.confirmDelete(id),
+        onMove: (id, toIndex) => this.workspace.move(id, toIndex)
+      });
+      setupSplitter({
+        handle: elements.splitter,
+        sidebar: elements.sidebar,
+        width: this.settings.sidebarWidth,
+        onWidthChange: (width) => {
+          if (width === void 0) {
+            delete this.settings.sidebarWidth;
+          } else {
+            this.settings.sidebarWidth = width;
           }
-        });
-      },
-      onMove: (id, toIndex) => workspace.move(id, toIndex)
-    });
-    const activeAnalysis = () => {
-      const id = workspace.getActiveId();
-      return id === null ? void 0 : analyzer.getAnalysis(id);
-    };
-    const renderHeader = () => {
-      const document2 = workspace.getActiveDocument();
-      docTitle.textContent = document2 ? labelOf(document2, analyzer.getAnalysis(document2.id)).label : "";
-    };
-    const renderList = () => {
-      const activeId = workspace.getActiveId();
-      const entries = workspace.getDocuments().map((document2) => {
-        const analysis = analyzer.getAnalysis(document2.id);
+          this.persistSettings();
+          view.requestMeasure();
+        }
+      });
+      setupHeaderSwitches({
+        elements: {
+          indentTabs: elements.indentTabs,
+          indentSpaces: elements.indentSpaces,
+          validationToggle: elements.validationToggle
+        },
+        settings: this.settings,
+        workspace: this.workspace,
+        analyzer: this.analyzer,
+        editor: this.editor,
+        states: this.states,
+        persistSettings: () => this.persistSettings(),
+        refreshAfterValidation: () => {
+          this.paintView();
+          this.paintPanel();
+          this.paintList();
+        }
+      });
+      new WorkspaceSync(this.workspace, this.analyzer, this.states, {
+        list: () => this.paintList(),
+        panel: () => this.paintPanel(),
+        header: () => this.paintHeader(),
+        view: () => this.paintView()
+      }).attach();
+      const persistence = createWorkspacePersistence(this.workspace, storage);
+      this.persistNow = persistence.persistNow;
+      this.workspace.subscribe(() => persistence.schedulePersist());
+      elements.docReset.addEventListener("click", () => this.confirmReset());
+      elements.docClear.addEventListener("click", () => this.confirmClear());
+      elements.share.addEventListener("click", () => this.share());
+    }
+    /** Loads the workspace — a share link, the stored one, or the seed — and starts listening. */
+    start() {
+      window.addEventListener("pagehide", this.persistNow);
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+          this.persistNow();
+        }
+      });
+      const stored = this.storage ? loadWorkspace(this.storage) : void 0;
+      if (stored && stored.documents.length > 0) {
+        this.workspace.load(stored);
+      } else {
+        this.loadSeed();
+      }
+      void this.handleFragment(stored !== void 0);
+      window.addEventListener("hashchange", () => void this.handleFragment(true));
+    }
+    // --- Painting: everything visible reads the workspace and the analysis --------------------
+    activeAnalysis() {
+      const id = this.workspace.getActiveId();
+      return id === null ? void 0 : this.analyzer.getAnalysis(id);
+    }
+    paintHeader() {
+      const active = this.workspace.getActiveDocument();
+      this.elements.docTitle.textContent = active ? labelOf(active, this.analyzer.getAnalysis(active.id)).label : "";
+    }
+    paintList() {
+      const activeId = this.workspace.getActiveId();
+      const entries = this.workspace.getDocuments().map((document2) => {
+        const analysis = this.analyzer.getAnalysis(document2.id);
         const diagnostics = analysis?.diagnostics ?? [];
         return {
           id: document2.id,
@@ -26151,136 +26455,75 @@ Book (stxt.play.library):
           warnings: diagnostics.filter((d) => d.severity === "warning").length
         };
       });
-      list.render(entries);
-    };
-    const renderPanel = () => {
-      const diagnostics = activeAnalysis()?.diagnostics ?? [];
-      panel2.render(diagnostics);
-      tabs.setProblemCount(diagnostics.length);
-    };
-    const refreshView = () => {
-      const analysis = activeAnalysis();
+      this.list.render(entries);
+    }
+    paintPanel() {
+      const diagnostics = this.activeAnalysis()?.diagnostics ?? [];
+      this.panel.render(diagnostics);
+      this.tabs.setProblemCount(diagnostics.length);
+    }
+    /** Pushes the analysis of the shown document into the view: highlighting and underlines. */
+    paintView() {
+      const analysis = this.activeAnalysis();
       if (!analysis) {
         return;
       }
-      view.dispatch(setDiagnostics(view.state, toCmDiagnostics(view, analysis.diagnostics)), {
+      this.view.dispatch(setDiagnostics(this.view.state, toCmDiagnostics(this.view.state.doc, analysis.diagnostics)), {
         effects: setTokensEffect.of(analysis.tokens)
       });
-    };
-    const showDocument = (id) => {
-      if (shownId !== null && shownId !== id) {
-        states.set(shownId, view.state);
+    }
+    // --- Navigation -----------------------------------------------------------------------------
+    showEditorPane() {
+      if (this.tabs.isActive()) {
+        this.tabs.show("editor");
       }
-      const document2 = workspace.getDocument(id);
-      if (!document2) {
+    }
+    goToLine(line) {
+      const docLine = this.view.state.doc.line(Math.min(line + 1, this.view.state.doc.lines));
+      this.view.dispatch({ selection: { anchor: docLine.from }, scrollIntoView: true });
+      this.view.focus();
+    }
+    /**
+     * "Go to definition" from a position of the shown document: the analysis says which
+     * workspace document and line define the node; activating that document puts it in the view
+     * (through the workspace event), and then the cursor goes to the line.
+     */
+    goToDefinition(line, character) {
+      const shown = this.states.shownId();
+      const location2 = shown === null ? void 0 : this.analyzer.findDefinition(shown, line, character);
+      if (!location2) {
+        return false;
+      }
+      this.workspace.setActive(location2.documentId);
+      if (this.states.shownId() !== location2.documentId) {
+        return false;
+      }
+      this.goToLine(location2.line);
+      return true;
+    }
+    // --- Actions with confirmation --------------------------------------------------------------
+    confirmDelete(id) {
+      const doc2 = this.workspace.getDocument(id);
+      if (!doc2) {
         return;
       }
-      const state = states.get(id) ?? editor.createState(document2.text);
-      states.set(id, state);
-      shownId = id;
-      editor.showState(state);
-      refreshView();
-    };
-    setupSplitter({
-      handle: splitter,
-      sidebar,
-      width: settings.sidebarWidth,
-      onWidthChange: (width) => {
-        if (width === void 0) {
-          delete settings.sidebarWidth;
-        } else {
-          settings.sidebarWidth = width;
+      const { label } = labelOf(doc2, this.analyzer.getAnalysis(id));
+      void confirmDialog({
+        title: `Delete "${label}"?`,
+        message: "The document is removed from the workspace. This cannot be undone.",
+        confirmLabel: "Delete",
+        danger: true
+      }).then((confirmed) => {
+        if (!confirmed || !this.workspace.getDocument(id)) {
+          return;
         }
-        if (storage) {
-          saveSettings(storage, settings);
+        this.workspace.removeDocument(id);
+        if (this.workspace.getDocuments().length === 0) {
+          this.workspace.addDocument();
         }
-        view.requestMeasure();
-      }
-    });
-    setupHeaderSwitches({
-      elements: { indentTabs, indentSpaces, validationToggle },
-      settings,
-      workspace,
-      analyzer,
-      editor,
-      states,
-      shownId: () => shownId,
-      persistSettings: () => {
-        if (storage) {
-          saveSettings(storage, settings);
-        }
-      },
-      refreshAfterValidation: () => {
-        refreshView();
-        renderPanel();
-        renderList();
-      }
-    });
-    workspace.subscribe((event) => {
-      switch (event.kind) {
-        case "added": {
-          const document2 = workspace.getDocument(event.id);
-          if (document2) {
-            analyzer.setDocument(event.id, document2.text);
-          }
-          renderList();
-          break;
-        }
-        case "removed":
-          analyzer.removeDocument(event.id);
-          states.delete(event.id);
-          if (shownId === event.id) {
-            shownId = null;
-          }
-          renderList();
-          renderPanel();
-          renderHeader();
-          break;
-        case "text": {
-          const document2 = workspace.getDocument(event.id);
-          if (document2) {
-            analyzer.setDocument(event.id, document2.text);
-            if (event.id === shownId) {
-              if (view.state.doc.toString() !== document2.text) {
-                view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: document2.text } });
-              }
-            } else {
-              const parked = states.get(event.id);
-              if (parked && parked.doc.toString() !== document2.text) {
-                states.set(event.id, parked.update({
-                  changes: { from: 0, to: parked.doc.length, insert: document2.text }
-                }).state);
-              }
-            }
-          }
-          if (event.id === shownId) {
-            refreshView();
-          }
-          renderPanel();
-          renderList();
-          renderHeader();
-          break;
-        }
-        case "renamed":
-          renderList();
-          renderHeader();
-          break;
-        case "moved":
-          renderList();
-          break;
-        case "activated":
-          showDocument(event.id);
-          renderPanel();
-          renderList();
-          renderHeader();
-          break;
-      }
-      schedulePersist();
-    });
-    const loadSeed = () => {
-      workspace.replaceAll(SEED_DOCUMENTS.map((seed) => ({ title: seed.title, text: seed.text })));
-    };
-    docReset.addEventListener("click", () => {
+      });
+    }
+    confirmReset() {
       void confirmDialog({
         title: "Reset the workspace?",
         message: "Every document is replaced by the examples. This cannot be undone.",
@@ -26288,16 +26531,13 @@ Book (stxt.play.library):
         danger: true
       }).then((confirmed) => {
         if (confirmed) {
-          loadSeed();
-          showStatus("Workspace reset to the examples.");
-          view.focus();
+          this.loadSeed();
+          this.showStatus("Workspace reset to the examples.");
+          this.view.focus();
         }
       });
-    });
-    const clearDocuments = () => {
-      workspace.replaceAll([{}]);
-    };
-    docClear.addEventListener("click", () => {
+    }
+    confirmClear() {
       void confirmDialog({
         title: "Clear the workspace?",
         message: "Every document is removed and you start from an empty one. This cannot be undone.",
@@ -26305,18 +26545,23 @@ Book (stxt.play.library):
         danger: true
       }).then((confirmed) => {
         if (confirmed) {
-          clearDocuments();
-          showStatus("Workspace cleared.");
-          view.focus();
+          this.workspace.replaceAll([{}]);
+          this.showStatus("Workspace cleared.");
+          this.view.focus();
         }
       });
-    });
-    shareButton.addEventListener("click", () => {
-      void encodeShare(workspace.toSnapshot()).then(async (payload) => {
+    }
+    /** Replaces every document with the seed and activates the first one. */
+    loadSeed() {
+      this.workspace.replaceAll(SEED_DOCUMENTS.map((seed) => ({ title: seed.title, text: seed.text })));
+    }
+    // --- Links --------------------------------------------------------------------------------
+    share() {
+      void encodeShare(this.workspace.toSnapshot()).then(async (payload) => {
         const url = `${location.origin}${location.pathname}#${SHARE_PARAM}=${payload}`;
         try {
           await navigator.clipboard.writeText(url);
-          showStatus("Link copied to the clipboard.");
+          this.showStatus("Link copied to the clipboard.");
         } catch {
           await linkDialog({
             title: "Share this workspace",
@@ -26325,92 +26570,49 @@ Book (stxt.play.library):
           });
         }
       });
-    });
-    const stored = storage ? loadWorkspace(storage) : void 0;
-    if (stored && stored.documents.length > 0) {
-      workspace.load(stored);
-    } else {
-      loadSeed();
     }
-    const consumeFragment = () => {
-      history.replaceState(null, "", `${location.pathname}${location.search}`);
-    };
-    const handleFragment = (ownContent) => {
-      const payload = sharePayloadOf(location.hash);
-      if (payload) {
-        void decodeShare(payload).then(async (shared) => {
-          consumeFragment();
-          if (!shared || shared.documents.length === 0) {
-            showStatus("The link does not carry a valid workspace.");
-            return;
-          }
-          const replace2 = !ownContent || await confirmDialog({
-            title: "Load the shared workspace?",
-            message: `The link carries ${shared.documents.length} document${shared.documents.length === 1 ? "" : "s"}. Your current documents in this browser are replaced.`,
-            confirmLabel: "Load",
-            cancelLabel: "Keep mine",
-            danger: true
-          });
-          if (replace2) {
-            loadSharedSnapshot(workspace, shared);
-            showStatus("Shared workspace loaded.");
-          }
-        });
-      } else if (isOpenLink(location.hash)) {
-        void decodeOpen(location.hash).then(async (linked) => {
-          consumeFragment();
-          if (!linked) {
-            showStatus("The link does not carry a valid document.");
-            return;
-          }
-          const askReplace = (namespace) => confirmDialog({
-            title: "Replace the grammar?",
-            message: `The link brings a grammar for '${namespace}', and the workspace already has a different one for that namespace.`,
-            confirmLabel: "Replace",
-            cancelLabel: "Keep mine",
-            danger: true
-          });
-          const plan = planGrammars(workspace, linked.grammars ?? []);
-          let grammars = 0;
-          for (const grammar of plan.add) {
-            workspace.addDocument(grammar.text, grammar.namespace);
-            grammars++;
-          }
-          for (const { grammar, documentId } of plan.replace) {
-            if (await askReplace(grammar.namespace)) {
-              workspace.setText(documentId, grammar.text);
-              grammars++;
-            }
-          }
-          let base2;
-          if (isGrammarDocument(linked.text)) {
-            const main2 = planGrammars(workspace, [linked.text]);
-            if (main2.add.length > 0) {
-              workspace.addDocument(main2.add[0].text, main2.add[0].namespace);
-              base2 = "Grammar opened from the link.";
-            } else if (main2.keep.length > 0) {
-              workspace.setActive(main2.keep[0].documentId);
-              base2 = "The grammar of the link was already in the workspace.";
-            } else {
-              const { grammar, documentId } = main2.replace[0];
-              const replace2 = await askReplace(grammar.namespace);
-              if (replace2) {
-                workspace.setText(documentId, grammar.text);
-              }
-              workspace.setActive(documentId);
-              base2 = replace2 ? "Grammar replaced from the link." : "Your grammar was kept.";
-            }
-          } else {
-            const outcome = openLinked(workspace, linked.text, linked.title);
-            base2 = outcome === "existing" ? "The document of the link was already in the workspace." : "Document opened from the link.";
-          }
-          showStatus(grammars === 0 ? base2 : `${base2} The link also brought ${grammars} grammar${grammars === 1 ? "" : "s"}.`);
-        });
+    /**
+     * Acts on the fragment of the current URL: a share link (`#w=`) or an open link (`#d=`).
+     * Runs at start and again on every `hashchange`, because a page that reuses this tab
+     * (the "Open in the playground" links of stxt.dev share a window name) only changes the
+     * fragment, and the browser does not reload on that.
+     *
+     * @param ownContent whether the workspace holds the user's own documents (as opposed to the
+     * seed): a share link then asks before replacing them.
+     */
+    async handleFragment(ownContent) {
+      const hash = location.hash;
+      if (!carriesLink(hash)) {
+        return;
       }
-    };
-    handleFragment(stored !== void 0);
-    window.addEventListener("hashchange", () => handleFragment(true));
+      history.replaceState(null, "", `${location.pathname}${location.search}`);
+      const status = await applyFragment(hash, this.workspace, ownContent, this.dialogs);
+      if (status !== void 0) {
+        this.showStatus(status);
+      }
+    }
+    persistSettings() {
+      if (this.storage) {
+        saveSettings(this.storage, this.settings);
+      }
+    }
+  };
+  function browserStorage() {
+    try {
+      return window.localStorage;
+    } catch {
+      return void 0;
+    }
   }
-  document.addEventListener("DOMContentLoaded", main);
+  function startPlayground() {
+    const elements = findElements(document);
+    if (!elements) {
+      return;
+    }
+    new Playground(elements, browserStorage()).start();
+  }
+
+  // src/index.ts
+  document.addEventListener("DOMContentLoaded", startPlayground);
 })();
 //# sourceMappingURL=play.js.map

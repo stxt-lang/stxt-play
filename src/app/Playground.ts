@@ -23,9 +23,9 @@ import {
 	SHARE_PARAM,
 	Workspace,
 } from "../workspace";
-import { toCmDiagnostics } from "./diagnostics";
+import { lineAt, toCmDiagnostics } from "./diagnostics";
 import { findElements, PlaygroundElements } from "./elements";
-import { applyFragment, carriesLink, FragmentDialogs } from "./fragment";
+import { applyLink, FragmentDialogs, linkOf } from "./fragment";
 import { labelOf } from "./labels";
 import { createStatus, ShowStatus } from "./status";
 import { WorkspaceSync } from "./workspaceSync";
@@ -52,7 +52,6 @@ export class Playground {
 	private readonly settings: PlaygroundSettings;
 	private readonly showStatus: ShowStatus;
 	private readonly editor: StxtEditor;
-	private readonly view: EditorView;
 	private readonly states: DocumentStates;
 	private readonly tabs: ViewTabs;
 	private readonly panel: ProblemsPanel;
@@ -118,7 +117,6 @@ export class Playground {
 			goToDefinition: (line, character) => this.goToDefinition(line, character),
 		});
 		const view = this.editor.view;
-		this.view = view;
 		this.states = new DocumentStates(
 			{
 				get state() {
@@ -236,6 +234,10 @@ export class Playground {
 
 	// --- Painting: everything visible reads the workspace and the analysis --------------------
 
+	private get view(): EditorView {
+		return this.editor.view;
+	}
+
 	private activeAnalysis(): DocumentAnalysis | undefined {
 		const id = this.workspace.getActiveId();
 		return id === null ? undefined : this.analyzer.getAnalysis(id);
@@ -290,8 +292,7 @@ export class Playground {
 	}
 
 	private goToLine(line: number): void {
-		const docLine = this.view.state.doc.line(Math.min(line + 1, this.view.state.doc.lines));
-		this.view.dispatch({ selection: { anchor: docLine.from }, scrollIntoView: true });
+		this.view.dispatch({ selection: { anchor: lineAt(this.view.state.doc, line).from }, scrollIntoView: true });
 		this.view.focus();
 	}
 
@@ -404,14 +405,14 @@ export class Playground {
 	 * seed): a share link then asks before replacing them.
 	 */
 	private async handleFragment(ownContent: boolean): Promise<void> {
-		const hash = location.hash;
-		if (!carriesLink(hash)) {
+		const link = linkOf(location.hash);
+		if (!link) {
 			return;
 		}
 		// A link is consumed once, so a reload must not act on it again. `replaceState` fires no
 		// `hashchange`, so there is no loop.
 		history.replaceState(null, "", `${location.pathname}${location.search}`);
-		const status = await applyFragment(hash, this.workspace, ownContent, this.dialogs);
+		const status = await applyLink(link, this.workspace, ownContent, this.dialogs);
 		if (status !== undefined) {
 			this.showStatus(status);
 		}

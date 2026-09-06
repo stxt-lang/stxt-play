@@ -71,11 +71,11 @@ export class WorkspaceSync {
 					this.analyzer.setDocument(event.id, document.text);
 					this.states.syncText(event.id, document.text);
 				}
-				if (event.id === this.states.shownId()) {
-					this.paint.view();
-				}
 				// A change may turn a document into a grammar or back, and a grammar change
-				// re-validates the whole workspace: the list and the header may all change
+				// re-validates the whole workspace: the view (a parked grammar replaced by a
+				// link changes the underlines of the document on screen), the list and the
+				// header may all change
+				this.paint.view();
 				this.paint.panel();
 				this.paint.list();
 				this.paint.header();

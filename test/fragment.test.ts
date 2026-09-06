@@ -1,11 +1,7 @@
 import * as assert from "assert";
-import { applyFragment, applyOpenLink, applyShareLink, carriesLink, FragmentDialogs } from "../src/app";
+import { applyFragment, applyOpenLink, applyShareLink, FragmentDialogs, linkOf } from "../src/app";
 import { encodeOpen, encodeShare, OpenLinkDocument, Workspace } from "../src/workspace";
-
-function sequentialIds(): () => string {
-	let n = 0;
-	return () => `d${++n}`;
-}
+import { sequentialIds } from "./support";
 
 const COOKING = "Template (@stxt.template): com.example.cooking\n\tStructure >>\n\t\tRecipe (com.example.cooking):\n";
 const COOKING_V2 = "Template (@stxt.template): com.example.cooking\n\tStructure >>\n\t\tRecipe (com.example.cooking):\n\t\t\tServes: (?) NATURAL\n";
@@ -164,11 +160,11 @@ describe("applyShareLink", () => {
 	});
 });
 
-describe("applyFragment", () => {
+describe("linkOf and applyFragment", () => {
 	it("acts on nothing when the fragment carries no link", async () => {
 		const workspace = new Workspace(sequentialIds());
 		for (const hash of ["", "#", "#x=1", "#w=", "#d="]) {
-			assert.strictEqual(carriesLink(hash), false, hash);
+			assert.strictEqual(linkOf(hash), undefined, hash);
 			assert.strictEqual(await applyFragment(hash, workspace, true, dialogs(true)), undefined, hash);
 		}
 		assert.deepStrictEqual(titles(workspace), []);
@@ -177,7 +173,7 @@ describe("applyFragment", () => {
 	it("opens an encoded open link, grammars included", async () => {
 		const workspace = new Workspace(sequentialIds());
 		const hash = `#${await encodeOpen(RECIPE, "Pancakes", [COOKING])}`;
-		assert.strictEqual(carriesLink(hash), true);
+		assert.deepStrictEqual(linkOf(hash), { kind: "open", hash });
 
 		const status = await applyFragment(hash, workspace, true, dialogs(true));
 
@@ -191,7 +187,7 @@ describe("applyFragment", () => {
 		const share = await encodeShare({ active: "x", documents: [{ id: "x", title: "Shared", text: "S: 1\n" }] });
 		const open = await encodeOpen(RECIPE, "Pancakes");
 		const hash = `#w=${share}&${open}`;
-		assert.strictEqual(carriesLink(hash), true);
+		assert.deepStrictEqual(linkOf(hash), { kind: "share", payload: share });
 
 		const status = await applyFragment(hash, workspace, false, dialogs(true));
 

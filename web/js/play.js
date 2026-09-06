@@ -18887,13 +18887,17 @@
     }
     /**
      * Puts a document in the view, parking the state of the one that was there. A document shown
-     * before comes back with its parked state; a new one gets a fresh state from its text.
+     * before comes back with its parked state; a new one gets a fresh state from its text; the
+     * document already in the view stays as it is.
      *
      * @param id identifier of the document.
      * @param text its text, used only when it has no state yet.
      */
     show(id, text) {
-      if (this.shown !== null && this.shown !== id) {
+      if (this.shown === id) {
+        return;
+      }
+      if (this.shown !== null) {
         this.parked.set(this.shown, this.host.state);
       }
       const state = this.parked.get(id) ?? this.createState(text);
@@ -18911,42 +18915,36 @@
      * @returns whether a state changed.
      */
     syncText(id, text) {
-      if (id === this.shown) {
-        const doc2 = this.host.state.doc;
-        if (doc2.toString() === text) {
-          return false;
-        }
-        this.host.dispatch({ changes: { from: 0, to: doc2.length, insert: text } });
-        return true;
-      }
-      const parked = this.parked.get(id);
-      if (!parked || parked.doc.toString() === text) {
+      const doc2 = id === this.shown ? this.host.state.doc : this.parked.get(id)?.doc;
+      if (!doc2 || doc2.toString() === text) {
         return false;
       }
-      this.parked.set(id, parked.update({ changes: { from: 0, to: parked.doc.length, insert: text } }).state);
+      this.change(id, (current) => [{ from: 0, to: current.length, insert: text }]);
       return true;
     }
     /**
-     * Applies changes to the state of a document, wherever it is: through the view when shown,
-     * through its parked state otherwise. Either way the change is undoable in that document.
+     * Applies changes to the state of a document, wherever it is: through the view when shown
+     * (the view's own listeners see the transaction), through its parked state otherwise. Either
+     * way the change is undoable in that document.
      *
      * @param id identifier of the document.
      * @param changes builds the change specs from the document as the state holds it.
      * @param userEvent the user event annotation of the transaction, if any.
-     * @returns where the changes went; for a parked document, its new text.
+     * @returns the text of the document after the changes, or undefined if it was never shown:
+     * there is no state to change.
      */
     change(id, changes, userEvent) {
       if (id === this.shown) {
         this.host.dispatch({ changes: changes(this.host.state.doc), userEvent });
-        return { where: "view" };
+        return this.host.state.doc.toString();
       }
       const parked = this.parked.get(id);
       if (!parked) {
-        return { where: "none" };
+        return void 0;
       }
       const next = parked.update({ changes: changes(parked.doc), userEvent }).state;
       this.parked.set(id, next);
-      return { where: "parked", text: next.doc.toString() };
+      return next.doc.toString();
     }
     /**
      * Forgets a document. If it was the one in the view, the view keeps showing its state until
@@ -25331,12 +25329,8 @@ Book (stxt.play.library):
         if (changes.length === 0) {
           continue;
         }
-        const outcome = states.change(document2.id, (doc2) => toCmChanges(doc2, changes), "reindent");
-        if (outcome.where === "parked") {
-          workspace.setText(document2.id, outcome.text);
-        } else if (outcome.where === "none") {
-          workspace.setText(document2.id, applyIndentChanges(document2.text, changes));
-        }
+        const text = states.change(document2.id, (doc2) => toCmChanges(doc2, changes), "reindent") ?? applyIndentChanges(document2.text, changes);
+        workspace.setText(document2.id, text);
       }
     };
     const setIndent = (mode) => {
@@ -26062,9 +26056,12 @@ Book (stxt.play.library):
   }
 
   // src/app/diagnostics.ts
+  function lineAt(doc2, line) {
+    return doc2.line(Math.min(line + 1, doc2.lines));
+  }
   function toCmDiagnostics(doc2, diagnostics) {
     return diagnostics.map((diagnostic) => {
-      const line = doc2.line(Math.min(diagnostic.line + 1, doc2.lines));
+      const line = lineAt(doc2, diagnostic.line);
       return {
         from: line.from,
         to: line.to,
@@ -26076,7 +26073,7 @@ Book (stxt.play.library):
   }
 
   // src/app/elements.ts
-  var IDS = {
+  var ELEMENT_IDS = {
     editor: "editor",
     docTitle: "doc-title",
     docList: "doc-list",
@@ -26096,8 +26093,8 @@ Book (stxt.play.library):
   };
   function findElements(root) {
     const found = {};
-    for (const key of Object.keys(IDS)) {
-      const element2 = root.getElementById(IDS[key]);
+    for (const key of Object.keys(ELEMENT_IDS)) {
+      const element2 = root.getElementById(ELEMENT_IDS[key]);
       if (!element2) {
         return void 0;
       }
@@ -26107,18 +26104,15 @@ Book (stxt.play.library):
   }
 
   // src/app/fragment.ts
-  function carriesLink(hash) {
-    return sharePayloadOf(hash) !== void 0 || isOpenLink(hash);
-  }
-  async function applyFragment(hash, workspace, ownContent, dialogs) {
+  function linkOf(hash) {
     const payload = sharePayloadOf(hash);
     if (payload !== void 0) {
-      return applyShareLink(workspace, await decodeShare(payload), ownContent, dialogs);
+      return { kind: "share", payload };
     }
-    if (isOpenLink(hash)) {
-      return applyOpenLink(workspace, await decodeOpen(hash), dialogs);
-    }
-    return void 0;
+    return isOpenLink(hash) ? { kind: "open", hash } : void 0;
+  }
+  async function applyLink(link, workspace, ownContent, dialogs) {
+    return link.kind === "share" ? applyShareLink(workspace, await decodeShare(link.payload), ownContent, dialogs) : applyOpenLink(workspace, await decodeOpen(link.hash), dialogs);
   }
   async function applyShareLink(workspace, shared, ownContent, dialogs) {
     if (!shared || shared.documents.length === 0) {
@@ -26135,6 +26129,13 @@ Book (stxt.play.library):
     if (!linked) {
       return "The link does not carry a valid document.";
     }
+    const replaceAfterAsking = async (grammar, documentId) => {
+      const replace2 = await dialogs.replaceGrammar(grammar.namespace);
+      if (replace2) {
+        workspace.setText(documentId, grammar.text);
+      }
+      return replace2;
+    };
     const plan = planGrammars(workspace, linked.grammars ?? []);
     let grammars = 0;
     for (const grammar of plan.add) {
@@ -26142,8 +26143,7 @@ Book (stxt.play.library):
       grammars++;
     }
     for (const { grammar, documentId } of plan.replace) {
-      if (await dialogs.replaceGrammar(grammar.namespace)) {
-        workspace.setText(documentId, grammar.text);
+      if (await replaceAfterAsking(grammar, documentId)) {
         grammars++;
       }
     }
@@ -26158,12 +26158,9 @@ Book (stxt.play.library):
         base2 = "The grammar of the link was already in the workspace.";
       } else {
         const { grammar, documentId } = main.replace[0];
-        const replace2 = await dialogs.replaceGrammar(grammar.namespace);
-        if (replace2) {
-          workspace.setText(documentId, grammar.text);
-        }
+        const replaced = await replaceAfterAsking(grammar, documentId);
         workspace.setActive(documentId);
-        base2 = replace2 ? "Grammar replaced from the link." : "Your grammar was kept.";
+        base2 = replaced ? "Grammar replaced from the link." : "Your grammar was kept.";
       }
     } else {
       const outcome = openLinked(workspace, linked.text, linked.title);
@@ -26250,9 +26247,7 @@ Book (stxt.play.library):
             this.analyzer.setDocument(event.id, document2.text);
             this.states.syncText(event.id, document2.text);
           }
-          if (event.id === this.states.shownId()) {
-            this.paint.view();
-          }
+          this.paint.view();
           this.paint.panel();
           this.paint.list();
           this.paint.header();
@@ -26336,7 +26331,6 @@ Book (stxt.play.library):
         goToDefinition: (line, character) => this.goToDefinition(line, character)
       });
       const view = this.editor.view;
-      this.view = view;
       this.states = new DocumentStates(
         {
           get state() {
@@ -26434,6 +26428,9 @@ Book (stxt.play.library):
       window.addEventListener("hashchange", () => void this.handleFragment(true));
     }
     // --- Painting: everything visible reads the workspace and the analysis --------------------
+    get view() {
+      return this.editor.view;
+    }
     activeAnalysis() {
       const id = this.workspace.getActiveId();
       return id === null ? void 0 : this.analyzer.getAnalysis(id);
@@ -26479,8 +26476,7 @@ Book (stxt.play.library):
       }
     }
     goToLine(line) {
-      const docLine = this.view.state.doc.line(Math.min(line + 1, this.view.state.doc.lines));
-      this.view.dispatch({ selection: { anchor: docLine.from }, scrollIntoView: true });
+      this.view.dispatch({ selection: { anchor: lineAt(this.view.state.doc, line).from }, scrollIntoView: true });
       this.view.focus();
     }
     /**
@@ -26581,12 +26577,12 @@ Book (stxt.play.library):
      * seed): a share link then asks before replacing them.
      */
     async handleFragment(ownContent) {
-      const hash = location.hash;
-      if (!carriesLink(hash)) {
+      const link = linkOf(location.hash);
+      if (!link) {
         return;
       }
       history.replaceState(null, "", `${location.pathname}${location.search}`);
-      const status = await applyFragment(hash, this.workspace, ownContent, this.dialogs);
+      const status = await applyLink(link, this.workspace, ownContent, this.dialogs);
       if (status !== void 0) {
         this.showStatus(status);
       }

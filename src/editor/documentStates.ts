@@ -13,15 +13,6 @@ export interface StateHost {
 	dispatch(spec: TransactionSpec): void;
 }
 
-/** Where {@link DocumentStates.change} applied the changes. */
-export type ChangeOutcome =
-	/** The document is in the view: the transaction went through it, and the view's own listeners see it. */
-	| { where: "view" }
-	/** The document is parked: its state was updated, and this is its text now. */
-	| { where: "parked"; text: string }
-	/** The document was never shown: there is no state to change. */
-	| { where: "none" };
-
 /**
  * One editor state per workspace document. The view shows one document at a time; every other
  * document that has been shown keeps its state parked here, so switching back restores its
@@ -49,13 +40,17 @@ export class DocumentStates {
 
 	/**
 	 * Puts a document in the view, parking the state of the one that was there. A document shown
-	 * before comes back with its parked state; a new one gets a fresh state from its text.
+	 * before comes back with its parked state; a new one gets a fresh state from its text; the
+	 * document already in the view stays as it is.
 	 *
 	 * @param id identifier of the document.
 	 * @param text its text, used only when it has no state yet.
 	 */
 	show(id: string, text: string): void {
-		if (this.shown !== null && this.shown !== id) {
+		if (this.shown === id) {
+			return;
+		}
+		if (this.shown !== null) {
 			this.parked.set(this.shown, this.host.state);
 		}
 		const state = this.parked.get(id) ?? this.createState(text);
@@ -74,43 +69,37 @@ export class DocumentStates {
 	 * @returns whether a state changed.
 	 */
 	syncText(id: string, text: string): boolean {
-		if (id === this.shown) {
-			const doc = this.host.state.doc;
-			if (doc.toString() === text) {
-				return false;
-			}
-			this.host.dispatch({ changes: { from: 0, to: doc.length, insert: text } });
-			return true;
-		}
-		const parked = this.parked.get(id);
-		if (!parked || parked.doc.toString() === text) {
+		const doc = id === this.shown ? this.host.state.doc : this.parked.get(id)?.doc;
+		if (!doc || doc.toString() === text) {
 			return false;
 		}
-		this.parked.set(id, parked.update({ changes: { from: 0, to: parked.doc.length, insert: text } }).state);
+		this.change(id, (current) => [{ from: 0, to: current.length, insert: text }]);
 		return true;
 	}
 
 	/**
-	 * Applies changes to the state of a document, wherever it is: through the view when shown,
-	 * through its parked state otherwise. Either way the change is undoable in that document.
+	 * Applies changes to the state of a document, wherever it is: through the view when shown
+	 * (the view's own listeners see the transaction), through its parked state otherwise. Either
+	 * way the change is undoable in that document.
 	 *
 	 * @param id identifier of the document.
 	 * @param changes builds the change specs from the document as the state holds it.
 	 * @param userEvent the user event annotation of the transaction, if any.
-	 * @returns where the changes went; for a parked document, its new text.
+	 * @returns the text of the document after the changes, or undefined if it was never shown:
+	 * there is no state to change.
 	 */
-	change(id: string, changes: (doc: Text) => ChangeSpec[], userEvent?: string): ChangeOutcome {
+	change(id: string, changes: (doc: Text) => ChangeSpec[], userEvent?: string): string | undefined {
 		if (id === this.shown) {
 			this.host.dispatch({ changes: changes(this.host.state.doc), userEvent });
-			return { where: "view" };
+			return this.host.state.doc.toString();
 		}
 		const parked = this.parked.get(id);
 		if (!parked) {
-			return { where: "none" };
+			return undefined;
 		}
 		const next = parked.update({ changes: changes(parked.doc), userEvent }).state;
 		this.parked.set(id, next);
-		return { where: "parked", text: next.doc.toString() };
+		return next.doc.toString();
 	}
 
 	/**

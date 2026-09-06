@@ -52,9 +52,10 @@ export function setupHeaderSwitches(options: HeaderSwitchesOptions): void {
 	/**
 	 * Re-indents every document of the workspace to the unit of a mode. Only structural
 	 * indentation changes (see `analysis/reindent.ts`); comments and block content stay as they
-	 * are. The document in the view goes through a transaction, parked documents through their
-	 * own state, so the change is undoable everywhere; documents never shown are rewritten in
-	 * the model.
+	 * are. A document with an editor state — in the view or parked — changes through it, so the
+	 * change is undoable; a document never shown is rewritten in the model. Either way the
+	 * model ends up with the new text (for the document in the view, the update listener has
+	 * already pushed it, and `setText` sees no change).
 	 */
 	const reindentAll = (mode: IndentMode): void => {
 		const unit = mode === "tabs" ? TAB_UNIT : SPACES_UNIT;
@@ -63,13 +64,9 @@ export function setupHeaderSwitches(options: HeaderSwitchesOptions): void {
 			if (changes.length === 0) {
 				continue;
 			}
-			const outcome = states.change(document.id, (doc) => toCmChanges(doc, changes), "reindent");
-			if (outcome.where === "parked") {
-				workspace.setText(document.id, outcome.text);
-			} else if (outcome.where === "none") {
-				workspace.setText(document.id, applyIndentChanges(document.text, changes));
-			}
-			// In the view: the update listener pushes the new text into the workspace
+			const text = states.change(document.id, (doc) => toCmChanges(doc, changes), "reindent")
+				?? applyIndentChanges(document.text, changes);
+			workspace.setText(document.id, text);
 		}
 	};
 

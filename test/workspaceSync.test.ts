@@ -1,43 +1,25 @@
 import * as assert from "assert";
-import { EditorState } from "@codemirror/state";
 import { Analyzer } from "../src/analysis";
 import { Painters, WorkspaceSync } from "../src/app";
-import { DocumentStates, StateHost } from "../src/editor/documentStates";
+import { DocumentStates } from "../src/editor/documentStates";
 import { Workspace } from "../src/workspace";
-
-function sequentialIds(): () => string {
-	let n = 0;
-	return () => `d${++n}`;
-}
+import { documentStates, FakeHost, fakeHost, sequentialIds } from "./support";
 
 interface Bench {
 	workspace: Workspace;
 	analyzer: Analyzer;
 	states: DocumentStates;
-	host: StateHost & { dispatches: number };
+	host: FakeHost;
 	painted: Record<keyof Painters, number>;
 }
 
 /** A workspace wired like the playground, minus the DOM: painters only count. */
 function bench(): Bench {
-	let state = EditorState.create({ doc: "" });
-	const host = {
-		dispatches: 0,
-		get state() {
-			return state;
-		},
-		setState(next: EditorState): void {
-			state = next;
-		},
-		dispatch(spec: Parameters<StateHost["dispatch"]>[0]): void {
-			state = state.update(spec).state;
-			host.dispatches++;
-		},
-	};
+	const host = fakeHost();
 	const painted = { list: 0, panel: 0, header: 0, view: 0 };
 	const workspace = new Workspace(sequentialIds());
 	const analyzer = new Analyzer();
-	const states = new DocumentStates(host, (text) => EditorState.create({ doc: text }));
+	const states = documentStates(host);
 	new WorkspaceSync(workspace, analyzer, states, {
 		list: () => painted.list++,
 		panel: () => painted.panel++,
@@ -96,15 +78,15 @@ describe("WorkspaceSync", () => {
 		assert.strictEqual(b.analyzer.getAnalysis("d1")?.roots[0].getName(), "A");
 	});
 
-	it("updates a parked document's state without repainting the view", () => {
+	it("updates a parked document's state without dispatching to the view", () => {
 		const b = bench();
 		b.workspace.addDocument("A: 1", "A");
 		b.workspace.addDocument("B: 2", "B");
-		const view = b.painted.view;
+		const dispatches = b.host.dispatches;
 
 		b.workspace.setText("d1", "A: parked change");
 
-		assert.strictEqual(b.painted.view, view, "the view shows another document");
+		assert.strictEqual(b.host.dispatches, dispatches, "the view shows another document");
 		assert.strictEqual(b.host.state.doc.toString(), "B: 2");
 		b.workspace.setActive("d1");
 		assert.strictEqual(b.host.state.doc.toString(), "A: parked change");
@@ -119,6 +101,22 @@ describe("WorkspaceSync", () => {
 		b.workspace.addDocument("Template (@stxt.template): com.example.cooking\n\tStructure >>\n\t\tRecipe (com.example.cooking):\n", "Grammar");
 
 		assert.deepStrictEqual(codes(), [], "the recipe validates now");
+	});
+
+	it("repaints the view when a parked grammar changes: the underlines of the shown document may change", () => {
+		const b = bench();
+		b.workspace.addDocument("Template (@stxt.template): com.example.cooking\n\tStructure >>\n\t\tRecipe (com.example.cooking):\n", "Grammar");
+		b.workspace.addDocument("Recipe (com.example.cooking): Pancakes\n", "Pancakes");
+		const codes = (): string[] => (b.analyzer.getAnalysis("d2")?.diagnostics ?? []).map((d) => d.code);
+		assert.deepStrictEqual(codes(), []);
+		const view = b.painted.view;
+
+		// What an open link does when it brings a different grammar for a namespace already defined
+		b.workspace.setText("d1", "Template (@stxt.template): com.example.cooking\n\tStructure >>\n\t\tRecipe (com.example.cooking):\n\t\t\tServes: (1) NATURAL\n");
+
+		assert.deepStrictEqual(codes(), ["TOO_FEW_CHILDREN"], "the shown document has a new finding");
+		assert.ok(b.painted.view > view, "and the view is repainted although it shows another document");
+		assert.strictEqual(b.states.shownId(), "d2");
 	});
 
 	it("forgets a removed document everywhere and shows its neighbour", () => {

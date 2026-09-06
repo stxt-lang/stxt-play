@@ -1,7 +1,9 @@
 import * as assert from "assert";
 import { Text } from "@codemirror/state";
 import { Analyzer } from "../src/analysis";
-import { findElements, labelOf, toCmDiagnostics } from "../src/app";
+import * as fs from "fs";
+import * as path from "path";
+import { ELEMENT_IDS, findElements, labelOf, lineAt, toCmDiagnostics } from "../src/app";
 import { WorkspaceDocument } from "../src/workspace";
 
 describe("labelOf", () => {
@@ -50,24 +52,39 @@ describe("toCmDiagnostics", () => {
 	});
 });
 
+describe("lineAt", () => {
+	it("maps a 0-based analysis line to the document line, clamping past the end to the last line", () => {
+		const doc = Text.of(["first", "second"]);
+		assert.strictEqual(lineAt(doc, 0).number, 1);
+		assert.strictEqual(lineAt(doc, 1).number, 2);
+		assert.strictEqual(lineAt(doc, 9).number, 2);
+	});
+});
+
 describe("findElements", () => {
 	/** A document stand-in that knows some ids. */
 	function documentWith(ids: string[]): Document {
 		return { getElementById: (id: string) => (ids.includes(id) ? { id } : null) } as unknown as Document;
 	}
 
-	const ALL = ["editor", "doc-title", "doc-list", "doc-new", "problems-list", "problems-count", "indent-tabs",
-		"indent-spaces", "validation-toggle", "doc-reset", "doc-clear", "share", "status", "view-tabs", "sidebar", "splitter"];
+	const ALL = Object.values(ELEMENT_IDS);
+
+	it("expects exactly the ids the page has: every one of them is in web/index.html", () => {
+		const html = fs.readFileSync(path.join(__dirname, "..", "..", "web", "index.html"), "utf8");
+		for (const id of ALL) {
+			assert.ok(html.includes(`id="${id}"`), `web/index.html has no element with id="${id}"`);
+		}
+	});
 
 	it("finds every element by its id in the page", () => {
 		const elements = findElements(documentWith(ALL));
 		assert.ok(elements);
-		assert.strictEqual((elements.docTitle as unknown as { id: string }).id, "doc-title");
+		assert.strictEqual((elements.docTitle as unknown as { id: string }).id, ELEMENT_IDS.docTitle);
 		assert.strictEqual(Object.keys(elements).length, ALL.length);
 	});
 
 	it("finds nothing when any element is missing", () => {
-		assert.strictEqual(findElements(documentWith(ALL.filter((id) => id !== "splitter"))), undefined);
+		assert.strictEqual(findElements(documentWith(ALL.filter((id) => id !== ELEMENT_IDS.splitter))), undefined);
 		assert.strictEqual(findElements(documentWith([])), undefined);
 	});
 });

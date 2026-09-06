@@ -3,6 +3,7 @@ import {
 	decodeShare,
 	isGrammarDocument,
 	isOpenLink,
+	LinkedGrammar,
 	loadSharedSnapshot,
 	openLinked,
 	OpenLinkDocument,
@@ -36,26 +37,53 @@ export interface FragmentDialogs {
 	replaceGrammar(namespace: string): Promise<boolean>;
 }
 
+/** A link found in a URL fragment, still encoded: what kind it is, and what to decode. */
+export type FragmentLink =
+	| { kind: "share"; payload: string }
+	| { kind: "open"; hash: string };
+
 /**
- * Tells whether a URL fragment carries a link the playground acts on, without decoding it.
+ * Tells what link a URL fragment carries, without decoding it. If a share link and an open link
+ * come together, the share link wins.
  *
  * @param hash `location.hash`, with or without the leading `#`.
+ * @returns the link, or undefined when the fragment carries none.
  */
-export function carriesLink(hash: string): boolean {
-	return sharePayloadOf(hash) !== undefined || isOpenLink(hash);
+export function linkOf(hash: string): FragmentLink | undefined {
+	const payload = sharePayloadOf(hash);
+	if (payload !== undefined) {
+		return { kind: "share", payload };
+	}
+	return isOpenLink(hash) ? { kind: "open", hash } : undefined;
 }
 
 /**
- * Acts on the link of a URL fragment: a share link, or an open link. If both come together, the
- * share link wins.
+ * Acts on a link: decodes it and applies it to the workspace.
  *
- * @param hash `location.hash`, with or without the leading `#`.
+ * @param link the link, from {@link linkOf}.
  * @param workspace the workspace the link opens into.
  * @param ownContent whether the workspace holds the user's own documents (as opposed to the
  * seed): a share link then asks before replacing them.
  * @param dialogs how to ask the user.
- * @returns the status message to show, or undefined when there is nothing to say: the fragment
- * carries no link, or the user kept their workspace.
+ * @returns the status message to show, or undefined when there is nothing to say: the user
+ * kept their workspace.
+ */
+export async function applyLink(
+	link: FragmentLink,
+	workspace: Workspace,
+	ownContent: boolean,
+	dialogs: FragmentDialogs,
+): Promise<string | undefined> {
+	return link.kind === "share"
+		? applyShareLink(workspace, await decodeShare(link.payload), ownContent, dialogs)
+		: applyOpenLink(workspace, await decodeOpen(link.hash), dialogs);
+}
+
+/**
+ * Acts on the link of a URL fragment, if it carries one: {@link linkOf} then {@link applyLink}.
+ *
+ * @returns the status message, or undefined when the fragment carries no link or there is
+ * nothing to say.
  */
 export async function applyFragment(
 	hash: string,
@@ -63,14 +91,8 @@ export async function applyFragment(
 	ownContent: boolean,
 	dialogs: FragmentDialogs,
 ): Promise<string | undefined> {
-	const payload = sharePayloadOf(hash);
-	if (payload !== undefined) {
-		return applyShareLink(workspace, await decodeShare(payload), ownContent, dialogs);
-	}
-	if (isOpenLink(hash)) {
-		return applyOpenLink(workspace, await decodeOpen(hash), dialogs);
-	}
-	return undefined;
+	const link = linkOf(hash);
+	return link === undefined ? undefined : applyLink(link, workspace, ownContent, dialogs);
 }
 
 /**
@@ -122,6 +144,15 @@ export async function applyOpenLink(
 		return "The link does not carry a valid document.";
 	}
 
+	// A replacement overwrites a grammar of this browser, so it asks first
+	const replaceAfterAsking = async (grammar: LinkedGrammar, documentId: string): Promise<boolean> => {
+		const replace = await dialogs.replaceGrammar(grammar.namespace);
+		if (replace) {
+			workspace.setText(documentId, grammar.text);
+		}
+		return replace;
+	};
+
 	const plan = planGrammars(workspace, linked.grammars ?? []);
 	let grammars = 0;
 	for (const grammar of plan.add) {
@@ -129,8 +160,7 @@ export async function applyOpenLink(
 		grammars++;
 	}
 	for (const { grammar, documentId } of plan.replace) {
-		if (await dialogs.replaceGrammar(grammar.namespace)) {
-			workspace.setText(documentId, grammar.text);
+		if (await replaceAfterAsking(grammar, documentId)) {
 			grammars++;
 		}
 	}
@@ -146,12 +176,9 @@ export async function applyOpenLink(
 			base = "The grammar of the link was already in the workspace.";
 		} else {
 			const { grammar, documentId } = main.replace[0];
-			const replace = await dialogs.replaceGrammar(grammar.namespace);
-			if (replace) {
-				workspace.setText(documentId, grammar.text);
-			}
+			const replaced = await replaceAfterAsking(grammar, documentId);
 			workspace.setActive(documentId);
-			base = replace ? "Grammar replaced from the link." : "Your grammar was kept.";
+			base = replaced ? "Grammar replaced from the link." : "Your grammar was kept.";
 		}
 	} else {
 		const outcome = openLinked(workspace, linked.text, linked.title);

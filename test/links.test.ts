@@ -5,29 +5,12 @@ import {
 	loadSharedSnapshot,
 	isGrammarDocument,
 	loadWorkspace,
-	KeyValueStorage,
 	openLinked,
 	planGrammars,
 	Workspace,
 	WorkspaceSnapshot,
 } from "../src/workspace";
-
-/** Deterministic ids: d1, d2, d3… */
-function sequentialIds(): () => string {
-	let n = 0;
-	return () => `d${++n}`;
-}
-
-/** In-memory stand-in for localStorage. */
-function memoryStorage(): KeyValueStorage & { data: Map<string, string> } {
-	const data = new Map<string, string>();
-	return {
-		data,
-		getItem: (key) => data.get(key) ?? null,
-		setItem: (key, value) => void data.set(key, value),
-		removeItem: (key) => void data.delete(key),
-	};
-}
+import { memoryStorage, sequentialIds } from "./support";
 
 describe("Workspace.replaceAll", () => {
 	it("replaces every document and activates the first by default", () => {

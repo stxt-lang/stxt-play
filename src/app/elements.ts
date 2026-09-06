@@ -1,5 +1,5 @@
 /** The elements of `web/index.html` the application wires, by the id each one has there. */
-const IDS = {
+export const ELEMENT_IDS = {
 	editor: "editor",
 	docTitle: "doc-title",
 	docList: "doc-list",
@@ -19,7 +19,7 @@ const IDS = {
 } as const;
 
 /** The page elements the application needs, all present. */
-export type PlaygroundElements = { readonly [K in keyof typeof IDS]: HTMLElement };
+export type PlaygroundElements = { readonly [K in keyof typeof ELEMENT_IDS]: HTMLElement };
 
 /**
  * Finds every element the application needs.
@@ -28,9 +28,9 @@ export type PlaygroundElements = { readonly [K in keyof typeof IDS]: HTMLElement
  * @returns the elements, or undefined if any is missing: the page is not the playground's.
  */
 export function findElements(root: Document): PlaygroundElements | undefined {
-	const found: Partial<Record<keyof typeof IDS, HTMLElement>> = {};
-	for (const key of Object.keys(IDS) as (keyof typeof IDS)[]) {
-		const element = root.getElementById(IDS[key]);
+	const found: Partial<Record<keyof typeof ELEMENT_IDS, HTMLElement>> = {};
+	for (const key of Object.keys(ELEMENT_IDS) as (keyof typeof ELEMENT_IDS)[]) {
+		const element = root.getElementById(ELEMENT_IDS[key]);
 		if (!element) {
 			return undefined;
 		}

@@ -6,8 +6,8 @@ import {
 	encodeOpen,
 	encodeShare,
 	isOpenLink,
-	sharePayloadOf,
 	KeyValueStorage,
+	sharePayloadOf,
 	loadSettings,
 	loadWorkspace,
 	saveSettings,
@@ -18,29 +18,13 @@ import {
 	WORKSPACE_STORAGE_KEY,
 	WorkspaceEvent,
 } from "../src/workspace";
-
-/** Deterministic ids: d1, d2, d3… */
-function sequentialIds(): () => string {
-	let n = 0;
-	return () => `d${++n}`;
-}
+import { memoryStorage, sequentialIds } from "./support";
 
 /** Records every event of a workspace as "kind:id" strings. */
 function record(workspace: Workspace): string[] {
 	const events: string[] = [];
 	workspace.subscribe((event: WorkspaceEvent) => events.push(`${event.kind}:${event.id}`));
 	return events;
-}
-
-/** In-memory stand-in for localStorage. */
-function memoryStorage(): KeyValueStorage & { data: Map<string, string> } {
-	const data = new Map<string, string>();
-	return {
-		data,
-		getItem: (key) => data.get(key) ?? null,
-		setItem: (key, value) => void data.set(key, value),
-		removeItem: (key) => void data.delete(key),
-	};
 }
 
 describe("Workspace: documents and activation", () => {

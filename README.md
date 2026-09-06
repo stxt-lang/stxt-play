@@ -152,9 +152,9 @@ repository, with no build step in between.
 css/            SCSS sources         → compiled into web/css/
 src/            TypeScript sources   → bundled into web/js/
 src/index.ts    the entry point: starts the application once the page is parsed
-src/app/        the application: Playground.ts composes the page (the only file here with DOM), the rest is
-                what it composes without one — what a link does to the workspace, how a workspace event reaches
-                the analyzer, the editor states and the panels, labels, diagnostics — so it is tested in Node
+src/app/        the application: Playground.ts composes the page; the rest is what it composes — what a link
+                does to the workspace, how a workspace event reaches the analyzer, the editor states and the
+                panels, labels, diagnostics — tested in Node (elements.ts and status.ts are the two thin DOM adapters)
 src/analysis/   the analysis core: tokens, diagnostics, workspace grammars, completion, node info, definitions (no DOM, no editor)
 src/workspace/  the workspace model, its localStorage persistence, share and open links (no DOM either)
 seed/           the example documents and grammars, bundled as text

@@ -74,11 +74,44 @@
         /**
          * Tells whether a namespace matches the format, without throwing.
          *
+         * Format of the logical namespace (STXT-SPEC 7): lower-case ASCII letters, digits and dot
+         * only; an optional leading `@` (reserved namespaces); two or more domain-style labels
+         * `[a-z0-9]+` separated by `.`. Valid examples: "a.b", "com.example.docs", "@stxt.schema".
+         * Checked by a hand-written scan rather than the regex `^@?[a-z0-9]+(\.[a-z0-9]+)+$`, which
+         * in engines that implement a repeated group by recursion (Java) overflowed the stack with
+         * ~2 000 labels; the scan is linear and identical in every port.
+         *
          * @param namespace already normalized namespace to check.
          * @returns true if it matches the format; false when it is null, empty or malformed.
          */
         static isValid(namespace) {
-          return !!namespace && _NamespaceValidator.NAMESPACE_FORMAT.test(namespace);
+          if (!namespace) {
+            return false;
+          }
+          const n = namespace.length;
+          let i = namespace[0] === "@" ? 1 : 0;
+          let labels = 0;
+          for (; ; ) {
+            const start = i;
+            while (i < n && _NamespaceValidator.isLabelChar(namespace.charCodeAt(i))) {
+              i++;
+            }
+            if (i === start) {
+              return false;
+            }
+            labels++;
+            if (i === n) {
+              return labels >= 2;
+            }
+            if (namespace[i] !== ".") {
+              return false;
+            }
+            i++;
+          }
+        }
+        // [a-z0-9], ASCII only
+        static isLabelChar(c) {
+          return c >= 97 && c <= 122 || c >= 48 && c <= 57;
         }
         /**
          * Validates the format of a namespace.
@@ -91,13 +124,12 @@
           if (!namespace) {
             return;
           }
-          if (!_NamespaceValidator.NAMESPACE_FORMAT.test(namespace)) {
+          if (!_NamespaceValidator.isValid(namespace)) {
             throw new ParseException_1.ParseException(lineNumber, "INVALID_NAMESPACE", `Namespace not valid: ${namespace}`);
           }
         }
       };
       exports.NamespaceValidator = NamespaceValidator;
-      NamespaceValidator.NAMESPACE_FORMAT = /^@?[a-z0-9]+(\.[a-z0-9]+)+$/;
     }
   });
 
@@ -107,7 +139,7 @@
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.StringUtils = void 0;
-      var StringUtils6 = class {
+      var StringUtils6 = class _StringUtils {
         constructor() {
         }
         /**
@@ -126,7 +158,16 @@
          * @returns the trimmed string; null/undefined is treated as the empty string.
          */
         static trim(s) {
-          return (s ?? "").replace(this.LEADING_BLANKS, "").replace(this.TRAILING_BLANKS, "");
+          const str = s ?? "";
+          let start = 0;
+          let end = str.length;
+          while (start < end && _StringUtils.isBlank(str[start])) {
+            start++;
+          }
+          while (end > start && _StringUtils.isBlank(str[end - 1])) {
+            end--;
+          }
+          return start === 0 && end === str.length ? str : str.substring(start, end);
         }
         // Used for name>> nodes
         /**
@@ -136,17 +177,27 @@
          * @returns the string without trailing blanks; null/undefined is treated as the empty string.
          */
         static rightTrim(s) {
-          return (s ?? "").replace(this.TRAILING_BLANKS, "");
+          const str = s ?? "";
+          let end = str.length;
+          while (end > 0 && _StringUtils.isBlank(str[end - 1])) {
+            end--;
+          }
+          return end === str.length ? str : str.substring(0, end);
         }
         // Used to normalize namespaces
         /**
-         * Lower-cases a string.
+         * ASCII lower case: maps A-Z to a-z and leaves every other character as it is.
+         *
+         * Namespaces are ASCII by definition (STXT-SPEC 7.1), so this must not be the Unicode
+         * lower case: `toLowerCase` maps U+212A KELVIN SIGN to `k`, which made `(\u212Aelvin.x)` the
+         * valid namespace `kelvin.x` until 2026-09-06, the very homograph 7.1 rules out. With an
+         * ASCII map the sign reaches the {@link NamespaceValidator} unchanged and is rejected.
          *
          * @param input string to lower-case.
          * @returns the lower-cased string; null/undefined is treated as the empty string.
          */
         static lowerCase(input) {
-          return (input ?? "").toLowerCase();
+          return (input ?? "").replace(/[A-Z]+/g, (upper) => upper.toLowerCase());
         }
         // Used for the name of the nodes
         /**
@@ -194,8 +245,6 @@
       exports.StringUtils = StringUtils6;
       StringUtils6.NODE_NAME = /^[\p{L}\p{Nd}\p{Mn}\p{Mc}\-_ ]+$/u;
       StringUtils6.NODE_NAME_LETTER_OR_DIGIT = /[\p{L}\p{Nd}]/u;
-      StringUtils6.LEADING_BLANKS = /^[ \t]+/;
-      StringUtils6.TRAILING_BLANKS = /[ \t]+$/;
       StringUtils6.BLANK_RUN = /[ \t]+/g;
     }
   });
@@ -276,10 +325,12 @@
         }
         /** @returns the effective namespace of the node: the one it declares or, failing that, the effective namespace of its parent; the empty string if there is none. */
         getNamespace() {
-          if (this.declaredNamespace.length > 0) {
-            return this.declaredNamespace;
+          for (let n = this; n !== null; n = n.parent) {
+            if (n.declaredNamespace.length > 0) {
+              return n.declaredNamespace;
+            }
           }
-          return this.parent ? this.parent.getNamespace() : "";
+          return "";
         }
         // ----------------------------------------------------------------
         // Position in the source
@@ -351,90 +402,6 @@
     }
   });
 
-  // node_modules/@stxt-lang/core/out/core/TextNode.js
-  var require_TextNode = __commonJS({
-    "node_modules/@stxt-lang/core/out/core/TextNode.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.TextNode = void 0;
-      var Node_1 = require_Node();
-      var TextNode6 = class _TextNode extends Node_1.Node {
-        constructor(name2, ...rest) {
-          const [namespace, text, line] = rest.length <= 1 ? [null, rest[0], Node_1.Node.NO_LINE] : [rest[0], rest[1], rest[2] ?? Node_1.Node.NO_LINE];
-          super(name2, namespace, line);
-          this.lines = [];
-          this.setText(text);
-        }
-        // ----------------------------------------------------------------
-        // Text
-        // ----------------------------------------------------------------
-        /** @returns the text lines of the node, in order, as a read-only view. */
-        getTextLines() {
-          return this.lines;
-        }
-        /**
-         * Replaces the whole text of the node.
-         *
-         * @param text new text, split into lines at every line break (LF or CRLF), or the lines
-         *        themselves; null/undefined empties the node.
-         */
-        setText(text) {
-          this.lines.length = 0;
-          if (typeof text === "string") {
-            this.lines.push(..._TextNode.splitLines(text));
-          } else if (text) {
-            this.lines.push(...text);
-          }
-        }
-        /**
-         * Replaces the whole text of the node with the given lines.
-         *
-         * @param lines new text lines; null/undefined empties the node.
-         */
-        setTextLines(lines) {
-          this.setText(lines);
-        }
-        /**
-         * Appends a text line.
-         *
-         * @param line text line to append.
-         */
-        addTextLine(line) {
-          this.lines.push(line);
-        }
-        /** Removes every text line. */
-        clearText() {
-          this.lines.length = 0;
-        }
-        /**
-         * Removes the final empty lines (`""` elements at the end of the lines). The {@link Parser}
-         * calls it when the block closes (STXT-SPEC §10.3: the final empty lines of a block are not
-         * content); it is public because a programmatically built node may want the same
-         * normalization before writing.
-         */
-        removeTrailingEmptyLines() {
-          while (this.lines.length > 0 && this.lines[this.lines.length - 1] === "") {
-            this.lines.pop();
-          }
-        }
-        getText() {
-          return this.lines.join("\n");
-        }
-        isTextNode() {
-          return true;
-        }
-        // LF or CRLF; the trailing part after the last break is a line too (possibly empty)
-        static splitLines(text) {
-          return text.split(/\r?\n/);
-        }
-        describe() {
-          return `, lines=${this.lines.length}`;
-        }
-      };
-      exports.TextNode = TextNode6;
-    }
-  });
-
   // node_modules/@stxt-lang/core/out/exceptions/RuntimeException.js
   var require_RuntimeException = __commonJS({
     "node_modules/@stxt-lang/core/out/exceptions/RuntimeException.js"(exports) {
@@ -472,6 +439,105 @@
     }
   });
 
+  // node_modules/@stxt-lang/core/out/core/TextNode.js
+  var require_TextNode = __commonJS({
+    "node_modules/@stxt-lang/core/out/core/TextNode.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.TextNode = void 0;
+      var Node_1 = require_Node();
+      var RuntimeException_1 = require_RuntimeException();
+      var TextNode6 = class _TextNode extends Node_1.Node {
+        constructor(name2, ...rest) {
+          const [namespace, text, line] = rest.length <= 1 ? [null, rest[0], Node_1.Node.NO_LINE] : [rest[0], rest[1], rest[2] ?? Node_1.Node.NO_LINE];
+          super(name2, namespace, line);
+          this.lines = [];
+          this.setText(text);
+        }
+        // ----------------------------------------------------------------
+        // Text
+        // ----------------------------------------------------------------
+        /** @returns the text lines of the node, in order, as a read-only view. */
+        getTextLines() {
+          return this.lines;
+        }
+        /**
+         * Replaces the whole text of the node.
+         *
+         * @param text new text, split into lines at every line break (LF or CRLF), or the lines
+         *        themselves; null/undefined empties the node.
+         */
+        setText(text) {
+          if (typeof text === "string") {
+            this.lines.length = 0;
+            this.lines.push(..._TextNode.splitLines(text));
+          } else {
+            const lines = text ? text.map((line) => _TextNode.checkLine(line)) : [];
+            this.lines.length = 0;
+            this.lines.push(...lines);
+          }
+        }
+        /**
+         * Replaces the whole text of the node with the given lines.
+         *
+         * @param lines new text lines; null/undefined empties the node.
+         */
+        setTextLines(lines) {
+          this.setText(lines);
+        }
+        /**
+         * Appends a text line.
+         *
+         * A text line is one source line (STXT-SPEC 6): a line break inside it has no
+         * representation, and written out the part after it would land at level 0 and re-parse as
+         * another node (structure injected through data). Pass a multi-line text as a string to
+         * {@link TextNode.setText}, which splits it. A lone CR is content (STXT-SPEC 3) and is accepted.
+         *
+         * @param line text line to append.
+         * @throws RuntimeException with code `LINE_BREAK_NOT_ALLOWED` if the line contains a LF.
+         */
+        addTextLine(line) {
+          this.lines.push(_TextNode.checkLine(line));
+        }
+        static checkLine(line) {
+          if (line.includes("\n")) {
+            throw new RuntimeException_1.RuntimeException("LINE_BREAK_NOT_ALLOWED", "A text line cannot contain a line break");
+          }
+          return line;
+        }
+        /** Removes every text line. */
+        clearText() {
+          this.lines.length = 0;
+        }
+        /**
+         * Removes the final empty lines (`""` elements at the end of the lines). The {@link Parser}
+         * calls it when the block closes (STXT-SPEC §10.3: the final empty lines of a block are not
+         * content); it is public because a programmatically built node may want the same
+         * normalization before writing.
+         */
+        removeTrailingEmptyLines() {
+          while (this.lines.length > 0 && this.lines[this.lines.length - 1] === "") {
+            this.lines.pop();
+          }
+        }
+        getText() {
+          return this.lines.join("\n");
+        }
+        isTextNode() {
+          return true;
+        }
+        // LF or CRLF; the trailing part after the last break is a line too (possibly empty)
+        static splitLines(text) {
+          return text.split(/\r?\n/);
+        }
+        describe() {
+          return `, lines=${this.lines.length}`;
+        }
+      };
+      exports.TextNode = TextNode6;
+    }
+  });
+
   // node_modules/@stxt-lang/core/out/core/InlineNode.js
   var require_InlineNode = __commonJS({
     "node_modules/@stxt-lang/core/out/core/InlineNode.js"(exports) {
@@ -499,9 +565,17 @@
         /**
          * Sets the inline value of the node.
          *
+         * A value is one source line (STXT-SPEC 5): a line break inside it has no representation,
+         * and the {@link NodeWriter} would emit it as a new line, which re-parses as another node
+         * (structure injected through data). A lone CR is content (STXT-SPEC 3) and is accepted.
+         *
          * @param value new value, or null/undefined for none. It is trimmed.
+         * @throws RuntimeException with code `LINE_BREAK_NOT_ALLOWED` if the value contains a LF.
          */
         setValue(value) {
+          if (value !== null && value !== void 0 && value.includes("\n")) {
+            throw new RuntimeException_1.RuntimeException("LINE_BREAK_NOT_ALLOWED", "A node value cannot contain a line break");
+          }
           this.value = StringUtils_1.StringUtils.trim(value);
         }
         getText() {
@@ -531,9 +605,14 @@
           if (child.getParent() !== null) {
             throw new RuntimeException_1.RuntimeException("NODE_ALREADY_ATTACHED", `Node '${child.getName()}' already has a parent: detach it first`);
           }
-          for (let p = this; p !== null; p = p.getParent()) {
-            if (p === child) {
-              throw new RuntimeException_1.RuntimeException("NODE_CYCLE", `Node '${child.getName()}' cannot be a child of itself or of one of its descendants`);
+          if (child === this) {
+            throw new RuntimeException_1.RuntimeException("NODE_CYCLE", `Node '${child.getName()}' cannot be a child of itself or of one of its descendants`);
+          }
+          if (child instanceof _InlineNode && child.children.length > 0) {
+            for (let p = this.getParent(); p !== null; p = p.getParent()) {
+              if (p === child) {
+                throw new RuntimeException_1.RuntimeException("NODE_CYCLE", `Node '${child.getName()}' cannot be a child of itself or of one of its descendants`);
+              }
             }
           }
           const at = index ?? this.children.length;
@@ -812,7 +891,7 @@
           } else {
             throw new ParseException_1.ParseException(lineNumber, "INVALID_NAMESPACE", `Line not valid: ${fullLine}`);
           }
-          return new NameNamespace_1.NameNamespace(name2, namespace.toLowerCase());
+          return new NameNamespace_1.NameNamespace(name2, StringUtils_1.StringUtils.lowerCase(namespace));
         }
       };
       exports.NameNamespaceParser = NameNamespaceParser;
@@ -984,7 +1063,7 @@
       var ParseException_1 = require_ParseException();
       var ValidationException_1 = require_ValidationException();
       var LimitException_1 = require_LimitException();
-      var Parser7 = class {
+      var Parser7 = class _Parser {
         /**
          * Creates a parser, optionally with its own limits.
          *
@@ -994,9 +1073,20 @@
           this.observers = [];
           this.streamObservers = [];
           this.validators = [];
-          this.maxNesting = options?.maxNesting ?? Constants_1.Constants.DEFAULT_MAX_NESTING;
-          this.maxLineLength = options?.maxLineLength ?? Constants_1.Constants.DEFAULT_MAX_LINE_LENGTH;
-          this.maxInputSize = options?.maxInputSize ?? Constants_1.Constants.DEFAULT_MAX_INPUT_SIZE;
+          this.maxNesting = _Parser.limit("maxNesting", options?.maxNesting, Constants_1.Constants.DEFAULT_MAX_NESTING);
+          this.maxLineLength = _Parser.limit("maxLineLength", options?.maxLineLength, Constants_1.Constants.DEFAULT_MAX_LINE_LENGTH);
+          this.maxInputSize = _Parser.limit("maxInputSize", options?.maxInputSize, Constants_1.Constants.DEFAULT_MAX_INPUT_SIZE);
+        }
+        // A limit is an integer >= 0 or -1 (STXT-SPEC 11.2): NaN would disable it silently and -2
+        // would reject every line, so anything else is rejected here.
+        static limit(name2, value, defaultValue) {
+          if (value === void 0) {
+            return defaultValue;
+          }
+          if (!Number.isInteger(value) || value < -1) {
+            throw new RangeError(`${name2} must be an integer >= 0, or -1 to disable it, got ${value}`);
+          }
+          return value;
         }
         /**
          * Registers an observer, notified when each node is opened and closed.
@@ -1050,12 +1140,26 @@
          */
         parseResult(content2) {
           const result = new ParseResult_1.ParseResult();
-          const lines = content2.split(/\r?\n/);
-          if (lines.length > 0 && lines[lines.length - 1] === "") {
-            lines.pop();
-          }
-          this.parseLines(lines, result);
+          this.parseLines(_Parser.lineIterator(content2), result);
           return result;
+        }
+        /**
+         * Iterates the lines of a document lazily, at every LF or CRLF (a lone CR is content,
+         * STXT-SPEC 3). The final line break terminates the last line, it is not an extra empty
+         * line (that would add a spurious line to a `>>` block at EOF, STXT-SPEC 10.3).
+         */
+        static *lineIterator(content2) {
+          let start = 0;
+          const length = content2.length;
+          while (start < length) {
+            let end = content2.indexOf("\n", start);
+            if (end === -1) {
+              end = length;
+            }
+            const cut = end > start && content2[end - 1] === "\r" ? end - 1 : end;
+            yield content2.substring(start, cut);
+            start = end + 1;
+          }
         }
         /**
          * Streaming mode: input from a line iterable (each item one line, without its line break —
@@ -1682,9 +1786,8 @@
             throw new ValidationException_1.ValidationException(node.getLine(), "BLOCK_FORM_NOT_ALLOWED", `Not allowed text in node ${node.getQualifiedName()}`);
           }
           const value = node.getText();
-          const allowed = nodeDef.getValues();
           if (!nodeDef.isAllowedValue(value)) {
-            throw new ValidationException_1.ValidationException(node.getLine(), "INVALID_VALUE", `The value '${value}' not allowed. Only: ${Array.from(allowed).join(", ")}`);
+            throw new ValidationException_1.ValidationException(node.getLine(), "INVALID_VALUE", `The value '${value}' is not one of the allowed values of ${nodeDef.getName()}`);
           }
         }
       };
@@ -2520,6 +2623,59 @@
         constructor() {
         }
         /**
+         * Splits a RuleSpec `(count) TYPE [values]` into its three optional parts by a hand-written
+         * scan, not a regular expression: the pattern used until 2026-09-06 backtracked in O(n³) on
+         * a line without the closing `]` (a 10 000-character Structure line took minutes). Blanks
+         * are U+0020/U+0009 only (STXT-TEMPLATE-SPEC 6.2/9), and the rules the pattern enforced
+         * are kept exactly: the count runs to the first `)` and, trimmed, is neither empty nor
+         * starts with `(`; the type may not contain `(`, `)` or `]`; the values run from the first
+         * `[` to the first `]` after it, and only blanks may follow that `]`.
+         *
+         * @returns the trimmed parts (null each when absent), or null if the line has not that shape.
+         */
+        static splitRuleSpec(rawLine) {
+          const n = rawLine.length;
+          let i = 0;
+          while (i < n && StringUtils_1.StringUtils.isBlank(rawLine[i])) {
+            i++;
+          }
+          let count = null;
+          if (i < n && rawLine[i] === "(") {
+            const close = rawLine.indexOf(")", i + 1);
+            if (close === -1) {
+              return null;
+            }
+            count = StringUtils_1.StringUtils.trim(rawLine.substring(i + 1, close));
+            if (count.length === 0 || count[0] === "(") {
+              return null;
+            }
+            i = close + 1;
+          }
+          const open2 = rawLine.indexOf("[", i);
+          let type = rawLine.substring(i, open2 === -1 ? n : open2);
+          if (type.includes("(") || type.includes(")") || type.includes("]")) {
+            return null;
+          }
+          type = StringUtils_1.StringUtils.trim(type);
+          if (type.length === 0) {
+            type = null;
+          }
+          let values = null;
+          if (open2 !== -1) {
+            const close = rawLine.indexOf("]", open2 + 1);
+            if (close === -1) {
+              return null;
+            }
+            values = StringUtils_1.StringUtils.trim(rawLine.substring(open2 + 1, close));
+            for (let j = close + 1; j < n; j++) {
+              if (!StringUtils_1.StringUtils.isBlank(rawLine[j])) {
+                return null;
+              }
+            }
+          }
+          return [count, type, values];
+        }
+        /**
          * Parses a definition line into its type, its cardinality and its allowed values.
          *
          * @param rawLine inline value of the node, `(min,max) TYPE [values]`.
@@ -2532,15 +2688,12 @@
           if (StringUtils_1.StringUtils.trim(rawLine).length === 0) {
             return new ChildLine_1.ChildLine(null, null, null, null);
           }
-          const m = _ChildLineParser.CHILD_LINE_PATTERN.exec(rawLine);
-          if (!m) {
+          const parts = _ChildLineParser.splitRuleSpec(rawLine);
+          if (!parts) {
             throw new ValidationException_1.ValidationException(lineNumber, "STRUCTURE_LINE_NOT_VALID", `Line not valid: ${rawLine}`);
           }
-          let type = StringUtils_1.StringUtils.trim(m[2]);
-          if (type.length === 0) {
-            type = null;
-          }
-          const count = StringUtils_1.StringUtils.trim(m[1]);
+          const [countPart, type, valuesStr] = parts;
+          const count = countPart ?? "";
           let min = null;
           let max = null;
           if (count.length === 0 || count === "*") {
@@ -2559,12 +2712,12 @@
             min = null;
             max = _ChildLineParser.parseCount(count.substring(0, count.length - 1), count, rawLine, lineNumber);
           } else if (count.includes(",")) {
-            const parts = count.split(",");
-            if (parts.length !== 2) {
+            const parts2 = count.split(",");
+            if (parts2.length !== 2) {
               throw new ValidationException_1.ValidationException(lineNumber, "CARDINALITY_NOT_VALID", `Invalid count ${count} in line: ${rawLine}`);
             }
-            const aNum = _ChildLineParser.parseCount(StringUtils_1.StringUtils.trim(parts[0]), count, rawLine, lineNumber);
-            const bNum = _ChildLineParser.parseCount(StringUtils_1.StringUtils.trim(parts[1]), count, rawLine, lineNumber);
+            const aNum = _ChildLineParser.parseCount(StringUtils_1.StringUtils.trim(parts2[0]), count, rawLine, lineNumber);
+            const bNum = _ChildLineParser.parseCount(StringUtils_1.StringUtils.trim(parts2[1]), count, rawLine, lineNumber);
             if (aNum > bNum) {
               throw new ValidationException_1.ValidationException(lineNumber, "MIN_GREATER_THAN_MAX", `Min ${aNum} greater than Max ${bNum} in line: ${rawLine}`);
             }
@@ -2575,13 +2728,12 @@
             max = min;
           }
           let values = null;
-          const valuesStr = m[3];
-          if (valuesStr !== null && valuesStr !== void 0) {
-            const parts = valuesStr.split(",");
+          if (valuesStr !== null) {
+            const parts2 = valuesStr.split(",");
             const list = [];
-            for (let part of parts) {
+            for (let part of parts2) {
               part = StringUtils_1.StringUtils.trim(part);
-              if (part.length === 0 && parts.length > 1) {
+              if (part.length === 0 && parts2.length > 1) {
                 throw new ValidationException_1.ValidationException(lineNumber, "VALUE_EMPTY", `Empty ENUM value in ${valuesStr}`);
               }
               if (part.length === 0) {
@@ -2610,7 +2762,6 @@
         }
       };
       exports.ChildLineParser = ChildLineParser;
-      ChildLineParser.CHILD_LINE_PATTERN = /^[ \t]*(?:\([ \t]*([^() \t][^)]*?)[ \t]*\)[ \t]*)?([^()[\]]*)?(?:\[[ \t]*([^]*?)[ \t]*\][ \t]*)?[ \t]*$/;
     }
   });
 
@@ -3449,6 +3600,18 @@
           this.templateMeta = new MetaTemplateSchemaProvider_1.MetaTemplateSchemaProvider();
           this.levelCache = /* @__PURE__ */ new Map();
           this.maxAscent = options?.maxAscent ?? DEFAULT_MAX_ASCENT;
+          if (!Number.isInteger(this.maxAscent) || this.maxAscent < 0) {
+            throw new RangeError(`maxAscent must be an integer >= 0, got ${options?.maxAscent}`);
+          }
+        }
+        // isDirectory is not supposed to throw (DiscoveryFileSystem contract), but nothing an
+        // adapter throws may escape resolve() (spec section 8): a failure means "not a directory".
+        async isDirectory(path) {
+          try {
+            return await this.fs.isDirectory(path);
+          } catch {
+            return false;
+          }
         }
         /**
          * Builds the resolution chain of a document (STXT-DISCOVERY-SPEC sections 4 and 6)
@@ -3469,7 +3632,7 @@
             let dir = documentDir;
             for (let level = 0; level < this.maxAscent && dir !== null; level++) {
               const candidate = this.fs.join(dir, STXT_DIR);
-              if (await this.fs.isDirectory(candidate)) {
+              if (await this.isDirectory(candidate)) {
                 chain.push(candidate);
               }
               dir = this.fs.parentOf(dir);
@@ -3478,7 +3641,7 @@
           const userDir = this.env.getUserLevelDir();
           const systemDir = this.env.getSystemLevelDir();
           for (const dir of [userDir, systemDir]) {
-            if (dir !== null && !chain.includes(dir) && await this.fs.isDirectory(dir)) {
+            if (dir !== null && !chain.includes(dir) && await this.isDirectory(dir)) {
               chain.push(dir);
             }
           }
@@ -3512,7 +3675,7 @@
         async existingUnique(dirs) {
           const result = [];
           for (const dir of dirs) {
-            if (!result.includes(dir) && await this.fs.isDirectory(dir)) {
+            if (!result.includes(dir) && await this.isDirectory(dir)) {
               result.push(dir);
             }
           }
@@ -3540,13 +3703,17 @@
         // directory symlinks, this stops symlink loops and pathological trees from turning
         // resolution into unbounded recursion or an escaping error.
         async collectFiles(dir) {
-          return this.collectFilesAt(dir, 0);
+          return this.collectFilesAt(dir, 0, /* @__PURE__ */ new Set());
         }
-        async collectFilesAt(dir, depth) {
+        async collectFilesAt(dir, depth, visited) {
           const files = [];
           if (depth >= DEFAULT_MAX_DESCENT) {
             return files;
           }
+          if (visited.has(dir)) {
+            return files;
+          }
+          visited.add(dir);
           let entries;
           try {
             entries = [...await this.fs.listDirectory(dir)].sort((a, b) => a.path < b.path ? -1 : 1);
@@ -3555,7 +3722,7 @@
           }
           for (const entry of entries) {
             if (entry.isDirectory) {
-              files.push(...await this.collectFilesAt(entry.path, depth + 1));
+              files.push(...await this.collectFilesAt(entry.path, depth + 1, visited));
             } else {
               files.push(entry.path);
             }

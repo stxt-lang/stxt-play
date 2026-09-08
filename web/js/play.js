@@ -700,7 +700,7 @@
       var Constants3 = class {
       };
       exports.Constants = Constants3;
-      Constants3.SPEC_VERSION = "1.0";
+      Constants3.SPEC_VERSION = "2026-09-07";
       Constants3.COMMENT_CHAR = "#";
       Constants3.TAB_SPACES = 4;
       Constants3.TAB = "	";

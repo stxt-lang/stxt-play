@@ -3613,6 +3613,20 @@
             return false;
           }
         }
+        // A candidate .stxt that is itself a symbolic link forms no project level (spec sections
+        // 4.1 and 10). The operation is optional in the adapter (an in-memory tree has no links):
+        // missing counts as false. Guarded like isDirectory, but an adapter that throws here is
+        // treated as "a link" — the conservative answer: the candidate is skipped.
+        async isSymbolicLink(path) {
+          if (this.fs.isSymbolicLink === void 0) {
+            return false;
+          }
+          try {
+            return await this.fs.isSymbolicLink(path);
+          } catch {
+            return true;
+          }
+        }
         /**
          * Builds the resolution chain of a document (STXT-DISCOVERY-SPEC sections 4 and 6)
          * without loading any definition.
@@ -3632,7 +3646,7 @@
             let dir = documentDir;
             for (let level = 0; level < this.maxAscent && dir !== null; level++) {
               const candidate = this.fs.join(dir, STXT_DIR);
-              if (await this.isDirectory(candidate)) {
+              if (!await this.isSymbolicLink(candidate) && await this.isDirectory(candidate)) {
                 chain.push(candidate);
               }
               dir = this.fs.parentOf(dir);

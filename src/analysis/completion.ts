@@ -44,8 +44,12 @@ export interface CompletionResult {
 	suggestions: CompletionSuggestion[];
 }
 
-/** Type names of the core that make a node a text block. */
-const BLOCK_TYPES = new Set(["TEXT", "BLOCK"]);
+/**
+ * Type names of the core that make a node a text block. `MARKDOWN` is a text type like `TEXT`
+ * (STXT-SCHEMA-SPEC §9.7): both admit the inline form, but their content is prose and is written
+ * as a block.
+ */
+const BLOCK_TYPES = new Set(["TEXT", "BLOCK", "MARKDOWN"]);
 
 /**
  * Computes the completions for a cursor position.

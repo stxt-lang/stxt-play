@@ -115,6 +115,36 @@ describe("Completion: children of the enclosing node", () => {
 	});
 });
 
+describe("Completion: MARKDOWN nodes", () => {
+	it("offers MARKDOWN nodes as blocks, like TEXT, at root level and under a parent", () => {
+		const analyzer = new Analyzer();
+		analyzer.setDocument("template", [
+			"Template (@stxt.template): com.example.pages",
+			"\tStructure >>",
+			"\t\tPage (com.example.pages):",
+			"\t\t\tTitle: (1)",
+			"\t\t\tBody: (?) MARKDOWN",
+			"",
+		].join("\n"));
+		analyzer.setDocument("schema", [
+			"Schema (@stxt.schema): org.example.memos",
+			"\tNode: Memo",
+			"\t\tType: MARKDOWN",
+			"",
+		].join("\n"));
+		analyzer.setDocument("page", "Page (com.example.pages): Home\n\tTitle: Home\n\n");
+
+		const children = analyzer.getCompletions("page", 2, "\t");
+		assert.ok(children);
+		assert.deepStrictEqual(texts(children.suggestions), ["Body >>"]);
+		assert.deepStrictEqual(children.suggestions.map((s) => s.kind), ["block"]);
+
+		const roots = texts(analyzer.getCompletions("page", 2, "")?.suggestions);
+		assert.ok(roots.includes("Memo (org.example.memos) >>"), "MARKDOWN roots are offered as blocks");
+		assert.ok(roots.includes("Page (com.example.pages): "));
+	});
+});
+
 describe("Completion: values and dead zones", () => {
 	it("offers the ENUM values after the colon, replacing only the value prefix", () => {
 		const analyzer = workspace();

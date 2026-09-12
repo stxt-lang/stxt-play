@@ -18111,7 +18111,7 @@
 
   // src/analysis/completion.ts
   var import_core = __toESM(require_all());
-  var BLOCK_TYPES = /* @__PURE__ */ new Set(["TEXT", "BLOCK"]);
+  var BLOCK_TYPES = /* @__PURE__ */ new Set(["TEXT", "BLOCK", "MARKDOWN"]);
   function computeCompletions(analysis, registry, line, linePrefix) {
     const lastNode = getLastNode(analysis, line);
     const context = getCompletionContext(linePrefix, lastNode?.isTextNode() ?? false, lastNode?.getLevel() ?? 0);

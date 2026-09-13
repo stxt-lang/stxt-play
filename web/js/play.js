@@ -19088,8 +19088,8 @@
     }
     /**
      * Brings the state of a document up to date with a text that changed in the model. When the
-     * texts already match — the editor itself was the origin: typing, or a reindent, which
-     * updates the state first — nothing moves. A document never shown has no state to update.
+     * texts already match, the editor itself was the origin: typing, or a reindent, which
+     * updates the state first, nothing moves. A document never shown has no state to update.
      *
      * @param id identifier of the document.
      * @param text the text the model holds now.
@@ -25267,8 +25267,8 @@ Book (stxt.play.library):
   };
   var KIND_TITLE = {
     document: "Document",
-    schema: "Schema \u2014 identified by its namespace",
-    template: "Template \u2014 identified by its namespace"
+    schema: "Schema, identified by its namespace",
+    template: "Template, identified by its namespace"
   };
   function createDocumentList(list, newButton, handlers2) {
     let entries = [];
@@ -25330,7 +25330,7 @@ Book (stxt.play.library):
       const label = document.createElement("span");
       label.className = "doc-label";
       label.textContent = entry.label;
-      label.title = entry.renamable ? `${entry.label} \u2014 double-click to rename` : entry.label;
+      label.title = entry.renamable ? `${entry.label} (double-click to rename)` : entry.label;
       const problems = document.createElement("span");
       problems.className = "doc-problems";
       if (entry.errors > 0) {
@@ -26105,7 +26105,7 @@ Book (stxt.play.library):
   var SHARE_PARAM = "w";
   var SHARE_NAMESPACE = "stxt.play.share";
   var SHARE_VERSION = "1";
-  var SHARE_HEADER = "# STXT Playground workspace \u2014 https://play.stxt.dev\n";
+  var SHARE_HEADER = "# STXT Playground workspace: https://play.stxt.dev\n";
   var OPEN_PARAM = "d";
   var OPEN_TITLE_PARAM = "t";
   var OPEN_GRAMMAR_PARAM = "g";
@@ -26594,7 +26594,7 @@ Book (stxt.play.library):
       elements.docClear.addEventListener("click", () => this.confirmClear());
       elements.share.addEventListener("click", () => this.share());
     }
-    /** Loads the workspace — a share link, the stored one, or the seed — and starts listening. */
+    /** Loads the workspace, a share link, the stored one, or the seed, and starts listening. */
     start() {
       window.addEventListener("pagehide", this.persistNow);
       document.addEventListener("visibilitychange", () => {
@@ -26757,7 +26757,7 @@ Book (stxt.play.library):
      * (the "Open in the playground" links of stxt.dev share a window name) only changes the
      * fragment, and the browser does not reload on that. The fragment is consumed at once, but
      * the link is applied after the previous one has finished: a link may hold a dialog open,
-     * and the playground has a single dialog — two links running at the same time would answer
+     * and the playground has a single dialog, two links running at the same time would answer
      * each other's questions.
      *
      * @param ownContent whether the workspace holds the user's own documents (as opposed to the

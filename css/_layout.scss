@@ -76,7 +76,6 @@ body {
 	.topbar-button {
 		padding: 0.15rem 0.6rem;
 		border: 1px solid rgba(#fff, 0.6);
-		border-radius: 3px;
 		background: transparent;
 		color: #fff;
 		font: inherit;
@@ -136,7 +135,6 @@ body {
 	.segmented {
 		display: inline-flex;
 		border: 1px solid rgba(#fff, 0.6);
-		border-radius: 3px;
 		overflow: hidden;
 
 		button {
@@ -226,7 +224,6 @@ body {
 	left: 50%;
 	z-index: 20;
 	padding: 0.35rem 0.9rem;
-	border-radius: 999px;
 	background: $black;
 	color: #fff;
 	font-size: 0.8rem;
@@ -307,7 +304,6 @@ body {
 		min-width: 1.2rem;
 		margin-left: 0.3rem;
 		padding: 0 0.4rem;
-		border-radius: 999px;
 		background: $error;
 		color: #fff;
 		font-size: 0.7rem;
@@ -349,7 +345,6 @@ body {
 		min-width: 1.2rem;
 		margin-left: 0.5rem;
 		padding: 0 0.4rem;
-		border-radius: 999px;
 		background: $color3;
 		color: $color1;
 		text-align: center;
@@ -395,7 +390,6 @@ body {
 		flex: none;
 		min-width: 4.6rem;
 		padding: 0 0.4rem;
-		border-radius: 3px;
 		background: $grey;
 		color: $stxt-muted;
 		font-family: $font-mono;

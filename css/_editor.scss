@@ -75,7 +75,6 @@
 .stxt-tok-md-code {
 	color: $stxt-value;
 	background: rgba($color1, 0.06);
-	border-radius: 3px;
 }
 
 .stxt-tok-md-list {
@@ -95,7 +94,6 @@
 // Autocompletion popup (CodeMirror's, restyled with the palette)
 .cm-tooltip.cm-tooltip-autocomplete {
 	border: 1px solid $color3;
-	border-radius: 4px;
 	background: #fff;
 	box-shadow: 0 4px 14px rgba(#000, 0.12);
 	font-family: $font-mono;
@@ -134,7 +132,6 @@
 // Hover tooltip: the node under the pointer and what its grammar says
 .cm-tooltip.cm-tooltip-hover {
 	border: 1px solid $color3;
-	border-radius: 4px;
 	background: #fff;
 	box-shadow: 0 4px 14px rgba(#000, 0.12);
 }

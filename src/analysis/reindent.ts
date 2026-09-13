@@ -1,7 +1,7 @@
 import { Formatter, IndentStyle } from "@stxt-lang/core";
 
 /**
- * Re-indentation between tabs and spaces, as the edits of `Formatter` of `@stxt-lang/core` —
+ * Re-indentation between tabs and spaces, as the edits of `Formatter` of `@stxt-lang/core`,
  * the same formatter `stxt format` of the CLI and the VS Code extension use, so the playground's
  * tabs/spaces switch produces the document the other tools would. Only the **structural**
  * indentation is what the switch is about, but the formatter's other rules come with it (one

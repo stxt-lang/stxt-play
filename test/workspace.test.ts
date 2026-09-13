@@ -266,7 +266,7 @@ describe("Share links", () => {
 
 		const payload = await encodeShare(workspace.toSnapshot());
 		assert.ok(/^[A-Za-z0-9_-]+$/.test(payload), "base64url, safe in a fragment");
-		// Ids are minted on decode (s1, s2…): they only mean something inside one browser
+		// Ids are minted on decode (s1, s2...): they only mean something inside one browser
 		assert.deepStrictEqual(await decodeShare(payload), {
 			active: "s1",
 			documents: [
@@ -283,7 +283,7 @@ describe("Share links", () => {
 
 		const stxt = toShareDocument(workspace.toSnapshot());
 		assert.strictEqual(stxt, [
-			"# STXT Playground workspace — https://play.stxt.dev",
+			"# STXT Playground workspace: https://play.stxt.dev",
 			"Workspace (stxt.play.share):",
 			"\tVersion: 1",
 			"\tDocument: Recipe",

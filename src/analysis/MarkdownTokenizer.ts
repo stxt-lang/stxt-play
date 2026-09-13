@@ -2,8 +2,8 @@
  * Line-by-line tokenizer for the content of `MARKDOWN` blocks (STXT-SCHEMA-SPEC 9.7).
  *
  * Editor layer only: `MARKDOWN` validates exactly like `TEXT`, so nothing here touches the
- * language. It recognises the handful of constructs worth colouring —headings, fenced code,
- * list markers, block quotes, inline code, bold, italic and links— and ignores the rest
+ * language. It recognises the handful of constructs worth colouring, headings, fenced code,
+ * list markers, block quotes, inline code, bold, italic and links, and ignores the rest
  * (tables, HTML, reference links, setext headings, thematic breaks). It is deliberately small
  * and dependency-free: the same file lives in the VS Code extension and in the playground.
  *

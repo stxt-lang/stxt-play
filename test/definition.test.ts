@@ -60,7 +60,7 @@ describe("Go to definition", () => {
 
 	it("lands on the grammar root when the position is over the namespace", () => {
 		const analyzer = workspace();
-		// `Recipe (com.example.cooking): Bread` — column 10 is inside the namespace
+		// `Recipe (com.example.cooking): Bread`, column 10 is inside the namespace
 		assert.deepStrictEqual(analyzer.findDefinition("recipe", 0, 10), { documentId: "template", line: 0 });
 		// Column 8 is inside `(org.example.notes)` of the Note line
 		assert.deepStrictEqual(analyzer.findDefinition("recipe", 4, 8), { documentId: "notes", line: 1 });

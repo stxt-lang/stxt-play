@@ -12,9 +12,9 @@ export interface DefinitionLocation {
 
 /**
  * "Go to definition" over a position of a document, the same rule as the STXT VS Code extension:
- * over the head of a node line (name, namespace, separator — not the value) it resolves to the
+ * over the head of a node line (name, namespace, separator, not the value) it resolves to the
  * grammar of the workspace that defines the node's namespace, placed on the line that declares
- * the node — `Node: Name` in a schema, the node's own line inside `Structure >>` in a template.
+ * the node, `Node: Name` in a schema, the node's own line inside `Structure >>` in a template.
  * Over the namespace itself it resolves to the grammar root.
  *
  * Which document defines the namespace is answered by the registry (the workspace is the

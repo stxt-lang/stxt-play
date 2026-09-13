@@ -2,7 +2,7 @@ import { EditorState, TransactionSpec } from "@codemirror/state";
 import { DocumentStates, StateHost } from "../src/editor/documentStates";
 import { KeyValueStorage } from "../src/workspace";
 
-/** Deterministic ids: d1, d2, d3… */
+/** Deterministic ids: d1, d2, d3... */
 export function sequentialIds(): () => string {
 	let n = 0;
 	return () => `d${++n}`;

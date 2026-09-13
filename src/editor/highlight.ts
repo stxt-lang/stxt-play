@@ -6,7 +6,7 @@ import { StxtToken, StxtTokenType } from "../analysis";
  * STXT highlighting for CodeMirror.
  *
  * There is no Lezer grammar here on purpose: a hand-written grammar would be a second definition
- * of the language, which the ecosystem forbids. The single source of truth is the core parser —
+ * of the language, which the ecosystem forbids. The single source of truth is the core parser,
  * the analysis layer turns its parse into {@link StxtToken}s, and this field turns those tokens
  * into mark decorations. The app pushes fresh tokens through {@link setTokensEffect} after every
  * analysis.

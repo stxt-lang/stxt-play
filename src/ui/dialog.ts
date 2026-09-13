@@ -1,7 +1,7 @@
 /**
  * The dialogs of the playground: small in-page modals on the native `<dialog>` element,
  * instead of `window.confirm` / `window.prompt`. The browser still gives us the modal
- * behaviour for free — focus trap, Escape to cancel, inert page behind, `::backdrop` — but
+ * behaviour for free, focus trap, Escape to cancel, inert page behind, `::backdrop`, but
  * the look is ours and the buttons say what they do ("Delete", "Reset") instead of "OK".
  *
  * One `<dialog>` is created lazily and reused: two dialogs never overlap in the playground.

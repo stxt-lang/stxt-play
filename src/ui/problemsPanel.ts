@@ -18,7 +18,7 @@ export interface ProblemsPanel {
  *
  * The panel is plain DOM on purpose: it lists the {@link Diagnostic}s of the analysis and lets
  * the user jump to the offending line; the editor underlines come separately from the lint
- * extension. Every row says where the problem comes from — syntax, grammar or validation — so a
+ * extension. Every row says where the problem comes from, syntax, grammar or validation, so a
  * document that parses but does not validate reads differently from one that does not parse.
  *
  * @param list element the problem rows are rendered into.

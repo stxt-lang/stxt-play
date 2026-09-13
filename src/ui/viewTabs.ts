@@ -26,8 +26,8 @@ const NARROW_QUERY = "(max-width: 720px)";
  * Creates the view tabs inside their nav element.
  *
  * On wide screens the sidebar, the editor and the problems panel are all on screen, and the
- * tabs are hidden by CSS. On narrow screens the three panes would fight for a small height —
- * a document list of three rows, an editor spilling over the problems — so the layout shows
+ * tabs are hidden by CSS. On narrow screens the three panes would fight for a small height,
+ * a document list of three rows, an editor spilling over the problems, so the layout shows
  * one pane at a time and these tabs pick which. The chosen pane is a `data-view` attribute on
  * `<body>`; the CSS does the showing and hiding, so a wide screen ignores it entirely.
  *

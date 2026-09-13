@@ -75,7 +75,7 @@ the base64url (no padding) of the raw-deflate of one STXT document that carries 
 workspace. Inflate it and you get something you can read, edit and compress again:
 
 ```stxt
-# STXT Playground workspace — https://play.stxt.dev
+# STXT Playground workspace: https://play.stxt.dev
 Workspace (stxt.play.share):
 	Version: 1
 	Document: Recipe

@@ -13,7 +13,7 @@ import CONFIG_TEMPLATE from "../seed/stxt.play.config.stxt";
 
 /**
  * The workspace a first-time visitor gets, and what the Reset button restores: documents next to
- * the grammars that validate them, so the playground demonstrates what it is about — editing
+ * the grammars that validate them, so the playground demonstrates what it is about, editing
  * STXT and seeing it validated against a grammar written beside it. Three groups: three recipes
  * with their template, three books with their schema, and three server configurations with their
  * template (documents, and data). The files live in `seed/` (see its README, also for why their

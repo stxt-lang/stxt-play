@@ -1,6 +1,6 @@
 /**
  * Public surface of the analysis layer: everything the editor, the errors panel and the future
- * highlighting library consume. Editor-agnostic on purpose — no DOM, no CodeMirror.
+ * highlighting library consume. Editor-agnostic on purpose, no DOM, no CodeMirror.
  */
 
 export { Analyzer, DocumentAnalysis, GrammarInfo, GrammarKind } from "./Analyzer";

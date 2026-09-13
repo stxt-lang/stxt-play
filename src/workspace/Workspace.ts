@@ -1,7 +1,7 @@
 /**
  * The in-memory workspace of the playground: an ordered list of documents plus the active one.
  *
- * Everything is a document here — plain STXT, schemas and templates alike. Whether a document is
+ * Everything is a document here, plain STXT, schemas and templates alike. Whether a document is
  * a grammar is not stored: it is a fact of its content, and the analysis layer reports it. The
  * model knows nothing about the DOM, CodeMirror or storage; it just holds state and tells its
  * subscribers what changed, so the app can keep the analyzer, the editor and the panels in sync.

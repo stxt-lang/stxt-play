@@ -61,8 +61,8 @@ export class DocumentStates {
 
 	/**
 	 * Brings the state of a document up to date with a text that changed in the model. When the
-	 * texts already match — the editor itself was the origin: typing, or a reindent, which
-	 * updates the state first — nothing moves. A document never shown has no state to update.
+	 * texts already match, the editor itself was the origin: typing, or a reindent, which
+	 * updates the state first, nothing moves. A document never shown has no state to update.
 	 *
 	 * @param id identifier of the document.
 	 * @param text the text the model holds now.

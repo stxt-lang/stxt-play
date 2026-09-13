@@ -51,8 +51,8 @@ const KIND_BADGE: Record<DocumentListKind, string> = {
 /** Tooltip of the kind badge of a row. */
 const KIND_TITLE: Record<DocumentListKind, string> = {
 	document: "Document",
-	schema: "Schema — identified by its namespace",
-	template: "Template — identified by its namespace",
+	schema: "Schema, identified by its namespace",
+	template: "Template, identified by its namespace",
 };
 
 /**
@@ -60,10 +60,10 @@ const KIND_TITLE: Record<DocumentListKind, string> = {
  *
  * Plain DOM, like the problems panel. Rows are focusable: Enter or Space selects, F2 renames,
  * Delete asks for deletion, Alt+Up/Down moves; double-click on the label renames too, and rows can
- * be dragged to reorder them. The list keeps only two pieces of state of its own — which row is
- * being renamed, which one is being dragged — so re-rendering while the user types a new title
- * keeps the input in place. Renamable rows also carry a pencil button — on touch screens there
- * is no double-click nor F2 — shown on hover on wide screens and always on narrow ones.
+ * be dragged to reorder them. The list keeps only two pieces of state of its own, which row is
+ * being renamed, which one is being dragged, so re-rendering while the user types a new title
+ * keeps the input in place. Renamable rows also carry a pencil button, on touch screens there
+ * is no double-click nor F2, shown on hover on wide screens and always on narrow ones.
  *
  * @param list element the rows are rendered into.
  * @param newButton the "new document" button.
@@ -146,7 +146,7 @@ export function createDocumentList(
 		const label = document.createElement("span");
 		label.className = "doc-label";
 		label.textContent = entry.label;
-		label.title = entry.renamable ? `${entry.label} — double-click to rename` : entry.label;
+		label.title = entry.renamable ? `${entry.label} (double-click to rename)` : entry.label;
 
 		const problems = document.createElement("span");
 		problems.className = "doc-problems";

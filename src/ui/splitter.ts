@@ -21,7 +21,7 @@ export interface SplitterOptions {
 
 /**
  * Wires the divider between the document list and the editor: dragging it trades width between
- * the two — to read long document titles, or to give the editor the room back. The width lands
+ * the two, to read long document titles, or to give the editor the room back. The width lands
  * in the sidebar's `--sidebar-width` custom property, which only the wide layout reads: on
  * narrow screens the panes are shown one at a time and the CSS ignores it (the handle is hidden
  * there too). Arrow keys move the divider when the handle has the focus, and a double click

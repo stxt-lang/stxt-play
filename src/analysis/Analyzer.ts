@@ -50,8 +50,8 @@ export interface DocumentAnalysis {
 	textNodeByLineIndex: Map<number, TextNode>;
 	/**
 	 * Grammars this document defines, in document order. Empty for plain documents; non-empty
-	 * marks the document as a schema/template in the document list, where its namespace — not a
-	 * title — identifies it.
+	 * marks the document as a schema/template in the document list, where its namespace, not a
+	 * title, identifies it.
 	 */
 	grammars: GrammarInfo[];
 	/** Problems of the document, ordered by line. */

@@ -34,12 +34,12 @@ import { WorkspaceSync } from "./workspaceSync";
  * The playground application: the composition root that puts the layers together on the page.
  *
  * The wiring keeps a single flow of data: the workspace model is the source of truth for the
- * documents, the analyzer mirrors it (one cached parse per document), and everything visible —
- * highlighting, underlines, the problems panel, the document list, the header — reads from the
+ * documents, the analyzer mirrors it (one cached parse per document), and everything visible,
+ * highlighting, underlines, the problems panel, the document list, the header, reads from the
  * analysis ({@link WorkspaceSync} carries each workspace event there). The editor shows one
  * document at a time; every workspace document keeps its own CodeMirror state
  * ({@link DocumentStates}), so switching preserves undo history and selection. The two header
- * switches — indentation mode and validation on/off — and the width of the document list are
+ * switches, indentation mode and validation on/off, and the width of the document list are
  * settings, persisted apart from the workspace.
  *
  * What is decided here is only what needs the page: which dialog asks what, which element is
@@ -213,7 +213,7 @@ export class Playground {
 		elements.share.addEventListener("click", () => this.share());
 	}
 
-	/** Loads the workspace — a share link, the stored one, or the seed — and starts listening. */
+	/** Loads the workspace, a share link, the stored one, or the seed, and starts listening. */
 	start(): void {
 		window.addEventListener("pagehide", this.persistNow);
 		document.addEventListener("visibilitychange", () => {
@@ -403,7 +403,7 @@ export class Playground {
 	 * (the "Open in the playground" links of stxt.dev share a window name) only changes the
 	 * fragment, and the browser does not reload on that. The fragment is consumed at once, but
 	 * the link is applied after the previous one has finished: a link may hold a dialog open,
-	 * and the playground has a single dialog — two links running at the same time would answer
+	 * and the playground has a single dialog, two links running at the same time would answer
 	 * each other's questions.
 	 *
 	 * @param ownContent whether the workspace holds the user's own documents (as opposed to the

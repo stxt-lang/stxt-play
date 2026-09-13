@@ -219,7 +219,7 @@ body {
 	}
 }
 
-// Transient message under the top bar (link copied, workspace reset…)
+// Transient message under the top bar (link copied, workspace reset...)
 .status {
 	position: fixed;
 	top: 2.6rem;
@@ -438,7 +438,7 @@ body {
 	}
 }
 
-// Narrow screens: one pane at a time — the document list, the editor or the problems — chosen
+// Narrow screens: one pane at a time, the document list, the editor or the problems, chosen
 // with the view tabs; the header drops its links and subtitle and wraps its controls.
 // Last in the file on purpose: these rules must win over the panes' own ones above.
 @media (max-width: 720px) {

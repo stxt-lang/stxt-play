@@ -25,7 +25,7 @@ export function loadSharedSnapshot(workspace: Workspace, snapshot: WorkspaceSnap
 }
 
 /**
- * First title among "title", "title (2)", "title (3)"… not taken by any document.
+ * First title among "title", "title (2)", "title (3)"... not taken by any document.
  *
  * @param workspace the workspace whose titles are taken.
  * @param title the wanted title.
@@ -87,7 +87,7 @@ export interface GrammarPlan {
  * Decides what to do with the grammars of an open link, against the grammars the workspace
  * already has. Namespaces follow the workspace discovery rule (one definition per namespace),
  * so the plan never adds a second definition: an unknown namespace is an addition, a known one
- * with a different text is a replacement — of the first document that defines it — for the
+ * with a different text is a replacement, of the first document that defines it, for the
  * caller to confirm, and a known one with the very same text is a keep, pointing at the
  * document that already holds it. A payload that is not a grammar, or repeats a namespace
  * already brought by this same link, is ignored.
@@ -135,8 +135,8 @@ export function planGrammars(workspace: Workspace, grammarTexts: readonly string
  * Whether a text is a grammar document: it parses, it has at least one root, every root is a
  * grammar (a schema or a template), and at least one declares its namespace. This is what
  * decides that the document of an open link gets the one-definition-per-namespace treatment of
- * {@link planGrammars} instead of entering as a plain document; the mixed form — a document
- * sharing the file with its grammars — is a plain document.
+ * {@link planGrammars} instead of entering as a plain document; the mixed form, a document
+ * sharing the file with its grammars, is a plain document.
  *
  * @param text the full text of the linked document.
  */

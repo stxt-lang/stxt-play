@@ -2,12 +2,12 @@ import { InlineNode, Node, NodeWriter, Parser, TextNode } from "@stxt-lang/core"
 import { WorkspaceDocument, WorkspaceSnapshot } from "./Workspace";
 
 /**
- * Links that carry content in the URL fragment, compressed, so nothing needs a server — the
+ * Links that carry content in the URL fragment, compressed, so nothing needs a server, the
  * fragment never leaves the browser. Two kinds:
  *
  * - Share links, `#w=` followed by the base64url of the raw-deflate of the whole workspace
  *   written as one STXT document (see {@link toShareDocument}): whoever opens the link gets it
- *   loaded in place of their own workspace (after confirming). STXT sharing STXT — inflating
+ *   loaded in place of their own workspace (after confirming). STXT sharing STXT, inflating
  *   the payload shows a document anyone can read, edit and compress again.
  * - Open links, `#d=` followed by the base64url of the raw-deflate of the UTF-8 text of one STXT
  *   document, plus an optional `&t=` with its title: the document is added to whatever workspace
@@ -28,7 +28,7 @@ export const SHARE_NAMESPACE = "stxt.play.share";
 export const SHARE_VERSION = "1";
 
 /** Comment that heads the share document, for whoever inflates a payload out of curiosity. */
-const SHARE_HEADER = "# STXT Playground workspace — https://play.stxt.dev\n";
+const SHARE_HEADER = "# STXT Playground workspace: https://play.stxt.dev\n";
 
 /** Parameter name of a single document to open inside the URL fragment. */
 export const OPEN_PARAM = "d";
@@ -88,7 +88,7 @@ async function decompressText(payload: string): Promise<string> {
  * Writes a workspace as one STXT document, the form that travels in a share link:
  *
  * ```stxt
- * # STXT Playground workspace — https://play.stxt.dev
+ * # STXT Playground workspace: https://play.stxt.dev
  * Workspace (stxt.play.share):
  * 	Version: 1
  * 	Document: Recipe
@@ -103,7 +103,7 @@ async function decompressText(payload: string): Promise<string> {
  * not part of the format: they only mean something inside one browser, and {@link fromShareDocument}
  * mints fresh ones. Two STXT normalizations apply to the text (both harmless in an editor, and
  * both applied anyway by the formatter): blank-trim removes trailing whitespace of every line,
- * and a block drops its final empty lines — decoding closes every non-empty text with a single
+ * and a block drops its final empty lines, decoding closes every non-empty text with a single
  * newline, so a document that ends with one (the usual case) round-trips exactly.
  *
  * @param snapshot the workspace to write.

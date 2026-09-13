@@ -1,7 +1,7 @@
 @use "settings" as *;
 
 // CodeMirror chrome and the STXT token colours. The token classes (.stxt-tok-*) are attached by
-// the highlight decorations of src/editor/highlight.ts, fed by the analysis — the colours are
+// the highlight decorations of src/editor/highlight.ts, fed by the analysis, the colours are
 // the $stxt-* palette shared with the portal.
 
 .cm-editor {

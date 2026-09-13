@@ -1,7 +1,7 @@
 import { WorkspaceSnapshot } from "./Workspace";
 
 /**
- * Persistence of the workspace in a key/value store — `localStorage` in the browser, anything
+ * Persistence of the workspace in a key/value store, `localStorage` in the browser, anything
  * with the same two methods in tests. One key holds the whole workspace as versioned JSON, so
  * a future format change can migrate or discard old data explicitly instead of misreading it.
  */
@@ -77,7 +77,7 @@ export function loadWorkspace(storage: KeyValueStorage): WorkspaceSnapshot | und
  *
  * @param storage the store to write to.
  * @param snapshot the workspace to save.
- * @returns true if the write succeeded; false if the store refused it (quota, private mode…).
+ * @returns true if the write succeeded; false if the store refused it (quota, private mode...).
  */
 export function saveWorkspace(storage: KeyValueStorage, snapshot: WorkspaceSnapshot): boolean {
 	try {

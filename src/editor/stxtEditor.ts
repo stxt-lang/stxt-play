@@ -72,7 +72,7 @@ const INDENT_UNITS: Record<IndentMode, string> = { tabs: TAB_UNIT, spaces: SPACE
 const indentCompartment = new Compartment();
 
 /**
- * Tab inserts one indent unit at every cursor — a real tab or four spaces, per the header switch —
+ * Tab inserts one indent unit at every cursor, a real tab or four spaces, per the header switch,
  * or indents the selected lines when there is a selection. Shift-Tab is `indentLess`, which is
  * unit-aware on its own.
  */
@@ -93,7 +93,7 @@ const insertIndentUnit: Command = (view) => {
  *
  * - Indentation is structure. Tab inserts one indent unit (or indents the selection), Shift-Tab
  *   dedents; the unit is a tab by default and four spaces when the header says so.
- * - Highlighting comes from {@link highlightField}, fed by the analysis — never from a grammar.
+ * - Highlighting comes from {@link highlightField}, fed by the analysis, never from a grammar.
  * - The lint gutter marks the lines with diagnostics; the app pushes them with `setDiagnostics`.
  * - Autocompletion, hover and "go to definition" ask the analysis through the providers of the
  *   config.

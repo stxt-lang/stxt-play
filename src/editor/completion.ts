@@ -22,7 +22,7 @@ const CM_TYPES: Record<CompletionSuggestion["kind"], string> = {
  * Autocompletion for STXT, driven by the analysis (see `analysis/completion.ts`), never by a
  * grammar of its own. The provider is asked on every keystroke and on Ctrl-Space; results are
  * shown as they come (`filter: false`), because the analysis already matches names the STXT
- * way — canonical form, accents kept, separators folded — which CodeMirror's fuzzy filter would
+ * way, canonical form, accents kept, separators folded, which CodeMirror's fuzzy filter would
  * not.
  *
  * A block suggestion inserts its head plus a line break and the indentation of the body: the

@@ -1,34 +1,34 @@
 Lesson (stxt.play.tutorial): Namespace documents
-    Number of lesson: 5/5
-    Introduction >>
-        The documents with namespace have
-        nodes with this form: `Node name (namespace.definition):`
-        or `Node name (namespace.definition) >>`
+	Number of lesson: 5/5
+	Introduction >>
+		Documents with a namespace have
+		nodes of this form: `Node name (namespace.definition):`
+		or `Node name (namespace.definition) >>`
 
-        From this lesson and forward, all
-        the documents are with namespace.
+		From this lesson on, all
+		the documents have a namespace.
 
-        The nodes with namespace can be validated with schemas.
-        The schema gives the structure and the cardinality
-        of the childs.
+		Nodes with a namespace can be validated against schemas.
+		The schema gives the structure and the cardinality
+		of the children.
 
-        The parser can be configured with validation or not.
-        This workspace has a switch to enable/disable
-        schema validation.
+		The parser can be configured with or without validation.
+		This workspace has a switch to enable or disable
+		schema validation.
 
-        Next, you can play with a receipt, changing this
-        to see what happens with validation.
+		Next, you can play with a recipe: change it
+		and see what happens with validation.
 
 Recipe (stxt.play.cooking): Spaghetti bolognese
-    Ingredients:
-        Ingredient: 400 g spaghetti
-        Ingredient: 400 g minced beef
-        Ingredient: 400 g crushed tomatoes
-        Ingredient: Olive oil, salt and oregano
-        Ingredient: Grated cheese
-    Steps >>
-        Fry the brown. Add the tomatoes, salt and oregano and simmer for half an hour.
-        Boil the pasta, drain it, mix with the sauce and top with grated cheese.
-    Notes >>
-        The sauce is **better the next day**, so make it ahead if you can.
-        Some people finish it in the oven for five minutes to melt the cheese.
+	Ingredients:
+		Ingredient: 400 g spaghetti
+		Ingredient: 400 g minced beef
+		Ingredient: 400 g crushed tomatoes
+		Ingredient: Olive oil, salt and oregano
+		Ingredient: Grated cheese
+	Steps >>
+		Brown the mince. Add the tomatoes, salt and oregano and simmer for half an hour.
+		Boil the pasta, drain it, mix with the sauce and top with grated cheese.
+	Notes >>
+		The sauce is **better the next day**, so make it ahead if you can.
+		Some people finish it in the oven for five minutes to melt the cheese.

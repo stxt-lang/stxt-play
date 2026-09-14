@@ -15,7 +15,7 @@ function analysisOf(analyzer: Analyzer, id: string): DocumentAnalysis {
 describe("Seed workspace", () => {
 	it("parses and validates cleanly as one workspace, with schemas and templates in it", () => {
 		const files = fs.readdirSync(SEED_DIR).filter((name) => name.endsWith(".stxt")).sort();
-		assert.strictEqual(files.length, 12, "the seed is three grammars with three documents each");
+		assert.strictEqual(files.length, 19, "the seed is a six-lesson tutorial with its template, plus three grammars with three documents each");
 
 		const analyzer = new Analyzer();
 		for (const file of files) {
@@ -44,7 +44,7 @@ describe("Seed workspace", () => {
 			analyzer.setDocument(file, fs.readFileSync(path.join(SEED_DIR, file), "utf8"));
 		}
 		const namespaces = files.flatMap((file) => analysisOf(analyzer, file).grammars.map((g) => g.namespace));
-		assert.deepStrictEqual(namespaces.sort(), ["stxt.play.config", "stxt.play.cooking", "stxt.play.library"]);
+		assert.deepStrictEqual(namespaces.sort(), ["stxt.play.config", "stxt.play.cooking", "stxt.play.library", "stxt.play.tutorial"]);
 	});
 
 	it("shows Markdown highlighting: the recipes' Notes and the books' Summary are MARKDOWN blocks", () => {

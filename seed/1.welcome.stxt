@@ -1,18 +1,15 @@
-Lesson (stxt.play.tutorial): Next steps
-    Number of lesson: 6 (extra)
-    Introduction >>
-        From this point, you can try the rest
-        of the examples, and see how templates
-        work. Play with them, adding and
-        removing elements, and how afect the
-        existing documents:
+Lesson (stxt.play.tutorial): Welcome!
+	Number of lesson: 1/5
+	Introduction >>
+		**Welcome to the STXT Playground!!**
 
-        - If appropiate, use MARKDOWN insted of TEXT
-        - Try other types, such INTEGER or ENUM
-        - Make documents with multiple namespaces
-        - Put diferents cardinalities of childs
+		This is a tutorial for learning STXT.
+		Here you can play and try the language.
 
-        Once you are confident, you can
-        browse https://stxt.dev to see
-        the specification of the language,
-        tools, parsers, and more.
+		When you've finished a lesson,
+		you can delete the document... or not ;-)
+
+		You can always reset the workspace
+		to the defaults (button ↺).
+
+		Let's start! **What is STXT**.

@@ -1,5 +1,6 @@
+# The template of the six lessons: a title, an optional lesson number and one Introduction block.
 Template (@stxt.template): stxt.play.tutorial
-    Structure >>
-        Lesson:
-        	Introduction: (1) TEXT
-            Number of lesson: (?)
+	Structure >>
+		Lesson:
+			Number of lesson: (?)
+			Introduction: (1) TEXT

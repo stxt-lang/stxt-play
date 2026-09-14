@@ -25094,8 +25094,63 @@ ${indentation}${unit}` : suggestion.text
     };
   }
 
+  // seed/1.welcome.stxt
+  var welcome_default = "Lesson (stxt.play.tutorial): Welcome!\n	Number of lesson: 1/5\n	Introduction >>\n		**Welcome to the STXT Playground!!**\n\n		This is a tutorial for learning STXT.\n		Here you can play and try the language.\n\n		When you've finished a lesson,\n		you can delete the document... or not ;-)\n\n		You can always reset the workspace\n		to the defaults (button \u21BA).\n\n		Let's start! **What is STXT**.\n";
+
+  // seed/2.what-is-stxt.stxt
+  var what_is_stxt_default = `Lesson: What is STXT
+	Number of lesson: 2/5
+	Introduction >>
+		**STXT** is a format (or language)
+		for indentation-based documents.
+		The indentation defines the hierarchy
+		of the document.
+
+		This is not XML. This is not YAML.
+		The closest one is XML, as you have nodes,
+		namespaces and schemas. And on the surface
+		it looks like some sort of YAML. But this
+		is a different language.
+
+		There are two types of nodes: **Inline and Block**
+
+	Inline node: everything after ':' is the value of the node
+
+	Block node >>
+		All the content of
+		the block node is raw text.
+		No escape characters: all the content
+		is taken "as is".
+		You can put whatever you like.
+
+		A block node inside a block?
+		Block node inside >>
+			NOOO!! Inside 'Block node'
+			everything is text. No rules here.
+			No more blocks here.
+
+	Another node: You can have all the nodes you want
+		Inner node: This is a child of 'Another node'
+		Inner node: You can repeat the name 'Inner node'
+`;
+
+  // seed/3.comments.stxt
+  var comments_default = "Lesson (stxt.play.tutorial): Comments\n	Number of lesson: 3/5\n	Introduction >>\n		Comments are lines that start with #\n		# This line is NOT a comment!!\n		Remember: **Inside a block of text, everything is text**\n	# This is an external comment, so it ends the block 'Introduction'\n# This is a comment too\n\n# ------------------\n# Rules for comments\n# ------------------\n#  - The line must start with #\n#  - They must be indented like nodes\n#  - No comments inside blocks\n#  - An external comment finishes a block of text\n";
+
+  // seed/4.simple-docs.stxt
+  var simple_docs_default = "Lesson: Documents without namespace\n	Number of lesson: 4/5\n	Introduction >>\n		Documents without a namespace have\n		nodes like `Node name:`\n		or `Node name >>`\n\n		This lesson has no namespace.\n		Previous lessons may or may not have one.\n\n		They cannot be validated with schemas,\n		so everything is valid.\n		Validation is left to the application\n		that reads the document.\n	Title: A valid name\n	Tilte: A valid name! :-O\n	Tiitle: Valid too!!\n		All node names are allowed: Yes, long names too\n			And all levels: Another level\n				One more level: This is inside the previous one!\n";
+
+  // seed/5.namespace-docs.stxt
+  var namespace_docs_default = "Lesson (stxt.play.tutorial): Namespace documents\n	Number of lesson: 5/5\n	Introduction >>\n		Documents with a namespace have\n		nodes of this form: `Node name (namespace.definition):`\n		or `Node name (namespace.definition) >>`\n\n		From this lesson on, all\n		the documents have a namespace.\n\n		Nodes with a namespace can be validated against schemas.\n		The schema gives the structure and the cardinality\n		of the children.\n\n		The parser can be configured with or without validation.\n		This workspace has a switch to enable or disable\n		schema validation.\n\n		Next, you can play with a recipe: change it\n		and see what happens with validation.\n\nRecipe (stxt.play.cooking): Spaghetti bolognese\n	Ingredients:\n		Ingredient: 400 g spaghetti\n		Ingredient: 400 g minced beef\n		Ingredient: 400 g crushed tomatoes\n		Ingredient: Olive oil, salt and oregano\n		Ingredient: Grated cheese\n	Steps >>\n		Brown the mince. Add the tomatoes, salt and oregano and simmer for half an hour.\n		Boil the pasta, drain it, mix with the sauce and top with grated cheese.\n	Notes >>\n		The sauce is **better the next day**, so make it ahead if you can.\n		Some people finish it in the oven for five minutes to melt the cheese.\n";
+
+  // seed/6.next-steps.stxt
+  var next_steps_default = "Lesson (stxt.play.tutorial): Next steps\n	Number of lesson: 6 (extra)\n	Introduction >>\n		From this point, you can try the rest\n		of the examples, and see how templates\n		work. Play with them, adding and\n		removing elements, and see how that\n		affects the existing documents:\n\n		- If appropriate, use MARKDOWN instead of TEXT\n		- Try other types, such as INTEGER or ENUM\n		- Make documents with multiple namespaces\n		- Use different cardinalities for the children\n\n		Once you are confident, you can\n		browse https://stxt.dev to see\n		the specification of the language,\n		tools, parsers, and more.\n";
+
+  // seed/stxt.play.tutorial.stxt
+  var stxt_play_tutorial_default = "# The template of the six lessons: a title, an optional lesson number and one Introduction block.\nTemplate (@stxt.template): stxt.play.tutorial\n	Structure >>\n		Lesson:\n			Number of lesson: (?)\n			Introduction: (1) TEXT\n";
+
   // seed/recipe-pancakes.stxt
-  var recipe_pancakes_default = '# Welcome to the STXT playground.\n# Everything runs in your browser: edit the document and watch the analysis react.\n# The template "stxt.play.cooking" in the list on the left validates this document.\n# Try adding a node it does not declare, or press Ctrl+Space on a new line to see what fits.\n# Ctrl+Click a node name (Cmd+Click on macOS) to jump to where the template declares it.\nRecipe (stxt.play.cooking): Pancakes\n	Serves: 4\n	Minutes: 20\n	Difficulty: Easy\n	Ingredients:\n		Ingredient: 200 g flour\n		Ingredient: 2 eggs\n		Ingredient: 300 ml milk\n		Ingredient: A pinch of salt and a little butter\n	Steps >>\n		Whisk the flour, eggs, milk and salt into a smooth batter.\n		Melt a little butter in a hot pan and pour in a ladle of batter.\n		Cook until bubbles appear, flip, and cook the other side.\n		Everything in this block is literal text: # : >> are not parsed.\n';
+  var recipe_pancakes_default = '# The template "stxt.play.cooking" in the list on the left validates this document.\n# Try adding a node it does not declare, or press Ctrl+Space on a new line to see what fits.\n# Ctrl+Click a node name (Cmd+Click on macOS) to jump to where the template declares it.\nRecipe (stxt.play.cooking): Pancakes\n	Serves: 4\n	Minutes: 20\n	Difficulty: Easy\n	Ingredients:\n		Ingredient: 200 g flour\n		Ingredient: 2 eggs\n		Ingredient: 300 ml milk\n		Ingredient: A pinch of salt and a little butter\n	Steps >>\n		Whisk the flour, eggs, milk and salt into a smooth batter.\n		Melt a little butter in a hot pan and pour in a ladle of batter.\n		Cook until bubbles appear, flip, and cook the other side.\n';
 
   // seed/recipe-bolognese.stxt
   var recipe_bolognese_default = "# Optional nodes may be present or not: this recipe has Tags and Notes, the previous one had neither.\n# Notes is a MARKDOWN block; Steps is plain TEXT. Both are literal text for the parser.\nRecipe (stxt.play.cooking): Spaghetti bolognese\n	Serves: 4\n	Minutes: 45\n	Difficulty: Easy\n	Tags:\n		Tag: Pasta\n		Tag: Family\n		Tag: Make ahead\n	Ingredients:\n		Ingredient: 400 g spaghetti\n		Ingredient: 400 g minced beef\n		Ingredient: 1 onion\n		Ingredient: 1 carrot\n		Ingredient: 400 g crushed tomatoes\n		Ingredient: Olive oil, salt and oregano\n		Ingredient: Grated cheese\n	Steps >>\n		Fry the chopped onion and carrot in olive oil, then brown the mince.\n		Add the tomatoes, salt and oregano and simmer for half an hour.\n		Boil the pasta, drain it, mix with the sauce and top with grated cheese.\n	Notes >>\n		The sauce is **better the next day**, so make it ahead if you can.\n		Some people finish it in the oven for five minutes to melt the cheese.\n";
@@ -25155,6 +25210,13 @@ Book (stxt.play.library):
 
   // src/seed.ts
   var SEED_DOCUMENTS = [
+    { title: "1. Welcome", text: welcome_default },
+    { title: "2. What is STXT", text: what_is_stxt_default },
+    { title: "3. Comments", text: comments_default },
+    { title: "4. Documents without namespace", text: simple_docs_default },
+    { title: "5. Namespace documents", text: namespace_docs_default },
+    { title: "6. Next steps", text: next_steps_default },
+    { title: "Tutorial template", text: stxt_play_tutorial_default },
     { title: "Pancakes", text: recipe_pancakes_default },
     { title: "Spaghetti bolognese", text: recipe_bolognese_default },
     { title: "Chocolate brownies", text: recipe_brownies_default },

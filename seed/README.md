@@ -4,8 +4,15 @@ The documents a first-time visitor gets, and what the *Reset* button restores. T
 into the page as text by esbuild (`--loader:.stxt=text`) and listed, with their titles, in
 `src/seed.ts`. `test/seed.test.ts` checks that the whole set parses and validates cleanly.
 
-Three groups, all written for the playground (since 2026-08-17):
+A short tutorial first, then three groups of examples, all written for the playground (the
+examples since 2026-08-17, the tutorial since 2026-09-14):
 
+- **A tutorial: six lessons and their template**: `1.welcome.stxt` to `6.next-steps.stxt`,
+  numbered so they read in order, and `stxt.play.tutorial.stxt` (`@stxt.template`: a title, an
+  optional lesson number and one `Introduction` TEXT block). The first lesson is the document a
+  visitor lands on. Lessons 2 and 4 have no namespace on purpose: they add nodes of their own
+  to show the syntax, and lesson 4 is about documents without a namespace. Lesson 5 carries a
+  second root, a recipe, to be broken against the cooking template below.
 - **A template and three documents**: `stxt.play.cooking.stxt` (`@stxt.template`) and
   the recipes `recipe-pancakes.stxt`, `recipe-bolognese.stxt`, `recipe-brownies.stxt`.
 - **A schema and three documents**: `stxt.play.library.stxt` (`@stxt.schema`) and the

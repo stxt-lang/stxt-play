@@ -1,0 +1,20 @@
+Lesson: Documents without namespace
+    Number of lesson: 4/5
+    Introduction >>
+        The documents without namespace
+        have a node definition like `Node name:`
+        or `Node name >>`
+
+        This lesson is without namespace.
+        Previous lessons can have or not namespace.
+
+        It's not possible to validate them
+        with schemas, and all is valid.
+        The validation is only from the application
+        that reads the document.
+    Title: Is valid name
+    Tilte: Is valid name! :-O
+    Tiitle: Is valid too!!
+        All node names are allowed: Yes, a long names too
+            And all levels: Another level
+                One more level: This is inside previous!

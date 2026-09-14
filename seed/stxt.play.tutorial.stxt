@@ -1,0 +1,5 @@
+Template (@stxt.template): stxt.play.tutorial
+    Structure >>
+        Lesson:
+        	Introduction: (1) TEXT
+            Number of lesson: (?)

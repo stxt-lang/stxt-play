@@ -1,0 +1,18 @@
+Lesson (stxt.play.tutorial): Next steps
+    Number of lesson: 6 (extra)
+    Introduction >>
+        From this point, you can try the rest
+        of the examples, and see how templates
+        work. Play with them, adding and
+        removing elements, and how afect the
+        existing documents:
+
+        - If appropiate, use MARKDOWN insted of TEXT
+        - Try other types, such INTEGER or ENUM
+        - Make documents with multiple namespaces
+        - Put diferents cardinalities of childs
+
+        Once you are confident, you can
+        browse https://stxt.dev to see
+        the specification of the language,
+        tools, parsers, and more.

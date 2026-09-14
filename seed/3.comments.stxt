@@ -1,0 +1,16 @@
+Lesson (stxt.play.tutorial): Comments
+    Number of lesson: 3/5
+    Introduction >>
+        Comments are lines that start with #
+        # This line is NOT a comment!!
+        Remember: **Inside a bloc of text, all is text**
+    # This is a external comment, so ends the block 'Introduction'
+# This is a comment too
+
+# ------------------
+# Rules for comments
+# ------------------
+#  - The line must start whith #
+#  - Must be indented like nodes
+#  - No comments inside blocks
+#  - A external comment finishes a block of text

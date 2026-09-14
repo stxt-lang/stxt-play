@@ -1,0 +1,34 @@
+Lesson : What is STXT
+    Number of lesson: 2/5
+    Introduction >>
+        **STXT** is a format (or language)
+        for indented-based documents.
+        The indentation makes the jerarquia of
+        the document. 
+        
+        This is not XML. This is not YAML.
+        The more close is XML, as you have nodes,
+        namespaces and schemas. And at the surface
+        it looks like some sort of YAML. But this
+        is a diferent language.
+
+        There are 2 types of nodes: **Inline and Block**
+
+    Inline node: after ':' all is the value of the node
+
+    Block node >>
+        All the content of
+        the block node is raw text.
+        No escape chars, all the content
+        is "as is".
+        You can put whatever you like.
+
+        A block node inside a block?
+        Block node inside >>
+            NOOO!! Inside 'Block node'
+            all is text. No rules here.
+            No more blocks here.
+
+    Another node: You can have all the nodes you want
+        Inner node: This is a child of 'Another node'
+        Inner node: You can repeat the name 'Inner node'

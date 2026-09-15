@@ -25250,7 +25250,7 @@ Book (stxt.play.library):
     { title: "1. Welcome", text: welcome_default },
     { title: "2. What is STXT", text: what_is_stxt_default },
     { title: "3. Comments", text: comments_default },
-    { title: "4. Documents without namespace", text: simple_docs_default },
+    { title: "4. Simple documents", text: simple_docs_default },
     { title: "5. Namespace documents", text: namespace_docs_default },
     { title: "6. Next steps", text: next_steps_default },
     { title: "Tutorial template", text: stxt_play_tutorial_default },

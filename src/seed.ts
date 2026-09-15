@@ -40,7 +40,7 @@ export const SEED_DOCUMENTS: SeedDocument[] = [
 	{ title: "1. Welcome", text: WELCOME },
 	{ title: "2. What is STXT", text: WHAT_IS_STXT },
 	{ title: "3. Comments", text: COMMENTS },
-	{ title: "4. Documents without namespace", text: SIMPLE_DOCS },
+	{ title: "4. Simple documents", text: SIMPLE_DOCS },
 	{ title: "5. Namespace documents", text: NAMESPACE_DOCS },
 	{ title: "6. Next steps", text: NEXT_STEPS },
 	{ title: "Tutorial template", text: TUTORIAL_TEMPLATE },

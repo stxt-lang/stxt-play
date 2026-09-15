@@ -13,7 +13,7 @@ $warning: #9a6b00;
 	flex: none;
 	flex-direction: column;
 	// The splitter (src/ui/splitter.ts) resizes the list by setting the custom property inline
-	width: var(--sidebar-width, 15rem);
+	width: var(--sidebar-width, 20rem);
 	border-right: 1px solid $color3;
 	background: $color4;
 

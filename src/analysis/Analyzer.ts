@@ -156,6 +156,44 @@ export class Analyzer {
 	}
 
 	/**
+	 * The workspace documents whose grammars a document needs to validate: one per namespace the
+	 * document uses and does not define itself, resolved to the active definition of the
+	 * workspace, in order of first use. This is what a link that shares one document carries
+	 * along as its `&g=` grammars, so the document validates the same wherever it opens. A
+	 * namespace with no active definition (nothing defines it, or two documents do) has nothing
+	 * to bring, and the reserved `@stxt.*` namespaces are built in, so they never do.
+	 *
+	 * @param id identifier of the document.
+	 * @returns identifiers of the defining documents, in order and without repeats, never the
+	 * document itself; empty when the document is not in the workspace.
+	 */
+	getGrammarDocuments(id: string): string[] {
+		const parsed = this.parsed.get(id);
+		if (!parsed) {
+			return [];
+		}
+		const documentIds: string[] = [];
+		const seen = new Set<string>();
+		const walk = (nodes: ReadonlyArray<Node>): void => {
+			for (const node of nodes) {
+				const namespace = StringUtils.lowerCase(node.getNamespace());
+				if (namespace.length > 0 && !seen.has(namespace)) {
+					seen.add(namespace);
+					const definition = this.registry.getDefinition(namespace);
+					if (definition && definition.documentId !== id && !documentIds.includes(definition.documentId)) {
+						documentIds.push(definition.documentId);
+					}
+				}
+				if (node instanceof InlineNode) {
+					walk(node.getChildren());
+				}
+			}
+		};
+		walk(parsed.roots);
+		return documentIds;
+	}
+
+	/**
 	 * Grammar-driven completions for a cursor position of a document (see `completion.ts`).
 	 *
 	 * @param id identifier of the document.

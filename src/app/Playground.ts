@@ -9,7 +9,7 @@ import { confirmDialog, linkDialog } from "../ui/dialog";
 import { createDocumentList, DocumentList, DocumentListEntry } from "../ui/documentList";
 import { setupHeaderSwitches } from "../ui/headerSwitches";
 import { createProblemsPanel, ProblemsPanel } from "../ui/problemsPanel";
-import { setupSplitter } from "../ui/splitter";
+import { setupSplitter, Splitter } from "../ui/splitter";
 import { createViewTabs, ViewTabs } from "../ui/viewTabs";
 import {
 	createWorkspacePersistence,
@@ -24,6 +24,7 @@ import {
 	Workspace,
 } from "../workspace";
 import { lineAt, toCmDiagnostics } from "./diagnostics";
+import { encodeDocumentLink } from "./documentLink";
 import { findElements, PlaygroundElements } from "./elements";
 import { applyLink, FragmentDialogs, linkOf } from "./fragment";
 import { labelOf } from "./labels";
@@ -40,7 +41,8 @@ import { WorkspaceSync } from "./workspaceSync";
  * document at a time; every workspace document keeps its own CodeMirror state
  * ({@link DocumentStates}), so switching preserves undo history and selection. The two header
  * switches, indentation mode and validation on/off, and the width of the document list are
- * settings, persisted apart from the workspace.
+ * settings, persisted apart from the workspace; a reset of the workspace also returns that width
+ * to its default, and both panes to their top.
  *
  * What is decided here is only what needs the page: which dialog asks what, which element is
  * repainted with which data, and which browser event triggers what. The decisions that need no
@@ -56,6 +58,7 @@ export class Playground {
 	private readonly tabs: ViewTabs;
 	private readonly panel: ProblemsPanel;
 	private readonly list: DocumentList;
+	private readonly splitter: Splitter;
 	private readonly persistNow: () => void;
 	/** The links being applied, in order: a link waits for the dialogs of the previous one. */
 	private links: Promise<void> = Promise.resolve();
@@ -156,11 +159,12 @@ export class Playground {
 				view.focus();
 			},
 			onRename: (id, title) => this.workspace.rename(id, title),
+			onShare: (id) => this.shareDocument(id),
 			onDelete: (id) => this.confirmDelete(id),
 			onMove: (id, toIndex) => this.workspace.move(id, toIndex),
 		});
 
-		setupSplitter({
+		this.splitter = setupSplitter({
 			handle: elements.splitter,
 			sidebar: elements.sidebar,
 			width: this.settings.sidebarWidth,
@@ -345,12 +349,19 @@ export class Playground {
 	private confirmReset(): void {
 		void confirmDialog({
 			title: "Reset the workspace?",
-			message: "Every document is replaced by the examples. This cannot be undone.",
+			message: "Every document is replaced by the examples, and the document list gets its default "
+				+ "width back. This cannot be undone.",
 			confirmLabel: "Reset",
 			danger: true,
 		}).then((confirmed) => {
 			if (confirmed) {
 				this.loadSeed();
+				// Back to how the playground looks the first time: the list at its default width,
+				// and both the list and the editor scrolled to the top (a state carries no scroll
+				// position, so the view would keep whatever the previous document left)
+				this.splitter.reset();
+				this.elements.docList.scrollTop = 0;
+				this.view.scrollDOM.scrollTop = 0;
 				this.showStatus("Workspace reset to the examples.");
 				this.view.focus();
 			}
@@ -380,21 +391,48 @@ export class Playground {
 
 	// --- Links --------------------------------------------------------------------------------
 
+	/** Copies a link that carries the whole workspace (`#w=`). */
 	private share(): void {
-		void encodeShare(this.workspace.toSnapshot()).then(async (payload) => {
-			const url = `${location.origin}${location.pathname}#${SHARE_PARAM}=${payload}`;
-			try {
-				await navigator.clipboard.writeText(url);
-				this.showStatus("Link copied to the clipboard.");
-			} catch {
-				// No clipboard (insecure context, permissions): hand the link over in a dialog
-				await linkDialog({
-					title: "Share this workspace",
-					message: "The link carries every document of the workspace. Copy it from here:",
-					url,
-				});
+		void encodeShare(this.workspace.toSnapshot()).then((payload) => this.copyLink(
+			`${SHARE_PARAM}=${payload}`,
+			"Share this workspace",
+			"The link carries every document of the workspace.",
+		));
+	}
+
+	/**
+	 * Copies a link that carries one document (`#d=`), with the grammars it needs: it opens in
+	 * the playground of whoever receives it added to their workspace, like a link from stxt.dev,
+	 * instead of replacing it.
+	 */
+	private shareDocument(id: string): void {
+		void encodeDocumentLink(this.workspace, this.analyzer, id).then((link) => {
+			if (!link) {
+				return;
 			}
+			const grammars = link.grammars === 0
+				? ""
+				: ` and the ${link.grammars === 1 ? "grammar" : `${link.grammars} grammars`} it needs`;
+			this.copyLink(link.fragment, "Share this document", `The link carries this document${grammars}.`);
 		});
+	}
+
+	/**
+	 * Puts a link of this page in the clipboard, or hands it over in a dialog when there is no
+	 * clipboard (insecure context, permissions).
+	 *
+	 * @param fragment what goes after the `#`.
+	 * @param title title of the fallback dialog.
+	 * @param message what the link carries, for the fallback dialog.
+	 */
+	private async copyLink(fragment: string, title: string, message: string): Promise<void> {
+		const url = `${location.origin}${location.pathname}#${fragment}`;
+		try {
+			await navigator.clipboard.writeText(url);
+			this.showStatus("Link copied to the clipboard.");
+		} catch {
+			await linkDialog({ title, message: `${message} Copy it from here:`, url });
+		}
 	}
 
 	/**

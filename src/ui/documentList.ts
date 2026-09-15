@@ -29,6 +29,8 @@ export interface DocumentListHandlers {
 	onCreate(): void;
 	/** The user finished an inline rename with a new title. */
 	onRename(id: string, title: string): void;
+	/** The user asked for a link that carries the row's document (the app builds and copies it). */
+	onShare(id: string): void;
 	/** The user asked to delete a row (the app confirms). */
 	onDelete(id: string): void;
 	/** The user dragged a row (or moved it with the keyboard) to a new final position. */
@@ -62,8 +64,9 @@ const KIND_TITLE: Record<DocumentListKind, string> = {
  * Delete asks for deletion, Alt+Up/Down moves; double-click on the label renames too, and rows can
  * be dragged to reorder them. The list keeps only two pieces of state of its own, which row is
  * being renamed, which one is being dragged, so re-rendering while the user types a new title
- * keeps the input in place. Renamable rows also carry a pencil button, on touch screens there
- * is no double-click nor F2, shown on hover on wide screens and always on narrow ones.
+ * keeps the input in place. Every row carries a share button, and renamable rows a pencil too,
+ * on touch screens there is no double-click nor F2, shown on hover on wide screens and always
+ * on narrow ones.
  *
  * @param list element the rows are rendered into.
  * @param newButton the "new document" button.
@@ -157,6 +160,20 @@ export function createDocumentList(
 			problems.appendChild(problemCount("warning", entry.warnings));
 		}
 
+		const share = document.createElement("button");
+		share.type = "button";
+		share.className = "doc-share";
+		share.title = "Share document: copy a link that opens it in the playground";
+		share.setAttribute("aria-label", `Share ${entry.label}`);
+		share.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+			+ 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+			+ '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>'
+			+ '<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>';
+		share.addEventListener("click", (event) => {
+			event.stopPropagation();
+			handlers.onShare(entry.id);
+		});
+
 		const rename = document.createElement("button");
 		rename.type = "button";
 		rename.className = "doc-edit";
@@ -181,7 +198,7 @@ export function createDocumentList(
 			handlers.onDelete(entry.id);
 		});
 
-		row.append(badge, label, problems);
+		row.append(badge, label, problems, share);
 		if (entry.renamable) {
 			row.append(rename);
 		}

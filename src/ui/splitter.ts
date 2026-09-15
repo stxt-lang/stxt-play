@@ -7,6 +7,12 @@ const MIN_EDITOR_WIDTH = 320;
 /** How far one arrow key press moves the divider, in CSS pixels. */
 const KEY_STEP = 16;
 
+/** The splitter, once wired: what the application may ask of it. */
+export interface Splitter {
+	/** Returns the divider to the stylesheet default width, as a double click does. */
+	reset(): void;
+}
+
 /** What the splitter needs from the page and what it reports back. */
 export interface SplitterOptions {
 	/** The drag handle between the document list and the editor. */
@@ -25,10 +31,10 @@ export interface SplitterOptions {
  * in the sidebar's `--sidebar-width` custom property, which only the wide layout reads: on
  * narrow screens the panes are shown one at a time and the CSS ignores it (the handle is hidden
  * there too). Arrow keys move the divider when the handle has the focus, and a double click
- * returns to the default width. `onWidthChange` fires when a width settles (drag end, key press,
- * reset), not on every moved pixel.
+ * returns to the default width, as does {@link Splitter.reset}. `onWidthChange` fires when a
+ * width settles (drag end, key press, reset), not on every moved pixel.
  */
-export function setupSplitter(options: SplitterOptions): void {
+export function setupSplitter(options: SplitterOptions): Splitter {
 	const { handle, sidebar, onWidthChange } = options;
 
 	/** Keeps the sidebar and the editor above their minimum widths, whatever the window size. */
@@ -95,8 +101,11 @@ export function setupSplitter(options: SplitterOptions): void {
 		onWidthChange(current);
 	});
 
-	handle.addEventListener("dblclick", () => {
+	const reset = (): void => {
 		apply(undefined);
 		onWidthChange(undefined);
-	});
+	};
+	handle.addEventListener("dblclick", reset);
+
+	return { reset };
 }

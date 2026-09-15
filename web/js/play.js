@@ -18841,6 +18841,43 @@
       return this.analyses.get(id);
     }
     /**
+     * The workspace documents whose grammars a document needs to validate: one per namespace the
+     * document uses and does not define itself, resolved to the active definition of the
+     * workspace, in order of first use. This is what a link that shares one document carries
+     * along as its `&g=` grammars, so the document validates the same wherever it opens. A
+     * namespace with no active definition (nothing defines it, or two documents do) has nothing
+     * to bring, and the reserved `@stxt.*` namespaces are built in, so they never do.
+     *
+     * @param id identifier of the document.
+     * @returns identifiers of the defining documents, in order and without repeats, never the
+     * document itself; empty when the document is not in the workspace.
+     */
+    getGrammarDocuments(id) {
+      const parsed = this.parsed.get(id);
+      if (!parsed) {
+        return [];
+      }
+      const documentIds = [];
+      const seen = /* @__PURE__ */ new Set();
+      const walk = (nodes) => {
+        for (const node of nodes) {
+          const namespace = import_core7.StringUtils.lowerCase(node.getNamespace());
+          if (namespace.length > 0 && !seen.has(namespace)) {
+            seen.add(namespace);
+            const definition = this.registry.getDefinition(namespace);
+            if (definition && definition.documentId !== id && !documentIds.includes(definition.documentId)) {
+              documentIds.push(definition.documentId);
+            }
+          }
+          if (node instanceof import_core7.InlineNode) {
+            walk(node.getChildren());
+          }
+        }
+      };
+      walk(parsed.roots);
+      return documentIds;
+    }
+    /**
      * Grammar-driven completions for a cursor position of a document (see `completion.ts`).
      *
      * @param id identifier of the document.
@@ -25401,6 +25438,16 @@ Book (stxt.play.library):
       if (entry.warnings > 0) {
         problems.appendChild(problemCount("warning", entry.warnings));
       }
+      const share = document.createElement("button");
+      share.type = "button";
+      share.className = "doc-share";
+      share.title = "Share document: copy a link that opens it in the playground";
+      share.setAttribute("aria-label", `Share ${entry.label}`);
+      share.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>';
+      share.addEventListener("click", (event) => {
+        event.stopPropagation();
+        handlers2.onShare(entry.id);
+      });
       const rename = document.createElement("button");
       rename.type = "button";
       rename.className = "doc-edit";
@@ -25421,7 +25468,7 @@ Book (stxt.play.library):
         event.stopPropagation();
         handlers2.onDelete(entry.id);
       });
-      row.append(badge, label, problems);
+      row.append(badge, label, problems, share);
       if (entry.renamable) {
         row.append(rename);
       }
@@ -25696,10 +25743,12 @@ Book (stxt.play.library):
       apply(clamp(from + (event.key === "ArrowRight" ? KEY_STEP : -KEY_STEP)));
       onWidthChange(current);
     });
-    handle.addEventListener("dblclick", () => {
+    const reset = () => {
       apply(void 0);
       onWidthChange(void 0);
-    });
+    };
+    handle.addEventListener("dblclick", reset);
+    return { reset };
   }
 
   // src/ui/viewTabs.ts
@@ -26260,6 +26309,17 @@ Book (stxt.play.library):
   function sharePayloadOf(hash) {
     return nonEmpty(fragmentParams(hash).get(SHARE_PARAM));
   }
+  async function encodeOpen(text, title, grammars = []) {
+    const params = new URLSearchParams();
+    params.set(OPEN_PARAM, await compressText(text));
+    if (title && title.trim().length > 0) {
+      params.set(OPEN_TITLE_PARAM, title.trim());
+    }
+    for (const grammar of grammars) {
+      params.append(OPEN_GRAMMAR_PARAM, await compressText(grammar));
+    }
+    return params.toString();
+  }
   async function decodeOpen(hash) {
     const params = fragmentParams(hash);
     const payload = nonEmpty(params.get(OPEN_PARAM));
@@ -26314,6 +26374,22 @@ Book (stxt.play.library):
         source: diagnostic.source
       };
     });
+  }
+
+  // src/app/documentLink.ts
+  async function encodeDocumentLink(workspace, analyzer, id) {
+    const document2 = workspace.getDocument(id);
+    if (!document2) {
+      return void 0;
+    }
+    const grammars = [];
+    for (const grammarId of analyzer.getGrammarDocuments(id)) {
+      const grammar = workspace.getDocument(grammarId);
+      if (grammar) {
+        grammars.push(grammar.text);
+      }
+    }
+    return { fragment: await encodeOpen(document2.text, document2.title, grammars), grammars: grammars.length };
   }
 
   // src/app/elements.ts
@@ -26608,10 +26684,11 @@ Book (stxt.play.library):
           view.focus();
         },
         onRename: (id, title) => this.workspace.rename(id, title),
+        onShare: (id) => this.shareDocument(id),
         onDelete: (id) => this.confirmDelete(id),
         onMove: (id, toIndex) => this.workspace.move(id, toIndex)
       });
-      setupSplitter({
+      this.splitter = setupSplitter({
         handle: elements.splitter,
         sidebar: elements.sidebar,
         width: this.settings.sidebarWidth,
@@ -26768,12 +26845,15 @@ Book (stxt.play.library):
     confirmReset() {
       void confirmDialog({
         title: "Reset the workspace?",
-        message: "Every document is replaced by the examples. This cannot be undone.",
+        message: "Every document is replaced by the examples, and the document list gets its default width back. This cannot be undone.",
         confirmLabel: "Reset",
         danger: true
       }).then((confirmed) => {
         if (confirmed) {
           this.loadSeed();
+          this.splitter.reset();
+          this.elements.docList.scrollTop = 0;
+          this.view.scrollDOM.scrollTop = 0;
           this.showStatus("Workspace reset to the examples.");
           this.view.focus();
         }
@@ -26798,20 +26878,44 @@ Book (stxt.play.library):
       this.workspace.replaceAll(SEED_DOCUMENTS.map((seed) => ({ title: seed.title, text: seed.text })));
     }
     // --- Links --------------------------------------------------------------------------------
+    /** Copies a link that carries the whole workspace (`#w=`). */
     share() {
-      void encodeShare(this.workspace.toSnapshot()).then(async (payload) => {
-        const url = `${location.origin}${location.pathname}#${SHARE_PARAM}=${payload}`;
-        try {
-          await navigator.clipboard.writeText(url);
-          this.showStatus("Link copied to the clipboard.");
-        } catch {
-          await linkDialog({
-            title: "Share this workspace",
-            message: "The link carries every document of the workspace. Copy it from here:",
-            url
-          });
+      void encodeShare(this.workspace.toSnapshot()).then((payload) => this.copyLink(
+        `${SHARE_PARAM}=${payload}`,
+        "Share this workspace",
+        "The link carries every document of the workspace."
+      ));
+    }
+    /**
+     * Copies a link that carries one document (`#d=`), with the grammars it needs: it opens in
+     * the playground of whoever receives it added to their workspace, like a link from stxt.dev,
+     * instead of replacing it.
+     */
+    shareDocument(id) {
+      void encodeDocumentLink(this.workspace, this.analyzer, id).then((link) => {
+        if (!link) {
+          return;
         }
+        const grammars = link.grammars === 0 ? "" : ` and the ${link.grammars === 1 ? "grammar" : `${link.grammars} grammars`} it needs`;
+        this.copyLink(link.fragment, "Share this document", `The link carries this document${grammars}.`);
       });
+    }
+    /**
+     * Puts a link of this page in the clipboard, or hands it over in a dialog when there is no
+     * clipboard (insecure context, permissions).
+     *
+     * @param fragment what goes after the `#`.
+     * @param title title of the fallback dialog.
+     * @param message what the link carries, for the fallback dialog.
+     */
+    async copyLink(fragment, title, message) {
+      const url = `${location.origin}${location.pathname}#${fragment}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        this.showStatus("Link copied to the clipboard.");
+      } catch {
+        await linkDialog({ title, message: `${message} Copy it from here:`, url });
+      }
     }
     /**
      * Acts on the fragment of the current URL: a share link (`#w=`) or an open link (`#d=`).

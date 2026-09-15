@@ -196,6 +196,47 @@ describe("Analyzer: grammars in the workspace", () => {
 	});
 });
 
+describe("Analyzer: grammars a document needs", () => {
+	const NOTES_SCHEMA = "Schema (@stxt.schema): com.example.notes\n\tNode: Note\n\t\tType: TEXT\n";
+	const DEMO_WITH_NOTE = [
+		"Schema (@stxt.schema): com.example.demo",
+		"\tNode: Root",
+		"\t\tChildren:",
+		"\t\t\tChild: Note (com.example.notes)",
+		"",
+	].join("\n");
+	const DOC_WITH_NOTE = "Root (com.example.demo):\n\tNote (com.example.notes): hi\n\tNote (com.example.notes): again\n";
+
+	it("lists the defining documents of every namespace the document uses, in order of first use, once each", () => {
+		const analyzer = new Analyzer();
+		analyzer.setDocument("notes", NOTES_SCHEMA);
+		analyzer.setDocument("doc", DOC_WITH_NOTE);
+		analyzer.setDocument("demo", DEMO_WITH_NOTE);
+
+		assert.deepStrictEqual(analyzer.getGrammarDocuments("doc"), ["demo", "notes"]);
+	});
+
+	it("skips namespaces without an active definition and the reserved ones, and never lists the document itself", () => {
+		const analyzer = new Analyzer();
+		analyzer.setDocument("doc", DOC_WITH_NOTE);
+		assert.deepStrictEqual(analyzer.getGrammarDocuments("doc"), [], "nothing defines the namespaces");
+
+		analyzer.setDocument("notes", NOTES_SCHEMA);
+		analyzer.setDocument("notes2", NOTES_SCHEMA);
+		assert.deepStrictEqual(analyzer.getGrammarDocuments("doc"), [], "a conflicted namespace has no active definition");
+		assert.deepStrictEqual(analyzer.getGrammarDocuments("notes"), [], "a grammar uses only @stxt.schema, which is built in");
+
+		analyzer.removeDocument("notes2");
+		assert.deepStrictEqual(analyzer.getGrammarDocuments("doc"), ["notes"]);
+
+		// The mixed form: a document that carries its own grammar needs nothing from outside
+		analyzer.setDocument("mixed", "Schema (@stxt.schema): com.example.own\n\tNode: Own\n\t\tType: TEXT\nOwn (com.example.own): self-contained\n");
+		assert.deepStrictEqual(analyzer.getGrammarDocuments("mixed"), []);
+
+		assert.deepStrictEqual(analyzer.getGrammarDocuments("missing"), []);
+	});
+});
+
 describe("Analyzer: workspace updates", () => {
 	it("re-validates every document when a grammar changes", () => {
 		const analyzer = new Analyzer();

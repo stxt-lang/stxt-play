@@ -156,6 +156,7 @@ $warning: #9a6b00;
 		background: $warning;
 	}
 
+	.doc-share,
 	.doc-edit,
 	.doc-delete {
 		flex: none;
@@ -178,6 +179,7 @@ $warning: #9a6b00;
 		}
 	}
 
+	.doc-share:hover,
 	.doc-edit:hover {
 		background: #fff;
 		color: $color1;
@@ -188,6 +190,9 @@ $warning: #9a6b00;
 		color: $error;
 	}
 
+	&:hover .doc-share,
+	&:focus-within .doc-share,
+	&.doc-active .doc-share,
 	&:hover .doc-edit,
 	&:focus-within .doc-edit,
 	&.doc-active .doc-edit,
@@ -241,6 +246,7 @@ $warning: #9a6b00;
 		padding-top: 0.45rem;
 		padding-bottom: 0.45rem;
 
+		.doc-share,
 		.doc-edit,
 		.doc-delete {
 			width: 1.7rem;

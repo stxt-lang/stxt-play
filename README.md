@@ -65,8 +65,11 @@ about.
 
 The workspace lives in the browser: it is saved to `localStorage` as you type and comes back on
 the next visit. Nothing leaves your machine. **Share** puts the whole workspace, compressed, in the
-URL fragment (the link carries the documents, no server involved), **↺ Reset** brings back the
-example documents (see `seed/`), and **Clear** (the bin icon) removes them all and leaves a single empty one.
+URL fragment (the link carries the documents, no server involved), and the link button of a row of
+the document list shares that one document alone, with the grammars it needs (see below). **↺ Reset**
+brings back the example documents (see `seed/`), with the document list at its default width and
+both panes scrolled to the top, and **Clear** (the bin icon) removes them all and leaves a single
+empty one.
 
 ### Sharing a workspace from a link
 
@@ -123,6 +126,13 @@ rule instead of entering as a plain document: an unknown namespace is added (lis
 namespace), an identical definition is selected, and a differing one asks before being replaced.
 Either way that grammar ends up selected, so no link can ever leave the workspace with two
 definitions of the same namespace.
+
+The playground builds these links itself: the link button of a row of the document list copies an
+open link for that document, `#d=` with its text, `&t=` with its title and one `&g=` per workspace
+document that defines a namespace the document uses (the active definition, in order of first
+use; a namespace nothing defines, or two documents define, brings nothing). It is the way to hand
+someone one document without replacing their workspace, which is what the *Share* link of the
+header does.
 
 ## Stack
 

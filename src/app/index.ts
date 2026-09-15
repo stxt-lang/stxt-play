@@ -7,6 +7,7 @@
  */
 
 export { lineAt, toCmDiagnostics } from "./diagnostics";
+export { DocumentLink, encodeDocumentLink } from "./documentLink";
 export { ELEMENT_IDS, findElements, PlaygroundElements } from "./elements";
 export { applyFragment, applyLink, applyOpenLink, applyShareLink, FragmentDialogs, FragmentLink, linkOf } from "./fragment";
 export { DocumentLabel, labelOf } from "./labels";

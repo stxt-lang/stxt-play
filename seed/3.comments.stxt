@@ -1,10 +1,10 @@
 Lesson (stxt.play.tutorial): Comments
-	Number of lesson: 3/5
-	Introduction >>
+	Progress: 3/5
+	Explanation >>
 		Comments are lines that start with #
 		# This line is NOT a comment!!
 		Remember: **Inside a block of text, everything is text**
-	# This is an external comment, so it ends the block 'Introduction'
+	# This is an external comment, so it ends the block 'Explanation'
 # This is a comment too
 
 # ------------------

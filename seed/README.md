@@ -10,7 +10,7 @@ The documents a first-time visitor gets, and what the *Reset* button restores.
 
 | Group | Grammar | Documents |
 |---|---|---|
-| A tutorial | `stxt.play.tutorial.stxt` (`@stxt.template`): a title, an optional lesson number and one `Introduction` TEXT block | `1.welcome.stxt` to `6.next-steps.stxt`, numbered so they read in order |
+| A tutorial | `stxt.play.tutorial.stxt` (`@stxt.template`): a title, an optional progress marker and one `Explanation` TEXT block | `1.welcome.stxt` to `6.next-steps.stxt`, numbered so they read in order |
 | Recipes | `stxt.play.cooking.stxt` (`@stxt.template`) | `recipe-pancakes.stxt`, `recipe-bolognese.stxt`, `recipe-brownies.stxt` |
 | Books | `stxt.play.library.stxt` (`@stxt.schema`) | `book-handbook.stxt`, `book-notes.stxt`, `book-plain-text.stxt` |
 | Configuration files | `stxt.play.config.stxt` (`@stxt.template`, with typed values: BOOLEAN, NATURAL, URL, ENUM) | `config-development.stxt`, `config-staging.stxt`, `config-production.stxt` |

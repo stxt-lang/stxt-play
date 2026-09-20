@@ -1,6 +1,6 @@
 Lesson (stxt.play.tutorial): Namespace documents
-	Number of lesson: 5/5
-	Introduction >>
+	Progress: 5/5
+	Explanation >>
 		Documents with a namespace have
 		nodes of this form: `Node name (namespace.definition):`
 		or `Node name (namespace.definition) >>`

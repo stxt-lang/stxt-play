@@ -25132,7 +25132,7 @@ ${indentation}${unit}` : suggestion.text
   }
 
   // seed/1.welcome.stxt
-  var welcome_default = "Lesson (stxt.play.tutorial): Welcome!\n	Number of lesson: 1/5\n	Introduction >>\n		**Welcome to the STXT Playground!!**\n\n		This is a tutorial for learning STXT.\n		Here you can play and try the language.\n\n		When you've finished a lesson,\n		you can delete the document... or not ;-)\n\n		You can always reset the workspace\n		to the defaults (button \u21BA).\n\n		Let's start! **What is STXT**.\n";
+  var welcome_default = "Lesson (stxt.play.tutorial): Welcome!\n	Number of lesson: 1/5\n	Introduction >>\n		**Welcome to the STXT Playground!**\n\n		This is a tutorial for learning STXT.\n		Here you can play and try the language.\n\n		When you've finished a lesson,\n		you can delete the document... or not ;-)\n\n		You can always reset the workspace\n		to the defaults (button \u21BA).\n\n		Let's start! **What is STXT**.\n";
 
   // seed/2.what-is-stxt.stxt
   var what_is_stxt_default = `Lesson: What is STXT

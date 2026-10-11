@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import { Analyzer } from "../src/analysis";
+import { Analyzer } from "@stxt-lang/editor";
 import { encodeDocumentLink } from "../src/app";
 import { decodeOpen, Workspace } from "../src/workspace";
 import { sequentialIds } from "./support";

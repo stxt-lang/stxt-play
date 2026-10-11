@@ -258,7 +258,7 @@
       var ParseException_1 = require_ParseException();
       var NamespaceValidator_1 = require_NamespaceValidator();
       var StringUtils_1 = require_StringUtils();
-      var Node8 = class _Node {
+      var Node3 = class _Node {
         /**
          * Common initialisation, for the two concrete forms.
          *
@@ -397,8 +397,8 @@
           return s;
         }
       };
-      exports.Node = Node8;
-      Node8.NO_LINE = -1;
+      exports.Node = Node3;
+      Node3.NO_LINE = -1;
     }
   });
 
@@ -447,7 +447,7 @@
       exports.TextNode = void 0;
       var Node_1 = require_Node();
       var RuntimeException_1 = require_RuntimeException();
-      var TextNode6 = class _TextNode extends Node_1.Node {
+      var TextNode4 = class _TextNode extends Node_1.Node {
         constructor(name2, ...rest) {
           const [namespace, text, line] = rest.length <= 1 ? [null, rest[0], Node_1.Node.NO_LINE] : [rest[0], rest[1], rest[2] ?? Node_1.Node.NO_LINE];
           super(name2, namespace, line);
@@ -534,7 +534,7 @@
           return `, lines=${this.lines.length}`;
         }
       };
-      exports.TextNode = TextNode6;
+      exports.TextNode = TextNode4;
     }
   });
 
@@ -722,7 +722,7 @@
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Line = void 0;
       var StringUtils_1 = require_StringUtils();
-      var Line4 = class {
+      var Line2 = class {
         /**
          * Creates a line already split into indentation and content.
          *
@@ -744,7 +744,7 @@
           return StringUtils_1.StringUtils.trim(this.content) === "";
         }
       };
-      exports.Line = Line4;
+      exports.Line = Line2;
     }
   });
 
@@ -1063,7 +1063,7 @@
       var ParseException_1 = require_ParseException();
       var ValidationException_1 = require_ValidationException();
       var LimitException_1 = require_LimitException();
-      var Parser7 = class _Parser {
+      var Parser6 = class _Parser {
         /**
          * Creates a parser, optionally with its own limits.
          *
@@ -1312,7 +1312,7 @@
           return content2.charCodeAt(0) === 65279 ? content2.slice(1) : content2;
         }
       };
-      exports.Parser = Parser7;
+      exports.Parser = Parser6;
     }
   });
 
@@ -1326,7 +1326,7 @@
       var StringUtils_1 = require_StringUtils();
       var ParseException_1 = require_ParseException();
       var ValidationException_1 = require_ValidationException();
-      var Schema3 = class {
+      var Schema = class {
         /**
          * Creates an empty schema for a namespace.
          *
@@ -1387,9 +1387,9 @@
           return JSON.stringify(this, null, 2);
         }
       };
-      exports.Schema = Schema3;
-      Schema3.SCHEMA_NAMESPACE = "@stxt.schema";
-      Schema3.TEMPLATE_NAMESPACE = "@stxt.template";
+      exports.Schema = Schema;
+      Schema.SCHEMA_NAMESPACE = "@stxt.schema";
+      Schema.TEMPLATE_NAMESPACE = "@stxt.template";
     }
   });
 
@@ -2075,7 +2075,7 @@
       var ParseException_1 = require_ParseException();
       var ValidationException_1 = require_ValidationException();
       var StringUtils_1 = require_StringUtils();
-      var NodeDefinition2 = class {
+      var NodeDefinition = class {
         /**
          * Creates the definition of a node.
          *
@@ -2182,7 +2182,7 @@
           };
         }
       };
-      exports.NodeDefinition = NodeDefinition2;
+      exports.NodeDefinition = NodeDefinition;
     }
   });
 
@@ -2195,7 +2195,7 @@
       var NamespaceValidator_1 = require_NamespaceValidator();
       var ValidationException_1 = require_ValidationException();
       var StringUtils_1 = require_StringUtils();
-      var ChildDefinition2 = class {
+      var ChildDefinition = class {
         /**
          * Creates the definition of an expected child.
          *
@@ -2252,7 +2252,7 @@
           };
         }
       };
-      exports.ChildDefinition = ChildDefinition2;
+      exports.ChildDefinition = ChildDefinition;
     }
   });
 
@@ -18106,1129 +18106,19 @@
     return [lintGutterConfig.of(config), lintGutterMarkers, lintGutterExtension, lintGutterTheme, lintGutterTooltip];
   }
 
-  // src/analysis/Analyzer.ts
-  var import_core7 = __toESM(require_all());
-
-  // src/analysis/completion.ts
-  var import_core = __toESM(require_all());
-  var BLOCK_TYPES = /* @__PURE__ */ new Set(["TEXT", "BLOCK", "MARKDOWN"]);
-  function computeCompletions(analysis, registry, line, linePrefix) {
-    const lastNode = getLastNode(analysis, line);
-    const context = getCompletionContext(linePrefix, lastNode?.isTextNode() ?? false, lastNode?.getLevel() ?? 0);
-    if (!context) {
-      return null;
-    }
-    if (context.isValue) {
-      const node = analysis.nodeByLineIndex.get(line);
-      return node ? { from: context.from, suggestions: findEnumValues(registry, node, context.prefix) } : null;
-    }
-    if (context.level === 0) {
-      return { from: context.from, suggestions: findRootLevelSuggestions(registry, context.prefix) };
-    }
-    const parent = getParentNode(analysis, line, context.level);
-    if (!parent) {
-      return null;
-    }
-    return { from: context.from, suggestions: findSuggestionsByParent(registry, parent, context.prefix) };
-  }
-  function getLastNode(analysis, line) {
-    for (let search = line - 1; search >= 0; search--) {
-      const node = analysis.nodeByLineIndex.get(search);
-      if (node) {
-        return node;
-      }
-    }
-    return void 0;
-  }
-  function getParentNode(analysis, line, level) {
-    for (let search = line - 1; search >= 0; search--) {
-      const node = analysis.nodeByLineIndex.get(search);
-      if (node?.getLevel() === level - 1) {
-        return node instanceof import_core.InlineNode ? node : void 0;
-      }
-    }
-    return void 0;
-  }
-  function getCompletionContext(linePrefix, lastNodeBlock, lastLevel) {
-    const trimmed = linePrefix.trimStart();
-    if (trimmed.startsWith(import_core.Constants.COMMENT_CHAR)) {
-      return null;
-    }
-    let level;
-    let indentLength;
-    try {
-      const parsed = (0, import_core.parseLine)(linePrefix, lastNodeBlock, lastLevel, 0, false);
-      const blank = parsed.content.length === 0;
-      if (parsed.isBlock && (!blank || parsed.level > lastLevel)) {
-        return null;
-      }
-      level = parsed.level;
-      indentLength = blank ? linePrefix.length : parsed.contentStart;
-    } catch {
-      return null;
-    }
-    const sepIndex = trimmed.indexOf(import_core.Constants.SEP_NODE);
-    const textSepIndex = trimmed.indexOf(import_core.Constants.SEP_TEXT_NODE);
-    if (sepIndex !== -1 && (textSepIndex === -1 || sepIndex < textSepIndex)) {
-      const afterSep = trimmed.substring(sepIndex + 1);
-      const valuePrefix = afterSep.trimStart();
-      const from = linePrefix.length - valuePrefix.length;
-      return { level, prefix: valuePrefix, from, isValue: true };
-    }
-    if (textSepIndex !== -1) {
-      return null;
-    }
-    const rawNodePrefix = linePrefix.slice(indentLength);
-    const prefix = rawNodePrefix.replace(/\s*\(.*$/, "").trimEnd();
-    return { level, prefix, from: indentLength, isValue: false };
-  }
-  function matches(name2, normalizedPrefix) {
-    return normalizedPrefix.length === 0 || import_core.StringUtils.normalize(name2).startsWith(normalizedPrefix);
-  }
-  function nodeSuggestion(name2, namespace, includeNamespace, isBlock) {
-    const head = includeNamespace ? `${name2} (${namespace})` : name2;
-    return {
-      label: name2,
-      text: isBlock ? `${head} ${import_core.Constants.SEP_TEXT_NODE}` : `${head}${import_core.Constants.SEP_NODE} `,
-      detail: includeNamespace ? `${namespace}:${import_core.StringUtils.normalize(name2)}` : import_core.StringUtils.normalize(name2),
-      kind: isBlock ? "block" : "node"
-    };
-  }
-  function isBlockTypeDefinition(definition) {
-    return BLOCK_TYPES.has(definition.getType());
-  }
-  function isBlockChild(registry, child) {
-    const definition = registry.getSchema(child.getNamespace())?.getNodeDefinition(child.getName());
-    return definition ? isBlockTypeDefinition(definition) : false;
-  }
-  function findSuggestionsByParent(registry, parent, prefix) {
-    const definition = registry.getSchema(parent.getNamespace())?.getNodeDefinition(parent.getName());
-    if (!definition) {
-      return [];
-    }
-    const normalizedPrefix = import_core.StringUtils.normalize(prefix);
-    const suggestions = [];
-    for (const child of definition.getChildren().values()) {
-      if (!matches(child.getName(), normalizedPrefix)) {
-        continue;
-      }
-      const max = child.getMax();
-      if (max !== null && max >= 0 && parent.getChildrenByName(child.getName(), child.getNamespace()).length >= max) {
-        continue;
-      }
-      const sameNamespace = child.getNamespace() === parent.getNamespace();
-      suggestions.push(nodeSuggestion(child.getName(), child.getNamespace(), !sameNamespace, isBlockChild(registry, child)));
-    }
-    return suggestions;
-  }
-  function getRootNodeDefinitions(schema) {
-    const referenced = /* @__PURE__ */ new Set();
-    for (const definition of schema.getNodes().values()) {
-      for (const child of definition.getChildren().values()) {
-        if (child.getNamespace() === schema.getNamespace()) {
-          referenced.add(child.getCanonicalName());
-        }
-      }
-    }
-    const roots = Array.from(schema.getNodes().values()).filter((d) => !referenced.has(d.getCanonicalName()));
-    return roots.length > 0 ? roots : Array.from(schema.getNodes().values());
-  }
-  function findRootLevelSuggestions(registry, prefix) {
-    const normalizedPrefix = import_core.StringUtils.normalize(prefix);
-    const suggestions = [];
-    const seen = /* @__PURE__ */ new Set();
-    for (const schema of [...registry.getWorkspaceSchemas(), ...registry.getMetaSchemas()]) {
-      for (const definition of getRootNodeDefinitions(schema)) {
-        if (!matches(definition.getName(), normalizedPrefix)) {
-          continue;
-        }
-        const key = `${schema.getNamespace()}:${definition.getCanonicalName()}`;
-        if (seen.has(key)) {
-          continue;
-        }
-        seen.add(key);
-        suggestions.push(nodeSuggestion(definition.getName(), schema.getNamespace(), true, isBlockTypeDefinition(definition)));
-      }
-    }
-    return suggestions;
-  }
-  function findEnumValues(registry, node, prefix) {
-    const definition = registry.getSchema(node.getNamespace())?.getNodeDefinition(node.getName());
-    if (!definition || definition.getType() !== "ENUM") {
-      return [];
-    }
-    const normalizedPrefix = import_core.StringUtils.normalize(prefix);
-    const suggestions = [];
-    for (const value of definition.getValues()) {
-      if (matches(value, normalizedPrefix)) {
-        suggestions.push({ label: value, text: value, detail: `ENUM value of ${node.getName()}`, kind: "value" });
-      }
-    }
-    return suggestions;
-  }
-
-  // src/analysis/definition.ts
-  var import_core3 = __toESM(require_all());
-
-  // src/analysis/GrammarRegistry.ts
-  var import_core2 = __toESM(require_all());
-  var SCHEMA_NAMESPACE = "@stxt.schema";
-  var TEMPLATE_NAMESPACE = "@stxt.template";
-  var DUPLICATE_NAMESPACE = "DISCOVERY_DUPLICATE_NAMESPACE";
-  var GRAMMAR_ERROR = "GRAMMAR_ERROR";
-  function isGrammarRoot(node) {
-    const namespace = node.getNamespace();
-    return namespace === SCHEMA_NAMESPACE || namespace === TEMPLATE_NAMESPACE;
-  }
-  function grammarKindOf(node) {
-    return node.getNamespace() === TEMPLATE_NAMESPACE ? "template" : "schema";
-  }
-  var GrammarRegistry = class _GrammarRegistry {
-    constructor() {
-      /** Empty unified provider, used only for the meta-schemas it serves built-in. */
-      this.metas = new import_core2.UnifiedSchemaProvider();
-      this.schemas = /* @__PURE__ */ new Map();
-      this.definitions = /* @__PURE__ */ new Map();
-      this.conflicted = /* @__PURE__ */ new Set();
-      this.issues = [];
-    }
-    /**
-     * Rebuilds the registry from the grammar roots of the workspace documents.
-     *
-     * A grammar that does not validate against its meta-schema is skipped silently: its own
-     * document already reports the meta-validation errors through the normal validation pass.
-     * A grammar that fails to transform produces a {@link GrammarIssue} instead.
-     *
-     * @param sources root nodes of every workspace document, with their document id.
-     */
-    load(sources) {
-      this.schemas.clear();
-      this.definitions.clear();
-      this.conflicted.clear();
-      this.issues = [];
-      const owners = /* @__PURE__ */ new Map();
-      for (const { documentId, roots } of sources) {
-        for (const root of roots) {
-          if (!isGrammarRoot(root)) {
-            continue;
-          }
-          try {
-            const metaErrors = new import_core2.SchemaValidator(this.metas, true).validate(root);
-            if (metaErrors.length > 0) {
-              continue;
-            }
-            const schema = root.getNamespace() === TEMPLATE_NAMESPACE ? (0, import_core2.transformTemplateNodeToSchema)(root) : (0, import_core2.transformNodeToSchema)(root);
-            const key = import_core2.StringUtils.lowerCase(schema.getNamespace());
-            const list = owners.get(key) ?? [];
-            list.push({ documentId, line: root.getLine() - 1 });
-            owners.set(key, list);
-            this.schemas.set(key, schema);
-            this.definitions.set(key, { documentId, root });
-          } catch (e) {
-            this.issues.push(_GrammarRegistry.toIssue(documentId, root, e));
-          }
-        }
-      }
-      for (const [key, list] of owners) {
-        if (list.length > 1) {
-          this.conflicted.add(key);
-          this.schemas.delete(key);
-          this.definitions.delete(key);
-          for (const owner of list) {
-            this.issues.push({
-              documentId: owner.documentId,
-              line: owner.line,
-              code: DUPLICATE_NAMESPACE,
-              message: `Namespace '${key}' is defined by more than one grammar in the workspace; it has no active definition`
-            });
-          }
-        }
-      }
-    }
-    /**
-     * Resolves the schema of a namespace: the meta-schemas for the two reserved namespaces, and
-     * the workspace grammars for everything else. A conflicted namespace resolves to nothing.
-     *
-     * @param namespace namespace whose schema is wanted.
-     * @returns the schema, or null/undefined if the namespace has no active definition.
-     */
-    getSchema(namespace) {
-      if (namespace === SCHEMA_NAMESPACE || namespace === TEMPLATE_NAMESPACE) {
-        return this.metas.getSchema(namespace);
-      }
-      const key = import_core2.StringUtils.lowerCase(namespace);
-      if (this.conflicted.has(key)) {
-        return void 0;
-      }
-      return this.schemas.get(key);
-    }
-    /**
-     * Where a namespace is defined, for "go to definition". The two reserved namespaces are
-     * built-in and have no document; a conflicted namespace has no active definition.
-     *
-     * @param namespace namespace whose definition is wanted.
-     * @returns the document and grammar root, or undefined if the workspace does not define it.
-     */
-    getDefinition(namespace) {
-      return this.definitions.get(import_core2.StringUtils.lowerCase(namespace));
-    }
-    /** @returns the problems found while loading, in workspace order. */
-    getIssues() {
-      return this.issues;
-    }
-    /** @returns the active grammars of the workspace (conflicted namespaces excluded), in load order. */
-    getWorkspaceSchemas() {
-      return Array.from(this.schemas.values());
-    }
-    /** @returns the meta-schemas of `@stxt.schema` and `@stxt.template`, always available. */
-    getMetaSchemas() {
-      const metas = [];
-      for (const namespace of [SCHEMA_NAMESPACE, TEMPLATE_NAMESPACE]) {
-        const schema = this.metas.getSchema(namespace);
-        if (schema) {
-          metas.push(schema);
-        }
-      }
-      return metas;
-    }
-    static toIssue(documentId, root, e) {
-      if (e instanceof import_core2.ParseException) {
-        return {
-          documentId,
-          line: e.line > 0 ? e.line - 1 : root.getLine() - 1,
-          code: e.code,
-          message: e.message
-        };
-      }
-      return {
-        documentId,
-        line: root.getLine() - 1,
-        code: GRAMMAR_ERROR,
-        message: e instanceof Error ? e.message : String(e)
-      };
-    }
-  };
-
-  // src/analysis/definition.ts
-  function findDefinition(analysis, registry, line, character) {
-    const node = analysis.nodeByLineIndex.get(line);
-    if (!node) {
-      return void 0;
-    }
-    const headTokens = analysis.tokens.filter((token) => token.line === line && token.type !== "string");
-    if (headTokens.length === 0) {
-      return void 0;
-    }
-    const headEnd = Math.max(...headTokens.map((token) => token.startChar + token.length));
-    if (character > headEnd) {
-      return void 0;
-    }
-    const namespace = node.getNamespace();
-    if (!namespace) {
-      return void 0;
-    }
-    const definition = registry.getDefinition(namespace);
-    if (!definition) {
-      return void 0;
-    }
-    const onNamespace = headTokens.some(
-      (token) => token.type === "namespace" && character >= token.startChar && character <= token.startChar + token.length
-    );
-    const rootLine = definition.root.getLine() - 1;
-    return {
-      documentId: definition.documentId,
-      line: onNamespace ? rootLine : definitionLine(definition.root, node.getName(), namespace) ?? rootLine
-    };
-  }
-  function definitionLine(root, nodeName, namespace) {
-    if (!(root instanceof import_core3.InlineNode)) {
-      return void 0;
-    }
-    const wanted = import_core3.StringUtils.normalize(nodeName);
-    if (root.getNamespace() === SCHEMA_NAMESPACE) {
-      for (const child of root.getChildren()) {
-        if (child instanceof import_core3.InlineNode && child.getCanonicalName() === "node" && import_core3.StringUtils.normalize(child.getValue()) === wanted) {
-          return child.getLine() - 1;
-        }
-      }
-    } else if (root.getNamespace() === TEMPLATE_NAMESPACE) {
-      for (const child of root.getChildren()) {
-        if (child instanceof import_core3.TextNode && child.getCanonicalName() === "structure") {
-          const inner = findNode(parseStructure(child.getText()), wanted, namespace);
-          if (inner) {
-            return child.getLine() + inner.getLine() - 1;
-          }
-        }
-      }
-    }
-    return void 0;
-  }
-  function parseStructure(text) {
-    try {
-      return new import_core3.Parser().parseResult(text).getNodes();
-    } catch {
-      return [];
-    }
-  }
-  function findNode(nodes, canonicalName, namespace) {
-    const target = import_core3.StringUtils.lowerCase(namespace);
-    let byNameOnly;
-    const walk = (list) => {
-      for (const node of list) {
-        if (node.getCanonicalName() === canonicalName) {
-          if (import_core3.StringUtils.lowerCase(node.getNamespace()) === target) {
-            return node;
-          }
-          byNameOnly ??= node;
-        }
-        if (node instanceof import_core3.InlineNode) {
-          const found = walk(node.getChildren());
-          if (found) {
-            return found;
-          }
-        }
-      }
-      return void 0;
-    };
-    return walk(nodes) ?? byNameOnly;
-  }
-
-  // src/analysis/MarkdownTokenizer.ts
-  var MARKDOWN_TOKEN_TYPES = [
-    "markdownHeading",
-    "markdownBold",
-    "markdownItalic",
-    "markdownCode",
-    "markdownList",
-    "markdownQuote",
-    "markdownLink"
-  ];
-  function newMarkdownState() {
-    return { fence: null };
-  }
-  var FENCE = /^\s*(`{3,}|~{3,})/;
-  var HEADING = /^\s*#{1,6}(?=\s|$)/;
-  var QUOTE = /^\s*(?:>[ \t]?)+/;
-  var LIST = /^(\s*)([-*+]|\d{1,9}[.)])(?:\s+|$)/;
-  var INLINE = new RegExp([
-    "(?<escape>\\\\[\\\\`*_\\[\\]()<>#!~-])",
-    "(?<code>(?<fence>`+)(?!`)[\\s\\S]*?(?<!`)\\k<fence>(?!`))",
-    "(?<link>!?\\[[^\\]]*\\]\\([^)]*\\)|<(?:https?://|mailto:)[^>\\s]+>)",
-    "(?<bold>\\*\\*\\*(?=\\S)[^*]+?(?<=\\S)\\*\\*\\*|\\*\\*(?=\\S)(?:[^*]|\\*(?!\\*))+?(?<=\\S)\\*\\*|(?<![\\p{L}\\p{N}_])__(?=\\S)(?:[^_]|_(?!_))+?(?<=\\S)__(?![\\p{L}\\p{N}_]))",
-    "(?<italic>\\*(?=[^\\s*])[^*]*?(?<=[^\\s*])\\*|(?<![\\p{L}\\p{N}_])_(?=[^\\s_])[^_]*?(?<=[^\\s_])_(?![\\p{L}\\p{N}_]))"
-  ].join("|"), "gu");
-  function tokenizeMarkdownLine(content2, state) {
-    const spans = [];
-    const fence = FENCE.exec(content2);
-    if (state.fence !== null) {
-      if (fence && fence[1][0] === state.fence[0] && fence[1].length >= state.fence.length && content2.slice(fence[0].length).trim() === "") {
-        state.fence = null;
-      }
-      pushWholeLine(spans, content2, "markdownCode");
-      return spans;
-    }
-    if (fence) {
-      state.fence = fence[1];
-      pushWholeLine(spans, content2, "markdownCode");
-      return spans;
-    }
-    let pos = 0;
-    const quote = QUOTE.exec(content2);
-    if (quote) {
-      const start = quote[0].search(/\S/);
-      spans.push({ startChar: start, length: quote[0].trimEnd().length - start, type: "markdownQuote" });
-      pos = quote[0].length;
-    }
-    const rest = content2.slice(pos);
-    if (HEADING.test(rest)) {
-      pushWholeLine(spans, rest, "markdownHeading", pos);
-      return spans;
-    }
-    const list = LIST.exec(rest);
-    if (list) {
-      spans.push({ startChar: pos + list[1].length, length: list[2].length, type: "markdownList" });
-      pos += list[0].length;
-    }
-    tokenizeInline(spans, content2.slice(pos), pos);
-    return spans;
-  }
-  function pushWholeLine(spans, content2, type, offset = 0) {
-    const start = content2.search(/\S/);
-    if (start !== -1) {
-      spans.push({ startChar: offset + start, length: content2.trimEnd().length - start, type });
-    }
-  }
-  function tokenizeInline(spans, text, offset) {
-    INLINE.lastIndex = 0;
-    let match;
-    while ((match = INLINE.exec(text)) !== null) {
-      const groups = match.groups ?? {};
-      const type = groups.code !== void 0 ? "markdownCode" : groups.link !== void 0 ? "markdownLink" : groups.bold !== void 0 ? "markdownBold" : groups.italic !== void 0 ? "markdownItalic" : void 0;
-      if (type !== void 0) {
-        spans.push({ startChar: offset + match.index, length: match[0].length, type });
-      }
-    }
-  }
-
-  // src/analysis/nodeInfo.ts
-  var import_core4 = __toESM(require_all());
-  function describeNodeAtLine(analysis, registry, line) {
-    const node = analysis.nodeByLineIndex.get(line);
-    if (!node) {
-      return void 0;
-    }
-    const info = {
-      name: node.getName(),
-      canonicalName: node.getCanonicalName(),
-      namespace: node.getNamespace(),
-      kind: node.isTextNode() ? "block" : "inline",
-      level: node.getLevel()
-    };
-    if (node instanceof import_core4.InlineNode) {
-      info.value = node.getValue();
-    } else {
-      info.textLines = node.getText().length === 0 ? 0 : node.getText().split("\n").length;
-    }
-    if (node.getNamespace()) {
-      const schema = registry.getSchema(node.getNamespace());
-      const definition = schema?.getNodeDefinition(node.getName());
-      if (schema && definition) {
-        info.definition = {
-          namespace: schema.getNamespace(),
-          type: definition.getType(),
-          values: Array.from(definition.getValues()),
-          children: Array.from(definition.getChildren().values()).map((child) => ({
-            name: child.getName(),
-            namespace: child.getNamespace(),
-            min: child.getMin(),
-            max: child.getMax()
-          })),
-          description: definition.getDescription()
-        };
-      }
-    }
-    return info;
-  }
-
-  // src/analysis/reindent.ts
-  var import_core5 = __toESM(require_all());
-  var TAB_UNIT = "	";
-  var SPACES_UNIT = "    ";
-  function computeIndentChanges(text, unit) {
-    const style = unit === SPACES_UNIT ? import_core5.IndentStyle.SPACES_4 : import_core5.IndentStyle.TABS;
-    const lines = text.split("\n");
-    const formatted = import_core5.Formatter.format(text, style).text.split("\n");
-    const changes = [];
-    for (let i = 0; i < lines.length; i++) {
-      if (formatted[i] !== lines[i]) {
-        changes.push({ line: i, from: 0, to: lines[i].length, insert: formatted[i] });
-      }
-    }
-    return changes;
-  }
-  function applyIndentChanges(text, changes) {
-    if (changes.length === 0) {
-      return text;
-    }
-    const lines = text.split("\n");
-    for (const change of changes) {
-      const line = lines[change.line];
-      lines[change.line] = line.slice(0, change.from) + change.insert + line.slice(change.to);
-    }
-    return lines.join("\n");
-  }
-
-  // src/analysis/TokenGeneratorObserver.ts
-  var import_core6 = __toESM(require_all());
-  var TokenGeneratorObserver = class _TokenGeneratorObserver {
-    constructor() {
-      this.tokens = [];
-      this.nodeByLineIndex = /* @__PURE__ */ new Map();
-      this.commentLines = /* @__PURE__ */ new Set();
-      this.textNodeByLineIndex = /* @__PURE__ */ new Map();
-      this.blockLineByLineIndex = /* @__PURE__ */ new Map();
-      // The source Line of each text line of an open Structure/Description block, 1-based:
-      // parseTemplateContent maps the inner tokens back to absolute line numbers
-      this.templateLineByLineNumber = /* @__PURE__ */ new Map();
-    }
-    onTextLine(node, lineNumber, lineString, line) {
-      const lineIndex = lineNumber - 1;
-      this.textNodeByLineIndex.set(lineIndex, node);
-      this.blockLineByLineIndex.set(lineIndex, line);
-      if (this.isTemplateContentNode(node)) {
-        this.templateLineByLineNumber.set(lineNumber, line);
-      }
-    }
-    onCreate(node, line) {
-      const lineIndex = node.getLine() - 1;
-      this.nodeByLineIndex.set(lineIndex, node);
-      this.generateTokensForNode(node, lineIndex, line);
-      if (this.isTemplateContentNode(node)) {
-        this.templateLineByLineNumber.clear();
-      }
-    }
-    onFinish(node) {
-      if (this.isTemplateContentNode(node)) {
-        this.parseTemplateContent(node);
-        this.templateLineByLineNumber.clear();
-      }
-    }
-    isTemplateContentNode(node) {
-      if (node.getNamespace() !== "@stxt.template") {
-        return false;
-      }
-      const normalizedName = node.getCanonicalName();
-      return normalizedName === "structure" || normalizedName === "description";
-    }
-    parseTemplateContent(node) {
-      try {
-        const content2 = node.getText();
-        if (!content2 || content2.trim() === "") {
-          return;
-        }
-        const parser = new import_core6.Parser();
-        const innerObserver = new _TokenGeneratorObserver();
-        parser.registerObserver(innerObserver);
-        parser.parseResult(content2);
-        const lineOffset = node.getLine();
-        const innerTokens = innerObserver.getTokens();
-        for (const token of innerTokens) {
-          const absoluteLineNumber = lineOffset + token.line + 1;
-          const originalLine = this.templateLineByLineNumber.get(absoluteLineNumber);
-          const offset = originalLine ? originalLine.contentStart : 0;
-          this.tokens.push({
-            line: token.line + lineOffset,
-            startChar: token.startChar + offset,
-            length: token.length,
-            type: token.type
-          });
-        }
-      } catch {
-      }
-    }
-    onComment(lineNumber, line) {
-      const trimmedLine = line.trim();
-      if (trimmedLine.startsWith("#")) {
-        const lineIndex = lineNumber - 1;
-        this.commentLines.add(lineIndex);
-        this.tokens.push({
-          line: lineIndex,
-          startChar: 0,
-          length: line.length,
-          type: "comment"
-        });
-      }
-    }
-    getTokens() {
-      return this.tokens;
-    }
-    getNodeByLineIndex() {
-      return this.nodeByLineIndex;
-    }
-    getCommentLines() {
-      return this.commentLines;
-    }
-    getTextNodeByLineIndex() {
-      return this.textNodeByLineIndex;
-    }
-    /** @returns every text line of a block, by 0-based line index, split into indentation and content. */
-    getBlockLineByLineIndex() {
-      return this.blockLineByLineIndex;
-    }
-    generateTokensForNode(node, lineIndex, line) {
-      if (node.isTextNode()) {
-        const sepIndex = line.indexOf(import_core6.Constants.SEP_TEXT_NODE);
-        if (sepIndex === -1) {
-          return;
-        }
-        this.pushHeadTokens(lineIndex, line, sepIndex, import_core6.Constants.SEP_TEXT_NODE.length, line.length, "macro");
-      } else {
-        const sepIndex = line.indexOf(import_core6.Constants.SEP_NODE);
-        if (sepIndex === -1) {
-          return;
-        }
-        this.pushHeadTokens(lineIndex, line, sepIndex, import_core6.Constants.SEP_NODE.length, sepIndex + 1, "property");
-        const valueStart = sepIndex + 1;
-        if (valueStart < line.length) {
-          this.tokens.push({ line: lineIndex, startChar: valueStart, length: line.length - valueStart, type: "string" });
-        }
-      }
-    }
-    /**
-     * The tokens of a node line's head: the name (coloured `type`), the namespace when the
-     * line declares one, and the separator. With a namespace, everything from the closing
-     * parenthesis up to `tailEnd` (the end of the line for a block, the separator inclusive
-     * for an inline node) is one token; without one, the name and the separator are two.
-     */
-    pushHeadTokens(lineIndex, line, sepIndex, sepLength, tailEnd, type) {
-      const head = line.substring(0, sepIndex);
-      const nsOpen = head.indexOf("(");
-      const nsClose = head.indexOf(")");
-      if (nsOpen !== -1 && nsClose !== -1) {
-        this.tokens.push({ line: lineIndex, startChar: 0, length: nsOpen, type });
-        this.tokens.push({ line: lineIndex, startChar: nsOpen, length: nsClose - nsOpen + 1, type: "namespace" });
-        this.tokens.push({ line: lineIndex, startChar: nsClose + 1, length: tailEnd - nsClose - 1, type });
-      } else {
-        this.tokens.push({ line: lineIndex, startChar: 0, length: sepIndex, type });
-        this.tokens.push({ line: lineIndex, startChar: sepIndex, length: sepLength, type });
-      }
-    }
-  };
-
-  // src/analysis/Analyzer.ts
-  var MARKDOWN = "MARKDOWN";
-  var Analyzer = class _Analyzer {
-    constructor() {
-      this.parsed = /* @__PURE__ */ new Map();
-      this.analyses = /* @__PURE__ */ new Map();
-      this.registry = new GrammarRegistry();
-      this.validation = true;
-    }
-    /**
-     * Enables or disables schema validation (the header switch of the playground). Syntax and
-     * grammar diagnostics are not affected.
-     *
-     * @param enabled whether documents are validated against the workspace grammars.
-     */
-    setValidation(enabled) {
-      if (this.validation !== enabled) {
-        this.validation = enabled;
-        this.refreshAll();
-      }
-    }
-    /**
-     * Adds a document to the workspace, or replaces its text. Re-parses only that document, and
-     * re-analyzes the rest only when the change involves a grammar.
-     *
-     * @param id identifier of the document within the workspace.
-     * @param text full text of the document.
-     */
-    setDocument(id, text) {
-      const previous = this.parsed.get(id);
-      if (previous && previous.text === text) {
-        return;
-      }
-      const parsed = _Analyzer.parseDocument(text);
-      this.parsed.set(id, parsed);
-      const grammarsInvolved = previous !== void 0 && previous.grammarRoots.length > 0 || parsed.grammarRoots.length > 0;
-      if (grammarsInvolved) {
-        this.refreshAll();
-      } else {
-        this.refreshOne(id);
-      }
-    }
-    /**
-     * Removes a document from the workspace.
-     *
-     * @param id identifier of the document to remove.
-     */
-    removeDocument(id) {
-      const previous = this.parsed.get(id);
-      if (!previous) {
-        return;
-      }
-      this.parsed.delete(id);
-      this.analyses.delete(id);
-      if (previous.grammarRoots.length > 0) {
-        this.refreshAll();
-      }
-    }
-    /**
-     * @param id identifier of the document.
-     * @returns the analysis of the document, or undefined if it is not in the workspace.
-     */
-    getAnalysis(id) {
-      return this.analyses.get(id);
-    }
-    /**
-     * The workspace documents whose grammars a document needs to validate: one per namespace the
-     * document uses and does not define itself, resolved to the active definition of the
-     * workspace, in order of first use. This is what a link that shares one document carries
-     * along as its `&g=` grammars, so the document validates the same wherever it opens. A
-     * namespace with no active definition (nothing defines it, or two documents do) has nothing
-     * to bring, and the reserved `@stxt.*` namespaces are built in, so they never do.
-     *
-     * @param id identifier of the document.
-     * @returns identifiers of the defining documents, in order and without repeats, never the
-     * document itself; empty when the document is not in the workspace.
-     */
-    getGrammarDocuments(id) {
-      const parsed = this.parsed.get(id);
-      if (!parsed) {
-        return [];
-      }
-      const documentIds = [];
-      const seen = /* @__PURE__ */ new Set();
-      const walk = (nodes) => {
-        for (const node of nodes) {
-          const namespace = import_core7.StringUtils.lowerCase(node.getNamespace());
-          if (namespace.length > 0 && !seen.has(namespace)) {
-            seen.add(namespace);
-            const definition = this.registry.getDefinition(namespace);
-            if (definition && definition.documentId !== id && !documentIds.includes(definition.documentId)) {
-              documentIds.push(definition.documentId);
-            }
-          }
-          if (node instanceof import_core7.InlineNode) {
-            walk(node.getChildren());
-          }
-        }
-      };
-      walk(parsed.roots);
-      return documentIds;
-    }
-    /**
-     * Grammar-driven completions for a cursor position of a document (see `completion.ts`).
-     *
-     * @param id identifier of the document.
-     * @param line 0-based line of the cursor.
-     * @param linePrefix text of the line up to the cursor.
-     * @returns the suggestions and where they apply, or null when there is nothing to offer.
-     */
-    getCompletions(id, line, linePrefix) {
-      const analysis = this.analyses.get(id);
-      return analysis ? computeCompletions(analysis, this.registry, line, linePrefix) : null;
-    }
-    /**
-     * The changes that re-indent a document to a unit, with the formatter of the core (see
-     * `reindent.ts`).
-     *
-     * @param id identifier of the document.
-     * @param unit target indent unit: a tab or four spaces.
-     * @returns the per-line replacements; empty if the document is unknown or already there.
-     */
-    getIndentChanges(id, unit) {
-      const parsed = this.parsed.get(id);
-      return parsed ? computeIndentChanges(parsed.text, unit) : [];
-    }
-    /**
-     * Describes the node opened at a line of a document, for the hover (see `nodeInfo.ts`).
-     *
-     * @param id identifier of the document.
-     * @param line 0-based line.
-     * @returns the description, or undefined when the line opens no node.
-     */
-    describeNode(id, line) {
-      const analysis = this.analyses.get(id);
-      return analysis ? describeNodeAtLine(analysis, this.registry, line) : void 0;
-    }
-    /**
-     * Where the node at a position of a document is defined, for "go to definition" (see
-     * `definition.ts`).
-     *
-     * @param id identifier of the document.
-     * @param line 0-based line of the position.
-     * @param character 0-based column of the position.
-     * @returns the workspace document and line of the definition, or undefined if there is none.
-     */
-    findDefinition(id, line, character) {
-      const analysis = this.analyses.get(id);
-      return analysis ? findDefinition(analysis, this.registry, line, character) : void 0;
-    }
-    /** Parses a document once, collecting tokens, line maps and syntax errors. */
-    static parseDocument(text) {
-      const observer = new TokenGeneratorObserver();
-      const parser = new import_core7.Parser();
-      parser.registerObserver(observer);
-      const result = parser.parseResult(text);
-      const roots = result.getNodes();
-      const syntaxDiagnostics = result.getErrors().map((error) => ({
-        line: error.line > 0 ? error.line - 1 : 0,
-        code: error.code,
-        message: error.message,
-        severity: "error",
-        source: "syntax"
-      }));
-      return {
-        text,
-        roots,
-        tokens: observer.getTokens(),
-        nodeByLineIndex: observer.getNodeByLineIndex(),
-        commentLines: observer.getCommentLines(),
-        textNodeByLineIndex: observer.getTextNodeByLineIndex(),
-        blockLineByLineIndex: observer.getBlockLineByLineIndex(),
-        syntaxDiagnostics,
-        grammarRoots: roots.filter(isGrammarRoot)
-      };
-    }
-    /** Rebuilds the grammar registry and recomputes the analysis of every document. */
-    refreshAll() {
-      this.registry.load(
-        Array.from(this.parsed, ([documentId, parsed]) => ({ documentId, roots: parsed.grammarRoots }))
-      );
-      this.analyses.clear();
-      for (const [id, parsed] of this.parsed) {
-        this.analyses.set(id, this.compose(id, parsed));
-      }
-    }
-    /** Recomputes the analysis of a single document, with the registry as it is. */
-    refreshOne(id) {
-      const parsed = this.parsed.get(id);
-      if (parsed) {
-        this.analyses.set(id, this.compose(id, parsed));
-      }
-    }
-    /** Builds the public analysis of a document: parse products plus grammar and validation diagnostics. */
-    compose(id, parsed) {
-      const diagnostics = [...parsed.syntaxDiagnostics];
-      for (const issue of this.registry.getIssues()) {
-        if (issue.documentId === id) {
-          diagnostics.push({
-            line: issue.line,
-            code: issue.code,
-            message: issue.message,
-            severity: "error",
-            source: "grammar"
-          });
-        }
-      }
-      if (this.validation) {
-        diagnostics.push(...this.validateRoots(parsed.roots));
-      }
-      diagnostics.sort((a, b) => a.line - b.line);
-      return {
-        tokens: this.withMarkdownTokens(parsed),
-        roots: parsed.roots,
-        nodeByLineIndex: parsed.nodeByLineIndex,
-        commentLines: parsed.commentLines,
-        textNodeByLineIndex: parsed.textNodeByLineIndex,
-        grammars: parsed.grammarRoots.map((root) => ({
-          // A grammar root is `Name (@stxt.schema): namespace`; a block form is a broken grammar
-          // the registry reports on its own, and declares no namespace here.
-          namespace: root instanceof import_core7.InlineNode ? import_core7.StringUtils.lowerCase(root.getValue().trim()) : "",
-          kind: grammarKindOf(root),
-          line: root.getLine() - 1
-        })),
-        diagnostics
-      };
-    }
-    /**
-     * The tokens of the language plus those of the MARKDOWN blocks, sorted in document order.
-     *
-     * The Markdown ones are computed here and not while parsing because they depend on the
-     * workspace grammars, which change without the document changing; the parse products are
-     * cached per text, the analysis is recomposed whenever a grammar changes.
-     */
-    withMarkdownTokens(parsed) {
-      const tokens = [...parsed.tokens];
-      let current;
-      let state = null;
-      for (const [lineIndex, line] of parsed.blockLineByLineIndex) {
-        const node = parsed.textNodeByLineIndex.get(lineIndex);
-        if (node !== current) {
-          current = node;
-          state = node && this.isMarkdown(node) ? newMarkdownState() : null;
-        }
-        if (!state) {
-          continue;
-        }
-        const offset = line.contentStart;
-        for (const span of tokenizeMarkdownLine(line.content, state)) {
-          tokens.push({ line: lineIndex, startChar: offset + span.startChar, length: span.length, type: span.type });
-        }
-      }
-      return tokens.sort((a, b) => a.line - b.line || a.startChar - b.startChar);
-    }
-    /** @returns whether the grammar of the node's namespace declares it as MARKDOWN. */
-    isMarkdown(node) {
-      if (!node.getNamespace()) {
-        return false;
-      }
-      try {
-        return this.registry.getSchema(node.getNamespace())?.getNodeDefinition(node.getName())?.getType() === MARKDOWN;
-      } catch {
-        return false;
-      }
-    }
-    /**
-     * Validates every node of a document against the workspace grammars, replicating the parser:
-     * the parser hands each node to its validators when the node closes, so the walk here is
-     * post-order (children before their parent) over the already parsed tree.
-     */
-    validateRoots(roots) {
-      const diagnostics = [];
-      const validator = new import_core7.SchemaValidator(this.registry);
-      const walk = (node) => {
-        if (node instanceof import_core7.InlineNode) {
-          node.getChildren().forEach(walk);
-        }
-        try {
-          for (const error of validator.validate(node)) {
-            diagnostics.push({
-              line: error.line > 0 ? error.line - 1 : 0,
-              code: error.code,
-              message: error.message,
-              severity: "warning",
-              source: "validation"
-            });
-          }
-        } catch (e) {
-          diagnostics.push({
-            line: node.getLine() - 1,
-            code: "UNEXPECTED_ERROR",
-            message: e instanceof Error ? e.message : String(e),
-            severity: "error",
-            source: "validation"
-          });
-        }
-      };
-      roots.forEach(walk);
-      return diagnostics;
-    }
-  };
-
-  // src/analysis/Tokens.ts
-  var STXT_TOKEN_TYPES = [
-    "comment",
-    "namespace",
-    "property",
-    "macro",
-    "string",
-    ...MARKDOWN_TOKEN_TYPES
-  ];
-
-  // src/editor/documentStates.ts
-  var DocumentStates = class {
-    /**
-     * @param host the view the states go in and out of.
-     * @param createState makes the state of a document shown for the first time.
-     */
-    constructor(host, createState) {
-      this.host = host;
-      this.createState = createState;
-      this.parked = /* @__PURE__ */ new Map();
-      this.shown = null;
-    }
-    /** @returns the identifier of the document in the view, or null when none is. */
-    shownId() {
-      return this.shown;
-    }
-    /**
-     * Puts a document in the view, parking the state of the one that was there. A document shown
-     * before comes back with its parked state; a new one gets a fresh state from its text; the
-     * document already in the view stays as it is.
-     *
-     * @param id identifier of the document.
-     * @param text its text, used only when it has no state yet.
-     */
-    show(id, text) {
-      if (this.shown === id) {
-        return;
-      }
-      if (this.shown !== null) {
-        this.parked.set(this.shown, this.host.state);
-      }
-      const state = this.parked.get(id) ?? this.createState(text);
-      this.parked.delete(id);
-      this.shown = id;
-      this.host.setState(state);
-    }
-    /**
-     * Brings the state of a document up to date with a text that changed in the model. When the
-     * texts already match, the editor itself was the origin: typing, or a reindent, which
-     * updates the state first, nothing moves. A document never shown has no state to update.
-     *
-     * @param id identifier of the document.
-     * @param text the text the model holds now.
-     * @returns whether a state changed.
-     */
-    syncText(id, text) {
-      const doc2 = id === this.shown ? this.host.state.doc : this.parked.get(id)?.doc;
-      if (!doc2 || doc2.toString() === text) {
-        return false;
-      }
-      this.change(id, (current) => [{ from: 0, to: current.length, insert: text }]);
-      return true;
-    }
-    /**
-     * Applies changes to the state of a document, wherever it is: through the view when shown
-     * (the view's own listeners see the transaction), through its parked state otherwise. Either
-     * way the change is undoable in that document.
-     *
-     * @param id identifier of the document.
-     * @param changes builds the change specs from the document as the state holds it.
-     * @param userEvent the user event annotation of the transaction, if any.
-     * @returns the text of the document after the changes, or undefined if it was never shown:
-     * there is no state to change.
-     */
-    change(id, changes, userEvent) {
-      if (id === this.shown) {
-        this.host.dispatch({ changes: changes(this.host.state.doc), userEvent });
-        return this.host.state.doc.toString();
-      }
-      const parked = this.parked.get(id);
-      if (!parked) {
-        return void 0;
-      }
-      const next = parked.update({ changes: changes(parked.doc), userEvent }).state;
-      this.parked.set(id, next);
-      return next.doc.toString();
-    }
-    /**
-     * Forgets a document. If it was the one in the view, the view keeps showing its state until
-     * another document is shown, but nothing is attributed to it any more.
-     *
-     * @param id identifier of the document.
-     */
-    drop(id) {
-      this.parked.delete(id);
-      if (this.shown === id) {
-        this.shown = null;
-      }
-    }
-  };
-
-  // src/editor/highlight.ts
-  var setTokensEffect = StateEffect.define();
-  var MARKS = {
-    comment: Decoration.mark({ class: "stxt-tok-comment" }),
-    namespace: Decoration.mark({ class: "stxt-tok-namespace" }),
-    property: Decoration.mark({ class: "stxt-tok-property" }),
-    macro: Decoration.mark({ class: "stxt-tok-macro" }),
-    string: Decoration.mark({ class: "stxt-tok-string" }),
-    // Content of MARKDOWN blocks
-    markdownHeading: Decoration.mark({ class: "stxt-tok-md-heading" }),
-    markdownBold: Decoration.mark({ class: "stxt-tok-md-bold" }),
-    markdownItalic: Decoration.mark({ class: "stxt-tok-md-italic" }),
-    markdownCode: Decoration.mark({ class: "stxt-tok-md-code" }),
-    markdownList: Decoration.mark({ class: "stxt-tok-md-list" }),
-    markdownQuote: Decoration.mark({ class: "stxt-tok-md-quote" }),
-    markdownLink: Decoration.mark({ class: "stxt-tok-md-link" })
-  };
-  function buildDecorations(tokens, doc2) {
-    const ranges = [];
-    for (const token of tokens) {
-      if (token.line < 0 || token.line + 1 > doc2.lines) {
-        continue;
-      }
-      const line = doc2.line(token.line + 1);
-      const from = line.from + token.startChar;
-      const to = Math.min(from + token.length, line.to);
-      if (from >= to || from < line.from) {
-        continue;
-      }
-      ranges.push(MARKS[token.type].range(from, to));
-    }
-    return Decoration.set(ranges, true);
-  }
-  var highlightField = StateField.define({
-    create: () => Decoration.none,
-    update(decorations2, tr) {
-      decorations2 = decorations2.map(tr.changes);
-      for (const effect of tr.effects) {
-        if (effect.is(setTokensEffect)) {
-          decorations2 = buildDecorations(effect.value, tr.state.doc);
-        }
-      }
-      return decorations2;
-    },
-    provide: (field) => EditorView.decorations.from(field)
-  });
+  // node_modules/@stxt-lang/editor/dist/index.mjs
+  var import_core = __toESM(require_all(), 1);
+  var import_core2 = __toESM(require_all(), 1);
+  var import_core3 = __toESM(require_all(), 1);
+  var import_core4 = __toESM(require_all(), 1);
+  var import_core5 = __toESM(require_all(), 1);
+  var import_core6 = __toESM(require_all(), 1);
+  var import_core7 = __toESM(require_all(), 1);
 
   // node_modules/@lezer/common/dist/index.js
   var DefaultBufferLength = 1024;
   var nextPropID = 0;
-  var Range3 = class {
+  var Range2 = class {
     constructor(from, to) {
       this.from = from;
       this.to = to;
@@ -20765,7 +19655,7 @@
       return result;
     }
   };
-  var Parser4 = class {
+  var Parser = class {
     /**
     Start a parse, returning a [partial parse](#common.PartialParse)
     object. [`fragments`](#common.TreeFragment) can be passed in to
@@ -20779,7 +19669,7 @@
     startParse(input, fragments, ranges) {
       if (typeof input == "string")
         input = new StringInput(input);
-      ranges = !ranges ? [new Range3(0, input.length)] : ranges.length ? ranges.map((r) => new Range3(r.from, r.to)) : [new Range3(0, 0)];
+      ranges = !ranges ? [new Range2(0, input.length)] : ranges.length ? ranges.map((r) => new Range2(r.from, r.to)) : [new Range2(0, 0)];
       return this.createParse(input, fragments || [], ranges);
     }
     /**
@@ -21742,7 +20632,7 @@
     promise resolves.
     */
     static getSkippingParser(until) {
-      return new class extends Parser4 {
+      return new class extends Parser {
         createParse(input, fragments, ranges) {
           let from = ranges[0].from, to = ranges[ranges.length - 1].to;
           let parser = {
@@ -24916,7 +23806,1025 @@
   ];
   var completionKeymapExt = /* @__PURE__ */ Prec.highest(/* @__PURE__ */ keymap.computeN([completionConfig], (state) => state.facet(completionConfig).defaultKeymap ? [completionKeymap] : []));
 
-  // src/editor/completion.ts
+  // node_modules/@stxt-lang/editor/dist/index.mjs
+  var BLOCK_TYPES = /* @__PURE__ */ new Set(["TEXT", "BLOCK", "MARKDOWN"]);
+  function computeCompletions(analysis, registry, line, linePrefix) {
+    const lastNode = getLastNode(analysis, line);
+    const context = getCompletionContext(linePrefix, lastNode?.isTextNode() ?? false, lastNode?.getLevel() ?? 0);
+    if (!context) {
+      return null;
+    }
+    if (context.isValue) {
+      const node = analysis.nodeByLineIndex.get(line);
+      return node ? { from: context.from, suggestions: findEnumValues(registry, node, context.prefix) } : null;
+    }
+    if (context.level === 0) {
+      return { from: context.from, suggestions: findRootLevelSuggestions(registry, context.prefix) };
+    }
+    const parent = getParentNode(analysis, line, context.level);
+    if (!parent) {
+      return null;
+    }
+    return { from: context.from, suggestions: findSuggestionsByParent(registry, parent, context.prefix) };
+  }
+  function getLastNode(analysis, line) {
+    for (let search = line - 1; search >= 0; search--) {
+      const node = analysis.nodeByLineIndex.get(search);
+      if (node) {
+        return node;
+      }
+    }
+    return void 0;
+  }
+  function getParentNode(analysis, line, level) {
+    for (let search = line - 1; search >= 0; search--) {
+      const node = analysis.nodeByLineIndex.get(search);
+      if (node?.getLevel() === level - 1) {
+        return node instanceof import_core2.InlineNode ? node : void 0;
+      }
+    }
+    return void 0;
+  }
+  function getCompletionContext(linePrefix, lastNodeBlock, lastLevel) {
+    const trimmed = linePrefix.trimStart();
+    if (trimmed.startsWith(import_core2.Constants.COMMENT_CHAR)) {
+      return null;
+    }
+    let level;
+    let indentLength;
+    try {
+      const parsed = (0, import_core2.parseLine)(linePrefix, lastNodeBlock, lastLevel, 0, false);
+      const blank = parsed.content.length === 0;
+      if (parsed.isBlock && (!blank || parsed.level > lastLevel)) {
+        return null;
+      }
+      level = parsed.level;
+      indentLength = blank ? linePrefix.length : parsed.contentStart;
+    } catch {
+      return null;
+    }
+    const sepIndex = trimmed.indexOf(import_core2.Constants.SEP_NODE);
+    const textSepIndex = trimmed.indexOf(import_core2.Constants.SEP_TEXT_NODE);
+    if (sepIndex !== -1 && (textSepIndex === -1 || sepIndex < textSepIndex)) {
+      const afterSep = trimmed.substring(sepIndex + 1);
+      const valuePrefix = afterSep.trimStart();
+      const from = linePrefix.length - valuePrefix.length;
+      return { level, prefix: valuePrefix, from, isValue: true };
+    }
+    if (textSepIndex !== -1) {
+      return null;
+    }
+    const rawNodePrefix = linePrefix.slice(indentLength);
+    const prefix = rawNodePrefix.replace(/\s*\(.*$/, "").trimEnd();
+    return { level, prefix, from: indentLength, isValue: false };
+  }
+  function matches(name2, normalizedPrefix) {
+    return normalizedPrefix.length === 0 || import_core2.StringUtils.normalize(name2).startsWith(normalizedPrefix);
+  }
+  function nodeSuggestion(name2, namespace, includeNamespace, isBlock) {
+    const head = includeNamespace ? `${name2} (${namespace})` : name2;
+    return {
+      label: name2,
+      text: isBlock ? `${head} ${import_core2.Constants.SEP_TEXT_NODE}` : `${head}${import_core2.Constants.SEP_NODE} `,
+      detail: includeNamespace ? `${namespace}:${import_core2.StringUtils.normalize(name2)}` : import_core2.StringUtils.normalize(name2),
+      kind: isBlock ? "block" : "node"
+    };
+  }
+  function isBlockTypeDefinition(definition) {
+    return BLOCK_TYPES.has(definition.getType());
+  }
+  function isBlockChild(registry, child) {
+    const definition = registry.getSchema(child.getNamespace())?.getNodeDefinition(child.getName());
+    return definition ? isBlockTypeDefinition(definition) : false;
+  }
+  function findSuggestionsByParent(registry, parent, prefix) {
+    const definition = registry.getSchema(parent.getNamespace())?.getNodeDefinition(parent.getName());
+    if (!definition) {
+      return [];
+    }
+    const normalizedPrefix = import_core2.StringUtils.normalize(prefix);
+    const suggestions = [];
+    for (const child of definition.getChildren().values()) {
+      if (!matches(child.getName(), normalizedPrefix)) {
+        continue;
+      }
+      const max = child.getMax();
+      if (max !== null && max >= 0 && parent.getChildrenByName(child.getName(), child.getNamespace()).length >= max) {
+        continue;
+      }
+      const sameNamespace = child.getNamespace() === parent.getNamespace();
+      suggestions.push(nodeSuggestion(child.getName(), child.getNamespace(), !sameNamespace, isBlockChild(registry, child)));
+    }
+    return suggestions;
+  }
+  function getRootNodeDefinitions(schema) {
+    const referenced = /* @__PURE__ */ new Set();
+    for (const definition of schema.getNodes().values()) {
+      for (const child of definition.getChildren().values()) {
+        if (child.getNamespace() === schema.getNamespace()) {
+          referenced.add(child.getCanonicalName());
+        }
+      }
+    }
+    const roots = Array.from(schema.getNodes().values()).filter((d) => !referenced.has(d.getCanonicalName()));
+    return roots.length > 0 ? roots : Array.from(schema.getNodes().values());
+  }
+  function findRootLevelSuggestions(registry, prefix) {
+    const normalizedPrefix = import_core2.StringUtils.normalize(prefix);
+    const suggestions = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const schema of [...registry.getWorkspaceSchemas(), ...registry.getMetaSchemas()]) {
+      for (const definition of getRootNodeDefinitions(schema)) {
+        if (!matches(definition.getName(), normalizedPrefix)) {
+          continue;
+        }
+        const key = `${schema.getNamespace()}:${definition.getCanonicalName()}`;
+        if (seen.has(key)) {
+          continue;
+        }
+        seen.add(key);
+        suggestions.push(nodeSuggestion(definition.getName(), schema.getNamespace(), true, isBlockTypeDefinition(definition)));
+      }
+    }
+    return suggestions;
+  }
+  function findEnumValues(registry, node, prefix) {
+    const definition = registry.getSchema(node.getNamespace())?.getNodeDefinition(node.getName());
+    if (!definition || definition.getType() !== "ENUM") {
+      return [];
+    }
+    const normalizedPrefix = import_core2.StringUtils.normalize(prefix);
+    const suggestions = [];
+    for (const value of definition.getValues()) {
+      if (matches(value, normalizedPrefix)) {
+        suggestions.push({ label: value, text: value, detail: `ENUM value of ${node.getName()}`, kind: "value" });
+      }
+    }
+    return suggestions;
+  }
+  var SCHEMA_NAMESPACE = "@stxt.schema";
+  var TEMPLATE_NAMESPACE = "@stxt.template";
+  var DUPLICATE_NAMESPACE = "DISCOVERY_DUPLICATE_NAMESPACE";
+  var GRAMMAR_ERROR = "GRAMMAR_ERROR";
+  function isGrammarRoot(node) {
+    const namespace = node.getNamespace();
+    return namespace === SCHEMA_NAMESPACE || namespace === TEMPLATE_NAMESPACE;
+  }
+  function grammarKindOf(node) {
+    return node.getNamespace() === TEMPLATE_NAMESPACE ? "template" : "schema";
+  }
+  var GrammarRegistry = class _GrammarRegistry {
+    constructor() {
+      this.metas = new import_core4.UnifiedSchemaProvider();
+      this.schemas = /* @__PURE__ */ new Map();
+      this.definitions = /* @__PURE__ */ new Map();
+      this.conflicted = /* @__PURE__ */ new Set();
+      this.issues = [];
+    }
+    /**
+     * Rebuilds the registry from the grammar roots of the workspace documents.
+     *
+     * A grammar that does not validate against its meta-schema is skipped silently: its own
+     * document already reports the meta-validation errors through the normal validation pass.
+     * A grammar that fails to transform produces a {@link GrammarIssue} instead.
+     *
+     * @param sources root nodes of every workspace document, with their document id.
+     */
+    load(sources) {
+      this.schemas.clear();
+      this.definitions.clear();
+      this.conflicted.clear();
+      this.issues = [];
+      const owners = /* @__PURE__ */ new Map();
+      for (const { documentId, roots } of sources) {
+        for (const root of roots) {
+          if (!isGrammarRoot(root)) {
+            continue;
+          }
+          try {
+            const metaErrors = new import_core4.SchemaValidator(this.metas, true).validate(root);
+            if (metaErrors.length > 0) {
+              continue;
+            }
+            const schema = root.getNamespace() === TEMPLATE_NAMESPACE ? (0, import_core4.transformTemplateNodeToSchema)(root) : (0, import_core4.transformNodeToSchema)(root);
+            const key = import_core4.StringUtils.lowerCase(schema.getNamespace());
+            const list = owners.get(key) ?? [];
+            list.push({ documentId, line: root.getLine() - 1 });
+            owners.set(key, list);
+            this.schemas.set(key, schema);
+            this.definitions.set(key, { documentId, root });
+          } catch (e) {
+            this.issues.push(_GrammarRegistry.toIssue(documentId, root, e));
+          }
+        }
+      }
+      for (const [key, list] of owners) {
+        if (list.length > 1) {
+          this.conflicted.add(key);
+          this.schemas.delete(key);
+          this.definitions.delete(key);
+          for (const owner of list) {
+            this.issues.push({
+              documentId: owner.documentId,
+              line: owner.line,
+              code: DUPLICATE_NAMESPACE,
+              message: `Namespace '${key}' is defined by more than one grammar in the workspace; it has no active definition`
+            });
+          }
+        }
+      }
+    }
+    /**
+     * Resolves the schema of a namespace: the meta-schemas for the two reserved namespaces, and
+     * the workspace grammars for everything else. A conflicted namespace resolves to nothing.
+     *
+     * @param namespace namespace whose schema is wanted.
+     * @returns the schema, or null/undefined if the namespace has no active definition.
+     */
+    getSchema(namespace) {
+      if (namespace === SCHEMA_NAMESPACE || namespace === TEMPLATE_NAMESPACE) {
+        return this.metas.getSchema(namespace);
+      }
+      const key = import_core4.StringUtils.lowerCase(namespace);
+      if (this.conflicted.has(key)) {
+        return void 0;
+      }
+      return this.schemas.get(key);
+    }
+    /**
+     * Where a namespace is defined, for "go to definition". The two reserved namespaces are
+     * built-in and have no document; a conflicted namespace has no active definition.
+     *
+     * @param namespace namespace whose definition is wanted.
+     * @returns the document and grammar root, or undefined if the workspace does not define it.
+     */
+    getDefinition(namespace) {
+      return this.definitions.get(import_core4.StringUtils.lowerCase(namespace));
+    }
+    /** @returns the problems found while loading, in workspace order. */
+    getIssues() {
+      return this.issues;
+    }
+    /** @returns the active grammars of the workspace (conflicted namespaces excluded), in load order. */
+    getWorkspaceSchemas() {
+      return Array.from(this.schemas.values());
+    }
+    /** @returns the meta-schemas of `@stxt.schema` and `@stxt.template`, always available. */
+    getMetaSchemas() {
+      const metas = [];
+      for (const namespace of [SCHEMA_NAMESPACE, TEMPLATE_NAMESPACE]) {
+        const schema = this.metas.getSchema(namespace);
+        if (schema) {
+          metas.push(schema);
+        }
+      }
+      return metas;
+    }
+    static toIssue(documentId, root, e) {
+      if (e instanceof import_core4.ParseException) {
+        return {
+          documentId,
+          line: e.line > 0 ? e.line - 1 : root.getLine() - 1,
+          code: e.code,
+          message: e.message
+        };
+      }
+      return {
+        documentId,
+        line: root.getLine() - 1,
+        code: GRAMMAR_ERROR,
+        message: e instanceof Error ? e.message : String(e)
+      };
+    }
+  };
+  function findDefinition(analysis, registry, line, character) {
+    const node = analysis.nodeByLineIndex.get(line);
+    if (!node) {
+      return void 0;
+    }
+    const headTokens = analysis.tokens.filter((token) => token.line === line && token.type !== "string");
+    if (headTokens.length === 0) {
+      return void 0;
+    }
+    const headEnd = Math.max(...headTokens.map((token) => token.startChar + token.length));
+    if (character > headEnd) {
+      return void 0;
+    }
+    const namespace = node.getNamespace();
+    if (!namespace) {
+      return void 0;
+    }
+    const definition = registry.getDefinition(namespace);
+    if (!definition) {
+      return void 0;
+    }
+    const onNamespace = headTokens.some(
+      (token) => token.type === "namespace" && character >= token.startChar && character <= token.startChar + token.length
+    );
+    const rootLine = definition.root.getLine() - 1;
+    return {
+      documentId: definition.documentId,
+      line: onNamespace ? rootLine : definitionLine(definition.root, node.getName(), namespace) ?? rootLine
+    };
+  }
+  function definitionLine(root, nodeName, namespace) {
+    if (!(root instanceof import_core3.InlineNode)) {
+      return void 0;
+    }
+    const wanted = import_core3.StringUtils.normalize(nodeName);
+    if (root.getNamespace() === SCHEMA_NAMESPACE) {
+      for (const child of root.getChildren()) {
+        if (child instanceof import_core3.InlineNode && child.getCanonicalName() === "node" && import_core3.StringUtils.normalize(child.getValue()) === wanted) {
+          return child.getLine() - 1;
+        }
+      }
+    } else if (root.getNamespace() === TEMPLATE_NAMESPACE) {
+      for (const child of root.getChildren()) {
+        if (child instanceof import_core3.TextNode && child.getCanonicalName() === "structure") {
+          const inner = findNode(parseStructure(child.getText()), wanted, namespace);
+          if (inner) {
+            return child.getLine() + inner.getLine() - 1;
+          }
+        }
+      }
+    }
+    return void 0;
+  }
+  function parseStructure(text) {
+    try {
+      return new import_core3.Parser().parseResult(text).getNodes();
+    } catch {
+      return [];
+    }
+  }
+  function findNode(nodes, canonicalName, namespace) {
+    const target = import_core3.StringUtils.lowerCase(namespace);
+    let byNameOnly;
+    const walk = (list) => {
+      for (const node of list) {
+        if (node.getCanonicalName() === canonicalName) {
+          if (import_core3.StringUtils.lowerCase(node.getNamespace()) === target) {
+            return node;
+          }
+          byNameOnly ??= node;
+        }
+        if (node instanceof import_core3.InlineNode) {
+          const found = walk(node.getChildren());
+          if (found) {
+            return found;
+          }
+        }
+      }
+      return void 0;
+    };
+    return walk(nodes) ?? byNameOnly;
+  }
+  var MARKDOWN_TOKEN_TYPES = [
+    "markdownHeading",
+    "markdownBold",
+    "markdownItalic",
+    "markdownCode",
+    "markdownList",
+    "markdownQuote",
+    "markdownLink"
+  ];
+  function newMarkdownState() {
+    return { fence: null };
+  }
+  var FENCE = /^\s*(`{3,}|~{3,})/;
+  var HEADING = /^\s*#{1,6}(?=\s|$)/;
+  var QUOTE = /^\s*(?:>[ \t]?)+/;
+  var LIST = /^(\s*)([-*+]|\d{1,9}[.)])(?:\s+|$)/;
+  var INLINE = new RegExp([
+    "(?<escape>\\\\[\\\\`*_\\[\\]()<>#!~-])",
+    "(?<code>(?<fence>`+)(?!`)[\\s\\S]*?(?<!`)\\k<fence>(?!`))",
+    "(?<link>!?\\[[^\\]]*\\]\\([^)]*\\)|<(?:https?://|mailto:)[^>\\s]+>)",
+    "(?<bold>\\*\\*\\*(?=\\S)[^*]+?(?<=\\S)\\*\\*\\*|\\*\\*(?=\\S)(?:[^*]|\\*(?!\\*))+?(?<=\\S)\\*\\*|(?<![\\p{L}\\p{N}_])__(?=\\S)(?:[^_]|_(?!_))+?(?<=\\S)__(?![\\p{L}\\p{N}_]))",
+    "(?<italic>\\*(?=[^\\s*])[^*]*?(?<=[^\\s*])\\*|(?<![\\p{L}\\p{N}_])_(?=[^\\s_])[^_]*?(?<=[^\\s_])_(?![\\p{L}\\p{N}_]))"
+  ].join("|"), "gu");
+  function tokenizeMarkdownLine(content2, state) {
+    const spans = [];
+    const fence = FENCE.exec(content2);
+    if (state.fence !== null) {
+      if (fence && fence[1][0] === state.fence[0] && fence[1].length >= state.fence.length && content2.slice(fence[0].length).trim() === "") {
+        state.fence = null;
+      }
+      pushWholeLine(spans, content2, "markdownCode");
+      return spans;
+    }
+    if (fence) {
+      state.fence = fence[1];
+      pushWholeLine(spans, content2, "markdownCode");
+      return spans;
+    }
+    let pos = 0;
+    const quote = QUOTE.exec(content2);
+    if (quote) {
+      const start = quote[0].search(/\S/);
+      spans.push({ startChar: start, length: quote[0].trimEnd().length - start, type: "markdownQuote" });
+      pos = quote[0].length;
+    }
+    const rest = content2.slice(pos);
+    if (HEADING.test(rest)) {
+      pushWholeLine(spans, rest, "markdownHeading", pos);
+      return spans;
+    }
+    const list = LIST.exec(rest);
+    if (list) {
+      spans.push({ startChar: pos + list[1].length, length: list[2].length, type: "markdownList" });
+      pos += list[0].length;
+    }
+    tokenizeInline(spans, content2.slice(pos), pos);
+    return spans;
+  }
+  function pushWholeLine(spans, content2, type, offset = 0) {
+    const start = content2.search(/\S/);
+    if (start !== -1) {
+      spans.push({ startChar: offset + start, length: content2.trimEnd().length - start, type });
+    }
+  }
+  function tokenizeInline(spans, text, offset) {
+    INLINE.lastIndex = 0;
+    let match;
+    while ((match = INLINE.exec(text)) !== null) {
+      const groups = match.groups ?? {};
+      const type = groups.code !== void 0 ? "markdownCode" : groups.link !== void 0 ? "markdownLink" : groups.bold !== void 0 ? "markdownBold" : groups.italic !== void 0 ? "markdownItalic" : void 0;
+      if (type !== void 0) {
+        spans.push({ startChar: offset + match.index, length: match[0].length, type });
+      }
+    }
+  }
+  function describeNodeAtLine(analysis, registry, line) {
+    const node = analysis.nodeByLineIndex.get(line);
+    if (!node) {
+      return void 0;
+    }
+    const info = {
+      name: node.getName(),
+      canonicalName: node.getCanonicalName(),
+      namespace: node.getNamespace(),
+      kind: node.isTextNode() ? "block" : "inline",
+      level: node.getLevel()
+    };
+    if (node instanceof import_core5.InlineNode) {
+      info.value = node.getValue();
+    } else {
+      info.textLines = node.getText().length === 0 ? 0 : node.getText().split("\n").length;
+    }
+    if (node.getNamespace()) {
+      const schema = registry.getSchema(node.getNamespace());
+      const definition = schema?.getNodeDefinition(node.getName());
+      if (schema && definition) {
+        info.definition = {
+          namespace: schema.getNamespace(),
+          type: definition.getType(),
+          values: Array.from(definition.getValues()),
+          children: Array.from(definition.getChildren().values()).map((child) => ({
+            name: child.getName(),
+            namespace: child.getNamespace(),
+            min: child.getMin(),
+            max: child.getMax()
+          })),
+          description: definition.getDescription()
+        };
+      }
+    }
+    return info;
+  }
+  var TAB_UNIT = "	";
+  var SPACES_UNIT = "    ";
+  function computeIndentChanges(text, unit) {
+    const style = unit === SPACES_UNIT ? import_core6.IndentStyle.SPACES_4 : import_core6.IndentStyle.TABS;
+    const lines = text.split("\n");
+    const formatted = import_core6.Formatter.format(text, style).text.split("\n");
+    const changes = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (formatted[i] !== lines[i]) {
+        changes.push({ line: i, from: 0, to: lines[i].length, insert: formatted[i] });
+      }
+    }
+    return changes;
+  }
+  function applyIndentChanges(text, changes) {
+    if (changes.length === 0) {
+      return text;
+    }
+    const lines = text.split("\n");
+    for (const change of changes) {
+      const line = lines[change.line];
+      lines[change.line] = line.slice(0, change.from) + change.insert + line.slice(change.to);
+    }
+    return lines.join("\n");
+  }
+  var TokenGeneratorObserver = class _TokenGeneratorObserver {
+    constructor() {
+      this.tokens = [];
+      this.nodeByLineIndex = /* @__PURE__ */ new Map();
+      this.commentLines = /* @__PURE__ */ new Set();
+      this.textNodeByLineIndex = /* @__PURE__ */ new Map();
+      this.blockLineByLineIndex = /* @__PURE__ */ new Map();
+      this.templateLineByLineNumber = /* @__PURE__ */ new Map();
+    }
+    onTextLine(node, lineNumber, lineString, line) {
+      const lineIndex = lineNumber - 1;
+      this.textNodeByLineIndex.set(lineIndex, node);
+      this.blockLineByLineIndex.set(lineIndex, line);
+      if (this.isTemplateContentNode(node)) {
+        this.templateLineByLineNumber.set(lineNumber, line);
+      }
+    }
+    onCreate(node, line) {
+      const lineIndex = node.getLine() - 1;
+      this.nodeByLineIndex.set(lineIndex, node);
+      this.generateTokensForNode(node, lineIndex, line);
+      if (this.isTemplateContentNode(node)) {
+        this.templateLineByLineNumber.clear();
+      }
+    }
+    onFinish(node) {
+      if (this.isTemplateContentNode(node)) {
+        this.parseTemplateContent(node);
+        this.templateLineByLineNumber.clear();
+      }
+    }
+    isTemplateContentNode(node) {
+      if (node.getNamespace() !== "@stxt.template") {
+        return false;
+      }
+      const normalizedName = node.getCanonicalName();
+      return normalizedName === "structure" || normalizedName === "description";
+    }
+    parseTemplateContent(node) {
+      try {
+        const content2 = node.getText();
+        if (!content2 || content2.trim() === "") {
+          return;
+        }
+        const parser = new import_core7.Parser();
+        const innerObserver = new _TokenGeneratorObserver();
+        parser.registerObserver(innerObserver);
+        parser.parseResult(content2);
+        const lineOffset = node.getLine();
+        const innerTokens = innerObserver.getTokens();
+        for (const token of innerTokens) {
+          const absoluteLineNumber = lineOffset + token.line + 1;
+          const originalLine = this.templateLineByLineNumber.get(absoluteLineNumber);
+          const offset = originalLine ? originalLine.contentStart : 0;
+          this.tokens.push({
+            line: token.line + lineOffset,
+            startChar: token.startChar + offset,
+            length: token.length,
+            type: token.type
+          });
+        }
+      } catch {
+      }
+    }
+    onComment(lineNumber, line) {
+      const trimmedLine = line.trim();
+      if (trimmedLine.startsWith("#")) {
+        const lineIndex = lineNumber - 1;
+        this.commentLines.add(lineIndex);
+        this.tokens.push({
+          line: lineIndex,
+          startChar: 0,
+          length: line.length,
+          type: "comment"
+        });
+      }
+    }
+    getTokens() {
+      return this.tokens;
+    }
+    getNodeByLineIndex() {
+      return this.nodeByLineIndex;
+    }
+    getCommentLines() {
+      return this.commentLines;
+    }
+    getTextNodeByLineIndex() {
+      return this.textNodeByLineIndex;
+    }
+    /** @returns every text line of a block, by 0-based line index, split into indentation and content. */
+    getBlockLineByLineIndex() {
+      return this.blockLineByLineIndex;
+    }
+    generateTokensForNode(node, lineIndex, line) {
+      if (node.isTextNode()) {
+        const sepIndex = line.indexOf(import_core7.Constants.SEP_TEXT_NODE);
+        if (sepIndex === -1) {
+          return;
+        }
+        this.pushHeadTokens(lineIndex, line, sepIndex, import_core7.Constants.SEP_TEXT_NODE.length, line.length, "macro");
+      } else {
+        const sepIndex = line.indexOf(import_core7.Constants.SEP_NODE);
+        if (sepIndex === -1) {
+          return;
+        }
+        this.pushHeadTokens(lineIndex, line, sepIndex, import_core7.Constants.SEP_NODE.length, sepIndex + 1, "property");
+        const valueStart = sepIndex + 1;
+        if (valueStart < line.length) {
+          this.tokens.push({ line: lineIndex, startChar: valueStart, length: line.length - valueStart, type: "string" });
+        }
+      }
+    }
+    /**
+     * The tokens of a node line's head: the name (coloured `type`), the namespace when the
+     * line declares one, and the separator. With a namespace, everything from the closing
+     * parenthesis up to `tailEnd` (the end of the line for a block, the separator inclusive
+     * for an inline node) is one token; without one, the name and the separator are two.
+     */
+    pushHeadTokens(lineIndex, line, sepIndex, sepLength, tailEnd, type) {
+      const head = line.substring(0, sepIndex);
+      const nsOpen = head.indexOf("(");
+      const nsClose = head.indexOf(")");
+      if (nsOpen !== -1 && nsClose !== -1) {
+        this.tokens.push({ line: lineIndex, startChar: 0, length: nsOpen, type });
+        this.tokens.push({ line: lineIndex, startChar: nsOpen, length: nsClose - nsOpen + 1, type: "namespace" });
+        this.tokens.push({ line: lineIndex, startChar: nsClose + 1, length: tailEnd - nsClose - 1, type });
+      } else {
+        this.tokens.push({ line: lineIndex, startChar: 0, length: sepIndex, type });
+        this.tokens.push({ line: lineIndex, startChar: sepIndex, length: sepLength, type });
+      }
+    }
+  };
+  var MARKDOWN = "MARKDOWN";
+  var Analyzer = class _Analyzer {
+    constructor() {
+      this.parsed = /* @__PURE__ */ new Map();
+      this.analyses = /* @__PURE__ */ new Map();
+      this.registry = new GrammarRegistry();
+      this.validation = true;
+    }
+    /**
+     * Enables or disables schema validation. Syntax and
+     * grammar diagnostics are not affected.
+     *
+     * @param enabled whether documents are validated against the workspace grammars.
+     */
+    setValidation(enabled) {
+      if (this.validation !== enabled) {
+        this.validation = enabled;
+        this.refreshAll();
+      }
+    }
+    /**
+     * Adds a document to the workspace, or replaces its text. Re-parses only that document, and
+     * re-analyzes the rest only when the change involves a grammar.
+     *
+     * @param id identifier of the document within the workspace.
+     * @param text full text of the document.
+     */
+    setDocument(id, text) {
+      const previous = this.parsed.get(id);
+      if (previous && previous.text === text) {
+        return;
+      }
+      const parsed = _Analyzer.parseDocument(text);
+      this.parsed.set(id, parsed);
+      const grammarsInvolved = previous !== void 0 && previous.grammarRoots.length > 0 || parsed.grammarRoots.length > 0;
+      if (grammarsInvolved) {
+        this.refreshAll();
+      } else {
+        this.refreshOne(id);
+      }
+    }
+    /**
+     * Removes a document from the workspace.
+     *
+     * @param id identifier of the document to remove.
+     */
+    removeDocument(id) {
+      const previous = this.parsed.get(id);
+      if (!previous) {
+        return;
+      }
+      this.parsed.delete(id);
+      this.analyses.delete(id);
+      if (previous.grammarRoots.length > 0) {
+        this.refreshAll();
+      }
+    }
+    /**
+     * @param id identifier of the document.
+     * @returns the analysis of the document, or undefined if it is not in the workspace.
+     */
+    getAnalysis(id) {
+      return this.analyses.get(id);
+    }
+    /**
+     * The workspace documents whose grammars a document needs to validate: one per namespace the
+     * document uses and does not define itself, resolved to the active definition of the
+     * workspace, in order of first use. This is what a link that shares one document carries
+     * along as its `&g=` grammars, so the document validates the same wherever it opens. A
+     * namespace with no active definition (nothing defines it, or two documents do) has nothing
+     * to bring, and the reserved `@stxt.*` namespaces are built in, so they never do.
+     *
+     * @param id identifier of the document.
+     * @returns identifiers of the defining documents, in order and without repeats, never the
+     * document itself; empty when the document is not in the workspace.
+     */
+    getGrammarDocuments(id) {
+      const parsed = this.parsed.get(id);
+      if (!parsed) {
+        return [];
+      }
+      const documentIds = [];
+      const seen = /* @__PURE__ */ new Set();
+      const walk = (nodes) => {
+        for (const node of nodes) {
+          const namespace = import_core.StringUtils.lowerCase(node.getNamespace());
+          if (namespace.length > 0 && !seen.has(namespace)) {
+            seen.add(namespace);
+            const definition = this.registry.getDefinition(namespace);
+            if (definition && definition.documentId !== id && !documentIds.includes(definition.documentId)) {
+              documentIds.push(definition.documentId);
+            }
+          }
+          if (node instanceof import_core.InlineNode) {
+            walk(node.getChildren());
+          }
+        }
+      };
+      walk(parsed.roots);
+      return documentIds;
+    }
+    /**
+     * Grammar-driven completions for a cursor position of a document (see `completion.ts`).
+     *
+     * @param id identifier of the document.
+     * @param line 0-based line of the cursor.
+     * @param linePrefix text of the line up to the cursor.
+     * @returns the suggestions and where they apply, or null when there is nothing to offer.
+     */
+    getCompletions(id, line, linePrefix) {
+      const analysis = this.analyses.get(id);
+      return analysis ? computeCompletions(analysis, this.registry, line, linePrefix) : null;
+    }
+    /**
+     * The changes that re-indent a document to a unit, with the formatter of the core (see
+     * `reindent.ts`).
+     *
+     * @param id identifier of the document.
+     * @param unit target indent unit: a tab or four spaces.
+     * @returns the per-line replacements; empty if the document is unknown or already there.
+     */
+    getIndentChanges(id, unit) {
+      const parsed = this.parsed.get(id);
+      return parsed ? computeIndentChanges(parsed.text, unit) : [];
+    }
+    /**
+     * Describes the node opened at a line of a document, for the hover (see `nodeInfo.ts`).
+     *
+     * @param id identifier of the document.
+     * @param line 0-based line.
+     * @returns the description, or undefined when the line opens no node.
+     */
+    describeNode(id, line) {
+      const analysis = this.analyses.get(id);
+      return analysis ? describeNodeAtLine(analysis, this.registry, line) : void 0;
+    }
+    /**
+     * Where the node at a position of a document is defined, for "go to definition" (see
+     * `definition.ts`).
+     *
+     * @param id identifier of the document.
+     * @param line 0-based line of the position.
+     * @param character 0-based column of the position.
+     * @returns the workspace document and line of the definition, or undefined if there is none.
+     */
+    findDefinition(id, line, character) {
+      const analysis = this.analyses.get(id);
+      return analysis ? findDefinition(analysis, this.registry, line, character) : void 0;
+    }
+    /** Parses a document once, collecting tokens, line maps and syntax errors. */
+    static parseDocument(text) {
+      const observer = new TokenGeneratorObserver();
+      const parser = new import_core.Parser();
+      parser.registerObserver(observer);
+      const result = parser.parseResult(text);
+      const roots = result.getNodes();
+      const syntaxDiagnostics = result.getErrors().map((error) => ({
+        line: error.line > 0 ? error.line - 1 : 0,
+        code: error.code,
+        message: error.message,
+        severity: "error",
+        source: "syntax"
+      }));
+      return {
+        text,
+        roots,
+        tokens: observer.getTokens(),
+        nodeByLineIndex: observer.getNodeByLineIndex(),
+        commentLines: observer.getCommentLines(),
+        textNodeByLineIndex: observer.getTextNodeByLineIndex(),
+        blockLineByLineIndex: observer.getBlockLineByLineIndex(),
+        syntaxDiagnostics,
+        grammarRoots: roots.filter(isGrammarRoot)
+      };
+    }
+    /** Rebuilds the grammar registry and recomputes the analysis of every document. */
+    refreshAll() {
+      this.registry.load(
+        Array.from(this.parsed, ([documentId, parsed]) => ({ documentId, roots: parsed.grammarRoots }))
+      );
+      this.analyses.clear();
+      for (const [id, parsed] of this.parsed) {
+        this.analyses.set(id, this.compose(id, parsed));
+      }
+    }
+    /** Recomputes the analysis of a single document, with the registry as it is. */
+    refreshOne(id) {
+      const parsed = this.parsed.get(id);
+      if (parsed) {
+        this.analyses.set(id, this.compose(id, parsed));
+      }
+    }
+    /** Builds the public analysis of a document: parse products plus grammar and validation diagnostics. */
+    compose(id, parsed) {
+      const diagnostics = [...parsed.syntaxDiagnostics];
+      for (const issue of this.registry.getIssues()) {
+        if (issue.documentId === id) {
+          diagnostics.push({
+            line: issue.line,
+            code: issue.code,
+            message: issue.message,
+            severity: "error",
+            source: "grammar"
+          });
+        }
+      }
+      if (this.validation) {
+        diagnostics.push(...this.validateRoots(parsed.roots));
+      }
+      diagnostics.sort((a, b) => a.line - b.line);
+      return {
+        tokens: this.withMarkdownTokens(parsed),
+        roots: parsed.roots,
+        nodeByLineIndex: parsed.nodeByLineIndex,
+        commentLines: parsed.commentLines,
+        textNodeByLineIndex: parsed.textNodeByLineIndex,
+        grammars: parsed.grammarRoots.map((root) => ({
+          // A grammar root is `Name (@stxt.schema): namespace`; a block form is a broken grammar
+          // the registry reports on its own, and declares no namespace here.
+          namespace: root instanceof import_core.InlineNode ? import_core.StringUtils.lowerCase(root.getValue().trim()) : "",
+          kind: grammarKindOf(root),
+          line: root.getLine() - 1
+        })),
+        diagnostics
+      };
+    }
+    /**
+     * The tokens of the language plus those of the MARKDOWN blocks, sorted in document order.
+     *
+     * The Markdown ones are computed here and not while parsing because they depend on the
+     * workspace grammars, which change without the document changing; the parse products are
+     * cached per text, the analysis is recomposed whenever a grammar changes.
+     */
+    withMarkdownTokens(parsed) {
+      const tokens = [...parsed.tokens];
+      let current;
+      let state = null;
+      for (const [lineIndex, line] of parsed.blockLineByLineIndex) {
+        const node = parsed.textNodeByLineIndex.get(lineIndex);
+        if (node !== current) {
+          current = node;
+          state = node && this.isMarkdown(node) ? newMarkdownState() : null;
+        }
+        if (!state) {
+          continue;
+        }
+        const offset = line.contentStart;
+        for (const span of tokenizeMarkdownLine(line.content, state)) {
+          tokens.push({ line: lineIndex, startChar: offset + span.startChar, length: span.length, type: span.type });
+        }
+      }
+      return tokens.sort((a, b) => a.line - b.line || a.startChar - b.startChar);
+    }
+    /** @returns whether the grammar of the node's namespace declares it as MARKDOWN. */
+    isMarkdown(node) {
+      if (!node.getNamespace()) {
+        return false;
+      }
+      try {
+        return this.registry.getSchema(node.getNamespace())?.getNodeDefinition(node.getName())?.getType() === MARKDOWN;
+      } catch {
+        return false;
+      }
+    }
+    /**
+     * Validates every node of a document against the workspace grammars, replicating the parser:
+     * the parser hands each node to its validators when the node closes, so the walk here is
+     * post-order (children before their parent) over the already parsed tree.
+     */
+    validateRoots(roots) {
+      const diagnostics = [];
+      const validator = new import_core.SchemaValidator(this.registry);
+      const walk = (node) => {
+        if (node instanceof import_core.InlineNode) {
+          node.getChildren().forEach(walk);
+        }
+        try {
+          for (const error of validator.validate(node)) {
+            diagnostics.push({
+              line: error.line > 0 ? error.line - 1 : 0,
+              code: error.code,
+              message: error.message,
+              severity: "warning",
+              source: "validation"
+            });
+          }
+        } catch (e) {
+          diagnostics.push({
+            line: node.getLine() - 1,
+            code: "UNEXPECTED_ERROR",
+            message: e instanceof Error ? e.message : String(e),
+            severity: "error",
+            source: "validation"
+          });
+        }
+      };
+      roots.forEach(walk);
+      return diagnostics;
+    }
+  };
+  var STXT_TOKEN_TYPES = [
+    "comment",
+    "namespace",
+    "property",
+    "macro",
+    "string",
+    ...MARKDOWN_TOKEN_TYPES
+  ];
+  function lineAt(doc2, line) {
+    return doc2.line(Math.min(line + 1, doc2.lines));
+  }
+  function toCmDiagnostics(doc2, diagnostics) {
+    return diagnostics.map((diagnostic) => {
+      const line = lineAt(doc2, diagnostic.line);
+      return {
+        from: line.from,
+        to: line.to,
+        severity: diagnostic.severity,
+        message: `[${diagnostic.code}] ${diagnostic.message}`,
+        source: diagnostic.source
+      };
+    });
+  }
+  function toCmChanges(doc2, changes) {
+    return changes.map((change) => {
+      const line = doc2.line(change.line + 1);
+      return { from: line.from + change.from, to: line.from + change.to, insert: change.insert };
+    });
+  }
+  var TOKEN_CLASSES = {
+    comment: "stxt-tok-comment",
+    namespace: "stxt-tok-namespace",
+    property: "stxt-tok-property",
+    macro: "stxt-tok-macro",
+    string: "stxt-tok-string",
+    // Content of MARKDOWN blocks
+    markdownHeading: "stxt-tok-md-heading",
+    markdownBold: "stxt-tok-md-bold",
+    markdownItalic: "stxt-tok-md-italic",
+    markdownCode: "stxt-tok-md-code",
+    markdownList: "stxt-tok-md-list",
+    markdownQuote: "stxt-tok-md-quote",
+    markdownLink: "stxt-tok-md-link"
+  };
+  var setTokensEffect = StateEffect.define();
+  var MARKS = Object.fromEntries(
+    Object.entries(TOKEN_CLASSES).map(([type, className]) => [type, Decoration.mark({ class: className })])
+  );
+  function buildDecorations(tokens, doc2) {
+    const ranges = [];
+    for (const token of tokens) {
+      if (token.line < 0 || token.line + 1 > doc2.lines) {
+        continue;
+      }
+      const line = doc2.line(token.line + 1);
+      const from = line.from + token.startChar;
+      const to = Math.min(from + token.length, line.to);
+      if (from >= to || from < line.from) {
+        continue;
+      }
+      ranges.push(MARKS[token.type].range(from, to));
+    }
+    return Decoration.set(ranges, true);
+  }
+  var highlightField = StateField.define({
+    create: () => Decoration.none,
+    update(decorations2, tr) {
+      decorations2 = decorations2.map(tr.changes);
+      for (const effect of tr.effects) {
+        if (effect.is(setTokensEffect)) {
+          decorations2 = buildDecorations(effect.value, tr.state.doc);
+        }
+      }
+      return decorations2;
+    },
+    provide: (field) => EditorView.decorations.from(field)
+  });
   var CM_TYPES = {
     node: "property",
     block: "text",
@@ -24947,8 +24855,6 @@ ${indentation}${unit}` : suggestion.text
     };
     return autocompletion({ override: [source], icons: true });
   }
-
-  // src/editor/definition.ts
   function stxtGoToDefinition(goTo) {
     const goToAt = (view, pos) => {
       const line = view.state.doc.lineAt(pos);
@@ -24971,8 +24877,6 @@ ${indentation}${unit}` : suggestion.text
       })
     ];
   }
-
-  // src/editor/hover.ts
   function stxtHover(describe) {
     return hoverTooltip((view, pos) => {
       const line = view.state.doc.lineAt(pos);
@@ -25033,7 +24937,7 @@ ${indentation}${unit}` : suggestion.text
     if (info.definition) {
       root.appendChild(renderDefinition(info.definition));
     } else if (info.namespace) {
-      root.appendChild(el("div", "stxt-hover-none", "No grammar in the workspace declares this node."));
+      root.appendChild(el("div", "stxt-hover-none", "No grammar declares this node."));
     }
     return root;
   }
@@ -25066,8 +24970,6 @@ ${indentation}${unit}` : suggestion.text
     }
     return section;
   }
-
-  // src/editor/stxtEditor.ts
   var INDENT_UNITS = { tabs: TAB_UNIT, spaces: SPACES_UNIT };
   var indentCompartment = new Compartment();
   var insertIndentUnit = (view) => {
@@ -25104,7 +25006,8 @@ ${indentation}${unit}` : suggestion.text
         if (update.docChanged) {
           onDocChanged(update.view);
         }
-      })
+      }),
+      config.extensions ?? []
     ];
   }
   function createStxtEditor(config) {
@@ -25130,6 +25033,97 @@ ${indentation}${unit}` : suggestion.text
       }
     };
   }
+
+  // src/editor/documentStates.ts
+  var DocumentStates = class {
+    /**
+     * @param host the view the states go in and out of.
+     * @param createState makes the state of a document shown for the first time.
+     */
+    constructor(host, createState) {
+      this.host = host;
+      this.createState = createState;
+      this.parked = /* @__PURE__ */ new Map();
+      this.shown = null;
+    }
+    /** @returns the identifier of the document in the view, or null when none is. */
+    shownId() {
+      return this.shown;
+    }
+    /**
+     * Puts a document in the view, parking the state of the one that was there. A document shown
+     * before comes back with its parked state; a new one gets a fresh state from its text; the
+     * document already in the view stays as it is.
+     *
+     * @param id identifier of the document.
+     * @param text its text, used only when it has no state yet.
+     */
+    show(id, text) {
+      if (this.shown === id) {
+        return;
+      }
+      if (this.shown !== null) {
+        this.parked.set(this.shown, this.host.state);
+      }
+      const state = this.parked.get(id) ?? this.createState(text);
+      this.parked.delete(id);
+      this.shown = id;
+      this.host.setState(state);
+    }
+    /**
+     * Brings the state of a document up to date with a text that changed in the model. When the
+     * texts already match, the editor itself was the origin: typing, or a reindent, which
+     * updates the state first, nothing moves. A document never shown has no state to update.
+     *
+     * @param id identifier of the document.
+     * @param text the text the model holds now.
+     * @returns whether a state changed.
+     */
+    syncText(id, text) {
+      const doc2 = id === this.shown ? this.host.state.doc : this.parked.get(id)?.doc;
+      if (!doc2 || doc2.toString() === text) {
+        return false;
+      }
+      this.change(id, (current) => [{ from: 0, to: current.length, insert: text }]);
+      return true;
+    }
+    /**
+     * Applies changes to the state of a document, wherever it is: through the view when shown
+     * (the view's own listeners see the transaction), through its parked state otherwise. Either
+     * way the change is undoable in that document.
+     *
+     * @param id identifier of the document.
+     * @param changes builds the change specs from the document as the state holds it.
+     * @param userEvent the user event annotation of the transaction, if any.
+     * @returns the text of the document after the changes, or undefined if it was never shown:
+     * there is no state to change.
+     */
+    change(id, changes, userEvent) {
+      if (id === this.shown) {
+        this.host.dispatch({ changes: changes(this.host.state.doc), userEvent });
+        return this.host.state.doc.toString();
+      }
+      const parked = this.parked.get(id);
+      if (!parked) {
+        return void 0;
+      }
+      const next = parked.update({ changes: changes(parked.doc), userEvent }).state;
+      this.parked.set(id, next);
+      return next.doc.toString();
+    }
+    /**
+     * Forgets a document. If it was the one in the view, the view keeps showing its state until
+     * another document is shown, but nothing is attributed to it any more.
+     *
+     * @param id identifier of the document.
+     */
+    drop(id) {
+      this.parked.delete(id);
+      if (this.shown === id) {
+        this.shown = null;
+      }
+    }
+  };
 
   // seed/1.welcome.stxt
   var welcome_default = "Lesson (stxt.play.tutorial): Welcome!\n	Progress: 1/5\n	Explanation >>\n		**Welcome to the STXT Playground!**\n\n		This is a tutorial for learning STXT.\n		Here you can play and try the language.\n\n		When you've finished a lesson,\n		you can delete the document... or not ;-)\n\n		You can always reset the workspace\n		to the defaults (button \u21BA).\n\n		Let's start! **What is STXT**.\n";
@@ -25598,12 +25592,6 @@ Book (stxt.play.library):
   }
 
   // src/ui/headerSwitches.ts
-  function toCmChanges(doc2, changes) {
-    return changes.map((change) => {
-      const line = doc2.line(change.line + 1);
-      return { from: line.from + change.from, to: line.from + change.to, insert: change.insert };
-    });
-  }
   function setupHeaderSwitches(options) {
     const { elements, settings, workspace, analyzer, editor, states } = options;
     const view = editor.view;
@@ -26359,23 +26347,6 @@ Book (stxt.play.library):
     return value && value.length > 0 ? value : void 0;
   }
 
-  // src/app/diagnostics.ts
-  function lineAt(doc2, line) {
-    return doc2.line(Math.min(line + 1, doc2.lines));
-  }
-  function toCmDiagnostics(doc2, diagnostics) {
-    return diagnostics.map((diagnostic) => {
-      const line = lineAt(doc2, diagnostic.line);
-      return {
-        from: line.from,
-        to: line.to,
-        severity: diagnostic.severity,
-        message: `[${diagnostic.code}] ${diagnostic.message}`,
-        source: diagnostic.source
-      };
-    });
-  }
-
   // src/app/documentLink.ts
   async function encodeDocumentLink(workspace, analyzer, id) {
     const document2 = workspace.getDocument(id);
@@ -26966,4 +26937,9 @@ Book (stxt.play.library):
   // src/index.ts
   document.addEventListener("DOMContentLoaded", startPlayground);
 })();
+/*! Bundled license information:
+
+@stxt-lang/editor/dist/index.mjs:
+  (*! @stxt-lang/editor | MIT License | https://stxt.dev *)
+*/
 //# sourceMappingURL=play.js.map

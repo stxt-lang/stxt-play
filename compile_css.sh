@@ -17,7 +17,7 @@ set -e
 cd "$(dirname "$0")"
 
 # Compile SCSS from css/ into the served directory web/css/
-npx sass css/site.scss web/css/site.css --style=compressed
+npx sass --pkg-importer=node css/site.scss web/css/site.css --style=compressed
 
 # Re-stamp the ?v=<content hash> tokens of web/index.html, so the compiled CSS
 # is never served under a stale URL (see web/_headers for the cache policy)

@@ -1,4 +1,4 @@
-import { Diagnostic, DiagnosticSource } from "../analysis";
+import { Diagnostic, DiagnosticSource } from "@stxt-lang/editor";
 
 /** Tooltip of the source tag of a row. */
 const SOURCE_TITLES: Record<DiagnosticSource, string> = {

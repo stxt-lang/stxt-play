@@ -1,6 +1,6 @@
 /**
  * Public surface of the workspace layer: the in-memory model and its persistence. No DOM and no
- * editor types here either, so it is testable in Node like the analysis layer.
+ * editor types here, so it is testable in Node.
  */
 
 export {

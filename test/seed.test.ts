@@ -1,7 +1,7 @@
 import * as assert from "assert";
 import * as fs from "fs";
 import * as path from "path";
-import { Analyzer, DocumentAnalysis } from "../src/analysis";
+import { Analyzer, DocumentAnalysis } from "@stxt-lang/editor";
 
 /** The seed files as they are on disk (the app bundles them as text; here we read them). */
 const SEED_DIR = path.join(__dirname, "..", "..", "seed");

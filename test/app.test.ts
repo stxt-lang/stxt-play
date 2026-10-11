@@ -1,9 +1,8 @@
 import * as assert from "assert";
-import { Text } from "@codemirror/state";
-import { Analyzer } from "../src/analysis";
+import { Analyzer } from "@stxt-lang/editor";
 import * as fs from "fs";
 import * as path from "path";
-import { ELEMENT_IDS, findElements, labelOf, lineAt, toCmDiagnostics } from "../src/app";
+import { ELEMENT_IDS, findElements, labelOf } from "../src/app";
 import { WorkspaceDocument } from "../src/workspace";
 
 describe("labelOf", () => {
@@ -28,36 +27,6 @@ describe("labelOf", () => {
 		const analyzer = new Analyzer();
 		analyzer.setDocument("d1", "Schema (@stxt.schema):\n");
 		assert.deepStrictEqual(labelOf(document, analyzer.getAnalysis("d1")), { label: "My title", kind: "schema", renamable: false });
-	});
-});
-
-describe("toCmDiagnostics", () => {
-	it("maps each diagnostic to the whole range of its line, code first", () => {
-		const doc = Text.of(["first", "second"]);
-		const mapped = toCmDiagnostics(doc, [
-			{ line: 1, code: "SCHEMA_NOT_FOUND", message: "No schema", severity: "warning", source: "validation" },
-			{ line: 0, code: "INVALID_LINE", message: "Bad", severity: "error", source: "syntax" },
-		]);
-		assert.deepStrictEqual(mapped, [
-			{ from: 6, to: 12, severity: "warning", message: "[SCHEMA_NOT_FOUND] No schema", source: "validation" },
-			{ from: 0, to: 5, severity: "error", message: "[INVALID_LINE] Bad", source: "syntax" },
-		]);
-	});
-
-	it("lands a diagnostic past the end on the last line", () => {
-		const doc = Text.of(["only"]);
-		const [mapped] = toCmDiagnostics(doc, [{ line: 7, code: "X", message: "m", severity: "error", source: "syntax" }]);
-		assert.strictEqual(mapped.from, 0);
-		assert.strictEqual(mapped.to, 4);
-	});
-});
-
-describe("lineAt", () => {
-	it("maps a 0-based analysis line to the document line, clamping past the end to the last line", () => {
-		const doc = Text.of(["first", "second"]);
-		assert.strictEqual(lineAt(doc, 0).number, 1);
-		assert.strictEqual(lineAt(doc, 1).number, 2);
-		assert.strictEqual(lineAt(doc, 9).number, 2);
 	});
 });
 

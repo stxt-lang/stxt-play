@@ -1,5 +1,5 @@
 import { InlineNode, Node, Parser, StringUtils } from "@stxt-lang/core";
-import { isGrammarRoot } from "../analysis/GrammarRegistry";
+import { isGrammarRoot } from "@stxt-lang/editor";
 import { Workspace, WorkspaceDocument, WorkspaceSnapshot } from "./Workspace";
 
 /**

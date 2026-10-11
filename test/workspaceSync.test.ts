@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import { Analyzer } from "../src/analysis";
+import { Analyzer } from "@stxt-lang/editor";
 import { Painters, WorkspaceSync } from "../src/app";
 import { DocumentStates } from "../src/editor/documentStates";
 import { Workspace } from "../src/workspace";

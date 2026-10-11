@@ -1,4 +1,4 @@
-import { Analyzer } from "../analysis";
+import { Analyzer } from "@stxt-lang/editor";
 import { encodeOpen, Workspace } from "../workspace";
 
 /** An open link for one document of the workspace, ready to put after the `#` of the URL. */

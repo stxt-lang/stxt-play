@@ -1,4 +1,4 @@
-import { DocumentAnalysis } from "../analysis";
+import { DocumentAnalysis } from "@stxt-lang/editor";
 import { DocumentListKind } from "../ui/documentList";
 import { WorkspaceDocument } from "../workspace";
 

@@ -135,8 +135,8 @@ browser. The `web/` directory is served as it is.
 |---|---|
 | Language | TypeScript, `strict` |
 | Bundler | [esbuild](https://esbuild.github.io/): one dependency, no config file |
-| Editor | [CodeMirror 6](https://codemirror.net/): highlighting by decorations fed by the parser, no Lezer grammar |
-| Styles | SCSS compiled with `sass` |
+| Editor | [`@stxt-lang/editor`](https://github.com/stxt-lang/stxt-editor), on [CodeMirror 6](https://codemirror.net/): highlighting by decorations fed by the parser, no Lezer grammar |
+| Styles | SCSS compiled with `sass`; the look of the editor is the stylesheet of `@stxt-lang/editor` |
 | Local server | `http-server`, caching disabled |
 | Parser | `@stxt-lang/core`, bundled into the page |
 
@@ -146,16 +146,17 @@ src/            TypeScript sources   → bundled into web/js/
 src/index.ts    the entry point: starts the application once the page is parsed
 src/app/        the application: Playground.ts composes the page, and the rest is what it composes.
                 Tested in Node (elements.ts and status.ts are the two thin DOM adapters)
-src/analysis/   the analysis core: tokens, diagnostics, workspace grammars, completion, node info,
-                definitions (no DOM, no editor)
 src/workspace/  the workspace model, its localStorage persistence, share and open links (no DOM)
-src/editor/     the CodeMirror layer: decorations from tokens, completion, hover, go to definition,
-                and the editor state of every workspace document
+src/editor/     the editor state of every workspace document, parked while another one is shown
 src/ui/         the document list, the problems panel, the dialogs, the header switches, the splitter, the view tabs
 seed/           the example documents and grammars, bundled as text
-test/           mocha tests of the analysis core, the workspace and the DOM-free parts of the application
+test/           mocha tests of the workspace and the DOM-free parts of the application
 web/            exactly what gets served, committed as is
 ```
+
+The analysis (tokens, diagnostics, workspace grammars, completion, node info, definitions) and the
+CodeMirror layer are not here: they are `@stxt-lang/editor`, the library that came out of this
+playground, with their tests.
 
 **`web/` is committed, build output included.** That directory is published as it stands, so
 `npm run build` has to be run, and its result committed, before anything reaches the site.
@@ -171,7 +172,7 @@ web/            exactly what gets served, committed as is
 ```bash
 npm install
 npm run build        # typecheck + lint, then bundle TS, compile SCSS and stamp asset versions into web/
-npm test             # mocha tests of the analysis core and the workspace
+npm test             # typecheck, then mocha tests of the workspace and the application
 npm start            # build, then serve web/ on http://localhost:8080 (PORT overrides)
 npm run watch        # rebuild TS and SCSS on change
 npm run typecheck    # tsc --noEmit

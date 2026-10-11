@@ -1,4 +1,4 @@
-import { Analyzer } from "../analysis";
+import { Analyzer } from "@stxt-lang/editor";
 import { DocumentStates } from "../editor/documentStates";
 import { Workspace, WorkspaceEvent } from "../workspace";
 

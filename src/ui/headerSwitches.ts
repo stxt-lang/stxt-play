@@ -1,6 +1,5 @@
-import { ChangeSpec, Text } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { Analyzer, applyIndentChanges, IndentChange, SPACES_UNIT, TAB_UNIT } from "../analysis";
+import { Analyzer, applyIndentChanges, SPACES_UNIT, TAB_UNIT, toCmChanges } from "@stxt-lang/editor";
 import { DocumentStates } from "../editor/documentStates";
 import { IndentMode, PlaygroundSettings, Workspace } from "../workspace";
 
@@ -30,14 +29,6 @@ export interface HeaderSwitchesOptions {
 	refreshAfterValidation(): void;
 }
 
-/** Maps re-indentation changes (0-based line and columns) to CodeMirror change specs. */
-function toCmChanges(doc: Text, changes: IndentChange[]): ChangeSpec[] {
-	return changes.map((change) => {
-		const line = doc.line(change.line + 1);
-		return { from: line.from + change.from, to: line.from + change.to, insert: change.insert };
-	});
-}
-
 /** Wires the header switches and paints their initial state. */
 export function setupHeaderSwitches(options: HeaderSwitchesOptions): void {
 	const { elements, settings, workspace, analyzer, editor, states } = options;
@@ -51,7 +42,7 @@ export function setupHeaderSwitches(options: HeaderSwitchesOptions): void {
 
 	/**
 	 * Re-indents every document of the workspace to the unit of a mode. Only structural
-	 * indentation changes (see `analysis/reindent.ts`); comments and block content stay as they
+	 * indentation changes (see `computeIndentChanges` of `@stxt-lang/editor`); comments and block content stay as they
 	 * are. A document with an editor state, in the view or parked, changes through it, so the
 	 * change is undoable; a document never shown is rewritten in the model. Either way the
 	 * model ends up with the new text (for the document in the view, the update listener has

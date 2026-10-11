@@ -1,4 +1,4 @@
-import { GrammarKind } from "../analysis";
+import { GrammarKind } from "@stxt-lang/editor";
 
 /** What kind of entry a list row is: a plain document, or one of the two grammar kinds. */
 export type DocumentListKind = "document" | GrammarKind;

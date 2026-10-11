@@ -1,9 +1,15 @@
 import { setDiagnostics } from "@codemirror/lint";
 import { EditorView } from "@codemirror/view";
-import { Analyzer, DocumentAnalysis } from "../analysis";
+import {
+	Analyzer,
+	createStxtEditor,
+	DocumentAnalysis,
+	lineAt,
+	setTokensEffect,
+	StxtEditor,
+	toCmDiagnostics,
+} from "@stxt-lang/editor";
 import { DocumentStates } from "../editor/documentStates";
-import { setTokensEffect } from "../editor/highlight";
-import { createStxtEditor, StxtEditor } from "../editor/stxtEditor";
 import { SEED_DOCUMENTS } from "../seed";
 import { confirmDialog, linkDialog } from "../ui/dialog";
 import { createDocumentList, DocumentList, DocumentListEntry } from "../ui/documentList";
@@ -23,7 +29,6 @@ import {
 	SHARE_PARAM,
 	Workspace,
 } from "../workspace";
-import { lineAt, toCmDiagnostics } from "./diagnostics";
 import { encodeDocumentLink } from "./documentLink";
 import { findElements, PlaygroundElements } from "./elements";
 import { applyLink, FragmentDialogs, linkOf } from "./fragment";

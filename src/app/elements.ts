@@ -12,6 +12,7 @@ export const ELEMENT_IDS = {
 	docReset: "doc-reset",
 	docClear: "doc-clear",
 	share: "share",
+	themeToggle: "theme-toggle",
 	status: "status",
 	viewTabs: "view-tabs",
 	sidebar: "sidebar",

@@ -1,0 +1,56 @@
+@use "sass:meta";
+@use "settings" as *;
+
+// The colours of the page as custom properties, so the theme can change without a reload. The
+// light values are the palette of _settings.scss, shared with the portal; the dark ones have the
+// hues of the dark theme of @stxt-lang/editor. The theme is the `data-theme` of <html>
+// (web/index.html sets it before the first paint, src/ui/themeToggle.ts after that).
+
+:root {
+	color-scheme: light;
+
+	--play-bar: #{$color1}; // the top bar; what is written on it is always white
+	--play-accent: #{$color1}; // links, the active document, focus, primary buttons
+	--play-accent-hover: #095f95;
+	--play-on-accent: #fff; // text on the accent and on the severity and namespace colours
+	--play-text: #{$black};
+	--play-muted: #{$stxt-muted};
+	--play-panel: #{$color4}; // the page, the document list
+	--play-surface: #fff; // the editor, the problems panel, the dialogs
+	--play-border: #{$color3};
+	--play-active: #{$color3}; // the active document, the problems count
+	--play-subtle: #{$grey}; // rules inside a panel, and the hover of a row
+	--play-namespace: #{$stxt-namespace};
+	--play-error: #c0392b;
+	--play-warning: #9a6b00;
+	--play-backdrop: #{rgba(#0a2a40, 0.45)};
+}
+
+:root[data-theme="dark"] {
+	color-scheme: dark;
+
+	--play-bar: #0e3a5c;
+	--play-accent: #6db3f2;
+	--play-accent-hover: #8cc4f5;
+	--play-on-accent: #0b1016;
+	--play-text: #d3dae1;
+	--play-muted: #8a96a3;
+	--play-panel: #0b1016;
+	--play-surface: #10171e;
+	--play-border: #24323f;
+	--play-active: #1f3449;
+	--play-subtle: #18222c;
+	--play-namespace: #3fc4c7;
+	--play-error: #ff8a80;
+	--play-warning: #e6c35c;
+	--play-backdrop: #{rgba(#000, 0.6)};
+
+	// The editor: the dark stylesheet of @stxt-lang/editor, which is the light one with the dark
+	// palette after it. Nested here its rules win over the light ones loaded in _editor.scss.
+	@include meta.load-css("pkg:@stxt-lang/editor/stxt-editor-dark.css");
+}
+
+/// A colour of the theme at a given strength, over whatever is behind.
+@function tint($property, $strength) {
+	@return color-mix(in srgb, var($property) $strength, transparent);
+}

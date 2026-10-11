@@ -240,6 +240,13 @@ describe("Settings persistence", () => {
 		storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ indent: "tabs", validation: true, sidebarWidth: -5 }));
 		assert.deepStrictEqual(loadSettings(storage), DEFAULT_SETTINGS, "so is a width that is not positive");
 
+		assert.strictEqual(saveSettings(storage, { indent: "tabs", validation: true, theme: "dark" }), true);
+		assert.deepStrictEqual(loadSettings(storage), { indent: "tabs", validation: true, theme: "dark" });
+
+		storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ indent: "tabs", validation: true, theme: "sepia" }));
+		assert.deepStrictEqual(loadSettings(storage), DEFAULT_SETTINGS,
+			"a theme that does not exist is dropped: without one, the theme is the system's");
+
 		storage.setItem(SETTINGS_STORAGE_KEY, "{oops");
 		assert.deepStrictEqual(loadSettings(storage), DEFAULT_SETTINGS, "corrupt JSON: defaults");
 	});

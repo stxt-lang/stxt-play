@@ -41,12 +41,13 @@ next to them, and see the errors while typing.
 - **The document list** can be reordered (dragging rows, or Alt+Up/Down) and resized (dragging
   the divider; a double click restores the default width).
 
-The header has two switches, and both are remembered between visits:
+The header has three settings, remembered between visits:
 
-| Switch | What it does |
+| Setting | What it does |
 |---|---|
 | Spaces / tabs | Converts the **structural** indentation of every document. Comments, values and the indentation inside text blocks are left as they are. It can be undone in each document |
 | Validate | Schema validation on or off. With validation on, a namespace that no grammar of the workspace covers is reported as `SCHEMA_NOT_FOUND`, also in a workspace with no grammar at all |
+| Theme (the last button) | Light or dark. Without a choice, the page follows the colour scheme of the system |
 
 The workspace lives in the browser. It is saved to `localStorage` while typing, and comes back
 on the next visit. Nothing leaves the machine.

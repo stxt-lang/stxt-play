@@ -16,6 +16,7 @@ import { createDocumentList, DocumentList, DocumentListEntry } from "../ui/docum
 import { setupHeaderSwitches } from "../ui/headerSwitches";
 import { createProblemsPanel, ProblemsPanel } from "../ui/problemsPanel";
 import { setupSplitter, Splitter } from "../ui/splitter";
+import { setupThemeToggle } from "../ui/themeToggle";
 import { createViewTabs, ViewTabs } from "../ui/viewTabs";
 import {
 	createWorkspacePersistence,
@@ -44,10 +45,10 @@ import { WorkspaceSync } from "./workspaceSync";
  * highlighting, underlines, the problems panel, the document list, the header, reads from the
  * analysis ({@link WorkspaceSync} carries each workspace event there). The editor shows one
  * document at a time; every workspace document keeps its own CodeMirror state
- * ({@link DocumentStates}), so switching preserves undo history and selection. The two header
- * switches, indentation mode and validation on/off, and the width of the document list are
- * settings, persisted apart from the workspace; a reset of the workspace also returns that width
- * to its default, and both panes to their top.
+ * ({@link DocumentStates}), so switching preserves undo history and selection. The header
+ * switches, indentation mode, validation on/off and the theme, and the width of the document
+ * list are settings, persisted apart from the workspace; a reset of the workspace also returns
+ * that width to its default, and both panes to their top.
  *
  * What is decided here is only what needs the page: which dialog asks what, which element is
  * repainted with which data, and which browser event triggers what. The decisions that need no
@@ -201,6 +202,14 @@ export class Playground {
 				this.paintPanel();
 				this.paintList();
 			},
+		});
+
+		setupThemeToggle({
+			button: elements.themeToggle,
+			root: document.documentElement,
+			settings: this.settings,
+			system: window.matchMedia("(prefers-color-scheme: dark)"),
+			persistSettings: () => this.persistSettings(),
 		});
 
 		// --- Wiring: the workspace drives everything ------------------------------------------

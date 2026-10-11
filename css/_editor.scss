@@ -4,7 +4,12 @@
 // differ in the playground would be one of its --stxt-* custom properties, set below.
 @use "pkg:@stxt-lang/editor/stxt-editor.css";
 
-// The pane is delimited by the layout (sidebar, problems panel), not by a border of its own
-.stxt-editor {
+// The dark theme is the dark stylesheet of the library, loaded in _theme.scss under the
+// `data-theme` of the page.
+
+// The pane is delimited by the layout (sidebar, problems panel), not by a border of its own.
+// Said for the dark theme too: there the rules of the library are nested, and weigh more.
+.stxt-editor,
+:root[data-theme="dark"] .stxt-editor {
 	border: 0;
 }

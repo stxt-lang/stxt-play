@@ -4,25 +4,21 @@
 // templates) look different: a letter badge in the namespace colour, and a monospace label,
 // because what identifies them is their namespace, not a title.
 
-// Severity colours, the same as the problems panel in _layout.scss
-$error: #c0392b;
-$warning: #9a6b00;
-
 .sidebar {
 	display: flex;
 	flex: none;
 	flex-direction: column;
 	// The splitter (src/ui/splitter.ts) resizes the list by setting the custom property inline
 	width: var(--sidebar-width, 20rem);
-	border-right: 1px solid $color3;
-	background: $color4;
+	border-right: 1px solid var(--play-border);
+	background: var(--play-panel);
 
 	.sidebar-header {
 		display: flex;
 		align-items: center;
 		padding: 0.35rem 0.6rem 0.35rem 1rem;
-		border-bottom: 1px solid $grey;
-		color: $stxt-muted;
+		border-bottom: 1px solid var(--play-subtle);
+		color: var(--play-muted);
 		font-size: 0.75rem;
 		font-weight: 600;
 		text-transform: uppercase;
@@ -40,7 +36,7 @@ $warning: #9a6b00;
 		padding: 0;
 		border: 1px solid transparent;
 		background: transparent;
-		color: $color1;
+		color: var(--play-accent);
 		font-size: 1.1rem;
 		line-height: 1;
 		cursor: pointer;
@@ -55,16 +51,16 @@ $warning: #9a6b00;
 
 		&:hover,
 		&:focus-visible {
-			border-color: $color1;
-			background: #fff;
+			border-color: var(--play-accent);
+			background: var(--play-surface);
 			outline: none;
 		}
 	}
 
 	.sidebar-footer {
 		padding: 0.35rem 1rem;
-		border-top: 1px solid $grey;
-		color: $stxt-muted;
+		border-top: 1px solid var(--play-subtle);
+		color: var(--play-muted);
 		font-size: 0.7rem;
 	}
 }
@@ -87,17 +83,17 @@ $warning: #9a6b00;
 	cursor: pointer;
 
 	&:hover {
-		background: $grey;
+		background: var(--play-subtle);
 	}
 
 	&:focus-visible {
-		outline: 1px solid $color1;
+		outline: 1px solid var(--play-accent);
 		outline-offset: -1px;
 	}
 
 	&.doc-active {
-		border-left-color: $color1;
-		background: $color3;
+		border-left-color: var(--play-accent);
+		background: var(--play-active);
 	}
 
 	// Drag and drop to reorder: the dragged row fades, the target shows a line where it would land
@@ -106,18 +102,18 @@ $warning: #9a6b00;
 	}
 
 	&.doc-drop-before {
-		box-shadow: inset 0 2px 0 $color1;
+		box-shadow: inset 0 2px 0 var(--play-accent);
 	}
 
 	&.doc-drop-after {
-		box-shadow: inset 0 -2px 0 $color1;
+		box-shadow: inset 0 -2px 0 var(--play-accent);
 	}
 
 	.doc-kind {
 		flex: none;
 		width: 1.2rem;
 		height: 1.2rem;
-		color: $stxt-muted;
+		color: var(--play-muted);
 		font-family: $font-mono;
 		font-size: 0.7rem;
 		font-weight: 700;
@@ -141,7 +137,7 @@ $warning: #9a6b00;
 	.doc-count {
 		min-width: 1.1rem;
 		padding: 0 0.3rem;
-		color: #fff;
+		color: var(--play-on-accent);
 		font-size: 0.65rem;
 		font-weight: 700;
 		line-height: 1.1rem;
@@ -149,11 +145,11 @@ $warning: #9a6b00;
 	}
 
 	.doc-count-error {
-		background: $error;
+		background: var(--play-error);
 	}
 
 	.doc-count-warning {
-		background: $warning;
+		background: var(--play-warning);
 	}
 
 	.doc-share,
@@ -165,7 +161,7 @@ $warning: #9a6b00;
 		padding: 0;
 		border: 0;
 		background: transparent;
-		color: $stxt-muted;
+		color: var(--play-muted);
 		font-size: 1rem;
 		line-height: 1;
 		cursor: pointer;
@@ -181,13 +177,13 @@ $warning: #9a6b00;
 
 	.doc-share:hover,
 	.doc-edit:hover {
-		background: #fff;
-		color: $color1;
+		background: var(--play-surface);
+		color: var(--play-accent);
 	}
 
 	.doc-delete:hover {
-		background: #fff;
-		color: $error;
+		background: var(--play-surface);
+		color: var(--play-error);
 	}
 
 	&:hover .doc-share,
@@ -206,14 +202,14 @@ $warning: #9a6b00;
 	&.doc-schema,
 	&.doc-template {
 		.doc-kind {
-			background: $stxt-namespace;
-			color: #fff;
+			background: var(--play-namespace);
+			color: var(--play-on-accent);
 		}
 
 		.doc-label {
 			font-family: $font-mono;
 			font-size: 0.8rem;
-			color: $stxt-namespace;
+			color: var(--play-namespace);
 		}
 	}
 
@@ -221,10 +217,10 @@ $warning: #9a6b00;
 		flex: 1;
 		min-width: 0;
 		padding: 0.1rem 0.3rem;
-		border: 1px solid $color1;
+		border: 1px solid var(--play-accent);
 		font: inherit;
-		color: $black;
-		background: #fff;
+		color: var(--play-text);
+		background: var(--play-surface);
 
 		&:focus {
 			outline: none;

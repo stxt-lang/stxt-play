@@ -52,6 +52,7 @@ export {
 	saveWorkspace,
 	SETTINGS_STORAGE_KEY,
 	StoredWorkspace,
+	Theme,
 	toWorkspaceSnapshot,
 	WORKSPACE_STORAGE_KEY,
 	WORKSPACE_STORAGE_VERSION,

@@ -18,7 +18,10 @@ export const SETTINGS_STORAGE_KEY = "stxt-play.settings";
 /** How the editor indents: a real tab per level, or four spaces. STXT accepts both. */
 export type IndentMode = "tabs" | "spaces";
 
-/** The user preferences of the playground: the two switches of the header and the layout. */
+/** The colours of the page. */
+export type Theme = "light" | "dark";
+
+/** The user preferences of the playground: the switches of the header and the layout. */
 export interface PlaygroundSettings {
 	/** What the Tab key inserts; switching re-indents the structural indentation of the workspace. */
 	indent: IndentMode;
@@ -26,6 +29,8 @@ export interface PlaygroundSettings {
 	validation: boolean;
 	/** Width of the document list in CSS pixels, set by dragging the divider; absent = the stylesheet default. */
 	sidebarWidth?: number;
+	/** The theme chosen with the button of the header; absent = the one of the system. */
+	theme?: Theme;
 }
 
 /** Settings of a fresh playground. */
@@ -114,6 +119,10 @@ export function loadSettings(storage: KeyValueStorage): PlaygroundSettings {
 	// Optional, and its default is the stylesheet's: a malformed width is dropped, not replaced
 	if (typeof candidate.sidebarWidth === "number" && Number.isFinite(candidate.sidebarWidth) && candidate.sidebarWidth > 0) {
 		settings.sidebarWidth = candidate.sidebarWidth;
+	}
+	// Optional too: without it the theme is the system's
+	if (candidate.theme === "light" || candidate.theme === "dark") {
+		settings.theme = candidate.theme;
 	}
 	return settings;
 }

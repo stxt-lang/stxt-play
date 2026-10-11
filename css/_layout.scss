@@ -1,11 +1,8 @@
 @use "settings" as *;
+@use "theme";
 
 // Layout of the playground page: top bar, workbench (sidebar + editor) and problems panel.
 // The sidebar itself is styled in _sidebar.scss.
-
-// Severity colours of the problems panel (playground-only, not part of the shared palette)
-$error: #c0392b;
-$warning: #9a6b00;
 
 html,
 body {
@@ -17,8 +14,8 @@ body {
 	flex-direction: column;
 	margin: 0;
 	font-family: $font-body;
-	color: $black;
-	background: $color4;
+	color: var(--play-text);
+	background: var(--play-panel);
 }
 
 // Same height, brand size and horizontal padding as the portal's header (stxt-cms,
@@ -29,7 +26,7 @@ body {
 	gap: 1rem;
 	min-height: 52px;
 	padding: 0 1.25rem;
-	background: $color1;
+	background: var(--play-bar);
 	color: #fff;
 
 	.brand {
@@ -88,6 +85,25 @@ body {
 		&:focus-visible {
 			outline: 2px solid #fff;
 			outline-offset: 2px;
+		}
+	}
+
+	// An icon instead of a word: the theme button, last in the bar. Pressed is the dark theme.
+	// It is outside .topbar-controls so that on narrow screens it stays in the first row, next
+	// to the title: the row of the controls has no room for one more
+	.topbar-icon {
+		flex: none;
+		padding: 0.15rem 0.3rem;
+
+		svg {
+			display: block;
+			width: 1.1rem;
+			height: 1.1rem;
+		}
+
+		&[aria-pressed="true"] {
+			background: #fff;
+			color: var(--play-bar);
 		}
 	}
 
@@ -151,7 +167,7 @@ body {
 
 			&[aria-pressed="true"] {
 				background: #fff;
-				color: $color1;
+				color: var(--play-bar);
 				font-weight: 600;
 			}
 
@@ -202,7 +218,7 @@ body {
 
 			.switch-thumb {
 				transform: translateX(0.9rem);
-				background: $color1;
+				background: var(--play-bar);
 			}
 		}
 
@@ -224,8 +240,8 @@ body {
 	left: 50%;
 	z-index: 20;
 	padding: 0.35rem 0.9rem;
-	background: $black;
-	color: #fff;
+	background: var(--play-text);
+	color: var(--play-surface);
 	font-size: 0.8rem;
 	opacity: 0;
 	transform: translate(-50%, -0.5rem);
@@ -258,7 +274,7 @@ body {
 	&:hover,
 	&:focus-visible,
 	&.splitter-active {
-		background: rgba($color1, 0.35);
+		background: theme.tint(--play-accent, 35%);
 	}
 
 	&:focus-visible {
@@ -271,8 +287,8 @@ body {
 .view-tabs {
 	display: none;
 	flex: none;
-	border-bottom: 1px solid $color3;
-	background: $color4;
+	border-bottom: 1px solid var(--play-border);
+	background: var(--play-panel);
 
 	button {
 		flex: 1;
@@ -280,7 +296,7 @@ body {
 		border: 0;
 		border-bottom: 2px solid transparent;
 		background: transparent;
-		color: $stxt-muted;
+		color: var(--play-muted);
 		font: inherit;
 		font-size: 0.8rem;
 		font-weight: 600;
@@ -289,12 +305,12 @@ body {
 		cursor: pointer;
 
 		&[aria-selected="true"] {
-			border-bottom-color: $color1;
-			color: $color1;
+			border-bottom-color: var(--play-accent);
+			color: var(--play-accent);
 		}
 
 		&:focus-visible {
-			outline: 2px solid $color1;
+			outline: 2px solid var(--play-accent);
 			outline-offset: -2px;
 		}
 	}
@@ -304,8 +320,8 @@ body {
 		min-width: 1.2rem;
 		margin-left: 0.3rem;
 		padding: 0 0.4rem;
-		background: $error;
-		color: #fff;
+		background: var(--play-error);
+		color: var(--play-on-accent);
 		font-size: 0.7rem;
 		line-height: 1.2rem;
 		text-align: center;
@@ -320,20 +336,20 @@ body {
 .editor {
 	flex: 1;
 	min-width: 0;
-	background: #fff;
+	background: var(--play-surface);
 }
 
 .problems {
 	display: flex;
 	flex-direction: column;
 	height: 11rem;
-	border-top: 1px solid $color3;
-	background: #fff;
+	border-top: 1px solid var(--play-border);
+	background: var(--play-surface);
 
 	.problems-header {
 		padding: 0.35rem 1rem;
-		border-bottom: 1px solid $grey;
-		color: $stxt-muted;
+		border-bottom: 1px solid var(--play-subtle);
+		color: var(--play-muted);
 		font-size: 0.75rem;
 		font-weight: 600;
 		text-transform: uppercase;
@@ -345,8 +361,8 @@ body {
 		min-width: 1.2rem;
 		margin-left: 0.5rem;
 		padding: 0 0.4rem;
-		background: $color3;
-		color: $color1;
+		background: var(--play-active);
+		color: var(--play-accent);
 		text-align: center;
 	}
 
@@ -367,7 +383,7 @@ body {
 		cursor: pointer;
 
 		&:hover {
-			background: $grey;
+			background: var(--play-subtle);
 		}
 	}
 
@@ -379,19 +395,19 @@ body {
 	}
 
 	.problem-error .problem-severity {
-		background: $error;
+		background: var(--play-error);
 	}
 
 	.problem-warning .problem-severity {
-		background: $warning;
+		background: var(--play-warning);
 	}
 
 	.problem-source {
 		flex: none;
 		min-width: 4.6rem;
 		padding: 0 0.4rem;
-		background: $grey;
-		color: $stxt-muted;
+		background: var(--play-subtle);
+		color: var(--play-muted);
 		font-family: $font-mono;
 		font-size: 0.7rem;
 		line-height: 1.3rem;
@@ -399,18 +415,18 @@ body {
 	}
 
 	.problem-source-syntax {
-		background: rgba($error, 0.1);
-		color: $error;
+		background: theme.tint(--play-error, 10%);
+		color: var(--play-error);
 	}
 
 	.problem-source-grammar {
-		background: rgba($stxt-namespace, 0.12);
-		color: $stxt-namespace;
+		background: theme.tint(--play-namespace, 12%);
+		color: var(--play-namespace);
 	}
 
 	.problem-source-validation {
-		background: rgba($warning, 0.12);
-		color: $warning;
+		background: theme.tint(--play-warning, 12%);
+		color: var(--play-warning);
 	}
 
 	.problem-message {
@@ -422,13 +438,13 @@ body {
 
 	.problem-line {
 		flex: none;
-		color: $stxt-muted;
+		color: var(--play-muted);
 		font-size: 0.75rem;
 	}
 
 	.problem-none {
 		padding: 0.3rem 1rem;
-		color: $stxt-muted;
+		color: var(--play-muted);
 	}
 }
 

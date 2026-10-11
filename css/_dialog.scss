@@ -18,7 +18,7 @@
 	display: none;
 	align-items: center;
 	justify-content: center;
-	color: $black;
+	color: var(--play-text);
 	font-family: $font-body;
 
 	&[open] {
@@ -26,7 +26,7 @@
 	}
 
 	&::backdrop {
-		background: rgba(#0a2a40, 0.45);
+		background: var(--play-backdrop);
 	}
 }
 
@@ -34,7 +34,7 @@
 	width: 100%;
 	max-width: 26rem;
 	padding: 1.25rem 1.4rem 1.1rem;
-	background: #fff;
+	background: var(--play-surface);
 	box-shadow: 0 12px 40px rgba(#000, 0.25);
 	animation: play-dialog-in 0.15s ease-out;
 }
@@ -54,7 +54,7 @@
 	margin: 0 0 0.5rem;
 	font-size: 1.05rem;
 	font-weight: 600;
-	color: $color1;
+	color: var(--play-accent);
 	word-break: break-word;
 }
 
@@ -68,13 +68,13 @@
 	width: 100%;
 	margin: -0.4rem 0 1rem;
 	padding: 0.4rem 0.55rem;
-	border: 1px solid $color3;
-	background: $color4;
-	color: $black;
+	border: 1px solid var(--play-border);
+	background: var(--play-panel);
+	color: var(--play-text);
 	font: 0.8rem $font-mono;
 
 	&:focus {
-		border-color: $color1;
+		border-color: var(--play-accent);
 		outline: none;
 	}
 }
@@ -87,30 +87,30 @@
 
 .play-dialog-button {
 	padding: 0.4rem 0.9rem;
-	border: 1px solid $color3;
-	background: #fff;
-	color: $black;
+	border: 1px solid var(--play-border);
+	background: var(--play-surface);
+	color: var(--play-text);
 	font: inherit;
 	font-size: 0.875rem;
 	cursor: pointer;
 
 	&:hover {
-		background: $color4;
-		border-color: $color1;
+		background: var(--play-panel);
+		border-color: var(--play-accent);
 	}
 
 	&:focus-visible {
-		outline: 2px solid $color1;
+		outline: 2px solid var(--play-accent);
 		outline-offset: 2px;
 	}
 
 	&.play-dialog-primary {
-		border-color: $color1;
-		background: $color1;
-		color: #fff;
+		border-color: var(--play-accent);
+		background: var(--play-accent);
+		color: var(--play-on-accent);
 
 		&:hover {
-			background: #095f95;
+			background: var(--play-accent-hover);
 		}
 	}
 
@@ -118,12 +118,12 @@
 	// not a working editor, and a red button reads as more of a threat than losing an example
 	// deserves. What still marks the destructive case is the initial focus on Cancel.
 	&.play-dialog-danger {
-		border-color: $color1;
-		background: $color1;
-		color: #fff;
+		border-color: var(--play-accent);
+		background: var(--play-accent);
+		color: var(--play-on-accent);
 
 		&:hover {
-			background: #095f95;
+			background: var(--play-accent-hover);
 		}
 	}
 }

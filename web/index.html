@@ -18,11 +18,22 @@
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-	<link rel="stylesheet" href="css/site.css?v=e559dd1a15">
+	<!-- The theme, before the first paint: the one chosen here, or the system's (src/app/theme.ts) -->
+	<script>
+		(function () {
+			var theme;
+			try { theme = JSON.parse(localStorage.getItem("stxt-play.settings")).theme; } catch (e) { /* nothing stored */ }
+			if (theme !== "dark" && theme !== "light") {
+				theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+			}
+			document.documentElement.dataset.theme = theme;
+		})();
+	</script>
+	<link rel="stylesheet" href="css/site.css?v=93ff4393da">
 </head>
 <body>
 	<header class="topbar">
-		<span class="brand"><a class="brand-name" href="https://stxt.dev" title="STXT, the language site">STXT</a> <span class="brand-sub">Playground</span> <span id="app-version" class="brand-version" title="Playground version">v1.0.8</span></span>
+		<span class="brand"><a class="brand-name" href="https://stxt.dev" title="STXT, the language site">STXT</a> <span class="brand-sub">Playground</span> <span id="app-version" class="brand-version" title="Playground version">v1.0.9</span></span>
 		<span id="doc-title" class="doc-title"></span>
 		<div class="topbar-controls">
 			<div class="segmented" role="group" aria-label="Indentation">
@@ -39,6 +50,7 @@
 				<a href="https://github.com/stxt-lang/stxt-play" title="Source of the playground on GitHub">GitHub</a>
 			</nav>
 		</div>
+		<button id="theme-toggle" type="button" class="topbar-button topbar-icon" aria-pressed="false" aria-label="Dark theme" title="Switch to the dark theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"></circle><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"></path></svg></button>
 	</header>
 	<div id="status" class="status" role="status" aria-live="polite"></div>
 	<!-- Narrow screens only: one pane at a time, picked here (see _layout.scss) -->
@@ -65,6 +77,6 @@
 		<header class="problems-header">Problems <span id="problems-count" class="problems-count" aria-live="polite" aria-label="Number of problems">0</span></header>
 		<ul id="problems-list" class="problems-list"></ul>
 	</section>
-	<script src="js/play.js?v=320ef0681f"></script>
+	<script src="js/play.js?v=56617b971f"></script>
 </body>
 </html>

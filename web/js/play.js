@@ -24124,7 +24124,8 @@
     const rootLine = definition.root.getLine() - 1;
     return {
       documentId: definition.documentId,
-      line: onNamespace ? rootLine : definitionLine(definition.root, node.getName(), namespace) ?? rootLine
+      line: onNamespace ? rootLine : definitionLine(definition.root, node.getName(), namespace) ?? rootLine,
+      namespace
     };
   }
   function definitionLine(root, nodeName, namespace) {
@@ -24591,7 +24592,8 @@
      * @param id identifier of the document.
      * @param line 0-based line of the position.
      * @param character 0-based column of the position.
-     * @returns the workspace document and line of the definition, or undefined if there is none.
+     * @returns the workspace document and line of the definition, with the namespace it defines,
+     * or undefined if there is none.
      */
     findDefinition(id, line, character) {
       const analysis = this.analyses.get(id);
@@ -24877,6 +24879,9 @@ ${indentation}${unit}` : suggestion.text
       })
     ];
   }
+  var developerInfo = Facet.define({
+    combine: (values) => values.length > 0 ? values[0] : true
+  });
   function stxtHover(describe) {
     return hoverTooltip((view, pos) => {
       const line = view.state.doc.lineAt(pos);
@@ -24884,11 +24889,16 @@ ${indentation}${unit}` : suggestion.text
       if (!info) {
         return null;
       }
+      const technical = view.state.facet(developerInfo);
+      const definition = info.definition;
+      if (!technical && !definition) {
+        return null;
+      }
       return {
         pos: line.from,
         end: line.to,
         above: true,
-        create: () => ({ dom: render(info) })
+        create: () => ({ dom: technical || !definition ? render(info) : renderDocumentation(definition) })
       };
     });
   }
@@ -24915,6 +24925,29 @@ ${indentation}${unit}` : suggestion.text
       element2.textContent = text;
     }
     return element2;
+  }
+  function row(key, value) {
+    const element2 = el("div", "stxt-hover-row");
+    element2.appendChild(el("span", "stxt-hover-key", key));
+    element2.appendChild(el("span", "stxt-hover-value", value));
+    return element2;
+  }
+  function typeRows(definition) {
+    const rows = [row("Type", definition.type)];
+    if (definition.values.length > 0) {
+      rows.push(row("Values", definition.values.join(", ")));
+    }
+    return rows;
+  }
+  function renderDocumentation(definition) {
+    const root = el("div", "stxt-hover");
+    if (definition.description) {
+      root.appendChild(el("div", "stxt-hover-description", definition.description));
+    }
+    const section = el("div", "stxt-hover-definition");
+    section.append(...typeRows(definition));
+    root.appendChild(section);
+    return root;
   }
   function render(info) {
     const root = el("div", "stxt-hover");
@@ -24944,26 +24977,13 @@ ${indentation}${unit}` : suggestion.text
   function renderDefinition(definition) {
     const section = el("div", "stxt-hover-definition");
     section.appendChild(el("div", "stxt-hover-heading", `Grammar ${definition.namespace}`));
-    const type = el("div", "stxt-hover-row");
-    type.appendChild(el("span", "stxt-hover-key", "Type"));
-    type.appendChild(el("span", "stxt-hover-value", definition.type));
-    section.appendChild(type);
-    if (definition.values.length > 0) {
-      const values = el("div", "stxt-hover-row");
-      values.appendChild(el("span", "stxt-hover-key", "Values"));
-      values.appendChild(el("span", "stxt-hover-value", definition.values.join(", ")));
-      section.appendChild(values);
-    }
+    section.append(...typeRows(definition));
     if (definition.children.length > 0) {
-      const children = el("div", "stxt-hover-row");
-      children.appendChild(el("span", "stxt-hover-key", "Children"));
-      const list = el("span", "stxt-hover-value");
-      list.textContent = definition.children.map((child) => {
+      const children = definition.children.map((child) => {
         const name2 = child.namespace !== definition.namespace ? `${child.name} (${child.namespace})` : child.name;
         return `${name2} ${cardinality(child.min, child.max)}`;
       }).join(", ");
-      children.appendChild(list);
-      section.appendChild(children);
+      section.appendChild(row("Children", children));
     }
     if (definition.description) {
       section.appendChild(el("div", "stxt-hover-description", definition.description));
@@ -24972,6 +24992,11 @@ ${indentation}${unit}` : suggestion.text
   }
   var INDENT_UNITS = { tabs: TAB_UNIT, spaces: SPACES_UNIT };
   var indentCompartment = new Compartment();
+  var lineNumbersCompartment = new Compartment();
+  var developerInfoCompartment = new Compartment();
+  var LINE_NUMBERS = lineNumbers();
+  var NO_LINE_NUMBERS = [];
+  var lineNumbersExtension = (show) => show ? LINE_NUMBERS : NO_LINE_NUMBERS;
   var insertIndentUnit = (view) => {
     const { state } = view;
     if (state.selection.ranges.some((range) => !range.empty)) {
@@ -24986,7 +25011,7 @@ ${indentation}${unit}` : suggestion.text
   function createStxtExtensions(config) {
     const { onDocChanged, indent } = config;
     return [
-      lineNumbers(),
+      lineNumbersCompartment.of(lineNumbersExtension(config.lineNumbers ?? true)),
       highlightActiveLineGutter(),
       highlightActiveLine(),
       history2(),
@@ -25000,6 +25025,7 @@ ${indentation}${unit}` : suggestion.text
       lintGutter(),
       highlightField,
       stxtCompletion(config.completions),
+      developerInfoCompartment.of(developerInfo.of(config.developerInfo ?? true)),
       stxtHover(config.describeNode),
       stxtGoToDefinition(config.goToDefinition),
       EditorView.updateListener.of((update) => {
@@ -25012,24 +25038,45 @@ ${indentation}${unit}` : suggestion.text
   }
   function createStxtEditor(config) {
     let indent = config.indent;
+    let showLineNumbers = config.lineNumbers ?? true;
+    let showDeveloperInfo = config.developerInfo ?? true;
     const extensions = createStxtExtensions(config);
     const view = new EditorView({ parent: config.parent, state: EditorState.create({ doc: "", extensions }) });
-    const applyIndent = () => {
-      if (view.state.facet(indentUnit) !== INDENT_UNITS[indent]) {
-        view.dispatch({ effects: indentCompartment.reconfigure(indentUnit.of(INDENT_UNITS[indent])) });
+    const applySettings = () => {
+      const { state } = view;
+      const effects = [];
+      if (state.facet(indentUnit) !== INDENT_UNITS[indent]) {
+        effects.push(indentCompartment.reconfigure(indentUnit.of(INDENT_UNITS[indent])));
+      }
+      if (lineNumbersCompartment.get(state) !== lineNumbersExtension(showLineNumbers)) {
+        effects.push(lineNumbersCompartment.reconfigure(lineNumbersExtension(showLineNumbers)));
+      }
+      if (state.facet(developerInfo) !== showDeveloperInfo) {
+        effects.push(developerInfoCompartment.reconfigure(developerInfo.of(showDeveloperInfo)));
+      }
+      if (effects.length > 0) {
+        view.dispatch({ effects });
       }
     };
     return {
       view,
-      // States are born with the initial mode; showState brings them to the current one
+      // States are born with the initial settings; showState brings them to the current ones
       createState: (doc2) => EditorState.create({ doc: doc2, extensions }),
       showState: (state) => {
         view.setState(state);
-        applyIndent();
+        applySettings();
       },
       setIndentMode: (mode) => {
         indent = mode;
-        applyIndent();
+        applySettings();
+      },
+      setLineNumbers: (show) => {
+        showLineNumbers = show;
+        applySettings();
+      },
+      setDeveloperInfo: (show) => {
+        showDeveloperInfo = show;
+        applySettings();
       }
     };
   }
@@ -25367,10 +25414,10 @@ Book (stxt.play.library):
     let entries = [];
     let renaming = null;
     let dragging = null;
-    const dropClass = (row, event) => event.clientY < row.getBoundingClientRect().top + row.offsetHeight / 2 ? "doc-drop-before" : "doc-drop-after";
+    const dropClass = (row2, event) => event.clientY < row2.getBoundingClientRect().top + row2.offsetHeight / 2 ? "doc-drop-before" : "doc-drop-after";
     const clearDropMarks = () => {
-      list.querySelectorAll(".doc-drop-before, .doc-drop-after").forEach((row) => {
-        row.classList.remove("doc-drop-before", "doc-drop-after");
+      list.querySelectorAll(".doc-drop-before, .doc-drop-after").forEach((row2) => {
+        row2.classList.remove("doc-drop-before", "doc-drop-after");
       });
     };
     const dropIndex = (id, targetIndex, before) => {
@@ -25410,12 +25457,12 @@ Book (stxt.play.library):
       }
     };
     const renderRow = (entry) => {
-      const row = document.createElement("li");
-      row.className = `doc doc-${entry.kind}${entry.active ? " doc-active" : ""}`;
-      row.tabIndex = 0;
-      row.setAttribute("role", "option");
-      row.setAttribute("aria-selected", String(entry.active));
-      row.dataset.id = entry.id;
+      const row2 = document.createElement("li");
+      row2.className = `doc doc-${entry.kind}${entry.active ? " doc-active" : ""}`;
+      row2.tabIndex = 0;
+      row2.setAttribute("role", "option");
+      row2.setAttribute("aria-selected", String(entry.active));
+      row2.dataset.id = entry.id;
       const badge = document.createElement("span");
       badge.className = "doc-kind";
       badge.textContent = KIND_BADGE[entry.kind];
@@ -25462,26 +25509,26 @@ Book (stxt.play.library):
         event.stopPropagation();
         handlers2.onDelete(entry.id);
       });
-      row.append(badge, label, problems, share);
+      row2.append(badge, label, problems, share);
       if (entry.renamable) {
-        row.append(rename);
+        row2.append(rename);
       }
-      row.append(remove2);
-      row.draggable = true;
-      row.addEventListener("dragstart", (event) => {
+      row2.append(remove2);
+      row2.draggable = true;
+      row2.addEventListener("dragstart", (event) => {
         dragging = entry.id;
-        row.classList.add("doc-dragging");
+        row2.classList.add("doc-dragging");
         if (event.dataTransfer) {
           event.dataTransfer.effectAllowed = "move";
           event.dataTransfer.setData("text/plain", entry.id);
         }
       });
-      row.addEventListener("dragend", () => {
+      row2.addEventListener("dragend", () => {
         dragging = null;
-        row.classList.remove("doc-dragging");
+        row2.classList.remove("doc-dragging");
         clearDropMarks();
       });
-      row.addEventListener("dragover", (event) => {
+      row2.addEventListener("dragover", (event) => {
         if (dragging === null || dragging === entry.id) {
           return;
         }
@@ -25489,35 +25536,35 @@ Book (stxt.play.library):
         if (event.dataTransfer) {
           event.dataTransfer.dropEffect = "move";
         }
-        const mark = dropClass(row, event);
-        if (!row.classList.contains(mark)) {
+        const mark = dropClass(row2, event);
+        if (!row2.classList.contains(mark)) {
           clearDropMarks();
-          row.classList.add(mark);
+          row2.classList.add(mark);
         }
       });
-      row.addEventListener("dragleave", () => {
-        row.classList.remove("doc-drop-before", "doc-drop-after");
+      row2.addEventListener("dragleave", () => {
+        row2.classList.remove("doc-drop-before", "doc-drop-after");
       });
-      row.addEventListener("drop", (event) => {
+      row2.addEventListener("drop", (event) => {
         if (dragging === null || dragging === entry.id) {
           return;
         }
         event.preventDefault();
-        const before = dropClass(row, event) === "doc-drop-before";
+        const before = dropClass(row2, event) === "doc-drop-before";
         const targetIndex = entries.findIndex((e) => e.id === entry.id);
         const id = dragging;
         dragging = null;
         clearDropMarks();
         handlers2.onMove(id, dropIndex(id, targetIndex, before));
       });
-      row.addEventListener("click", () => handlers2.onSelect(entry.id));
+      row2.addEventListener("click", () => handlers2.onSelect(entry.id));
       if (entry.renamable) {
         label.addEventListener("dblclick", (event) => {
           event.stopPropagation();
           startRename(entry.id);
         });
       }
-      row.addEventListener("keydown", (event) => {
+      row2.addEventListener("keydown", (event) => {
         switch (event.key) {
           case "Enter":
           case " ":
@@ -25542,12 +25589,12 @@ Book (stxt.play.library):
             break;
         }
       });
-      return row;
+      return row2;
     };
     const renderRenameRow = (entry) => {
-      const row = document.createElement("li");
-      row.className = `doc doc-${entry.kind} doc-renaming${entry.active ? " doc-active" : ""}`;
-      row.dataset.id = entry.id;
+      const row2 = document.createElement("li");
+      row2.className = `doc doc-${entry.kind} doc-renaming${entry.active ? " doc-active" : ""}`;
+      row2.dataset.id = entry.id;
       const badge = document.createElement("span");
       badge.className = "doc-kind";
       badge.textContent = KIND_BADGE[entry.kind];
@@ -25566,8 +25613,8 @@ Book (stxt.play.library):
         }
       });
       input.addEventListener("blur", () => finishRename(entry, input.value));
-      row.append(badge, input);
-      return row;
+      row2.append(badge, input);
+      return row2;
     };
     const problemCount = (severity, count) => {
       const span = document.createElement("span");
@@ -25653,8 +25700,8 @@ Book (stxt.play.library):
           return;
         }
         for (const diagnostic of diagnostics) {
-          const row = document.createElement("li");
-          row.className = `problem problem-${diagnostic.severity}`;
+          const row2 = document.createElement("li");
+          row2.className = `problem problem-${diagnostic.severity}`;
           const severity = document.createElement("span");
           severity.className = "problem-severity";
           severity.title = diagnostic.severity;
@@ -25668,9 +25715,9 @@ Book (stxt.play.library):
           const line = document.createElement("span");
           line.className = "problem-line";
           line.textContent = `Ln ${diagnostic.line + 1}`;
-          row.append(severity, source, message, line);
-          row.addEventListener("click", () => onSelect(diagnostic.line));
-          list.appendChild(row);
+          row2.append(severity, source, message, line);
+          row2.addEventListener("click", () => onSelect(diagnostic.line));
+          list.appendChild(row2);
         }
       }
     };
@@ -25737,6 +25784,39 @@ Book (stxt.play.library):
     };
     handle.addEventListener("dblclick", reset);
     return { reset };
+  }
+
+  // src/app/theme.ts
+  var systemTheme = (systemDark) => systemDark ? "dark" : "light";
+  function themeOf(chosen, systemDark) {
+    return chosen ?? systemTheme(systemDark);
+  }
+  function toggledTheme(chosen, systemDark) {
+    const next = themeOf(chosen, systemDark) === "dark" ? "light" : "dark";
+    return next === systemTheme(systemDark) ? void 0 : next;
+  }
+
+  // src/ui/themeToggle.ts
+  function setupThemeToggle(options) {
+    const { button: button2, root, settings, system } = options;
+    const render2 = () => {
+      const theme2 = themeOf(settings.theme, system.matches);
+      root.dataset.theme = theme2;
+      button2.setAttribute("aria-pressed", String(theme2 === "dark"));
+      button2.title = theme2 === "dark" ? "Switch to the light theme" : "Switch to the dark theme";
+    };
+    button2.addEventListener("click", () => {
+      const theme2 = toggledTheme(settings.theme, system.matches);
+      if (theme2 === void 0) {
+        delete settings.theme;
+      } else {
+        settings.theme = theme2;
+      }
+      options.persistSettings();
+      render2();
+    });
+    system.addEventListener("change", render2);
+    render2();
   }
 
   // src/ui/viewTabs.ts
@@ -26131,6 +26211,9 @@ Book (stxt.play.library):
     if (typeof candidate.sidebarWidth === "number" && Number.isFinite(candidate.sidebarWidth) && candidate.sidebarWidth > 0) {
       settings.sidebarWidth = candidate.sidebarWidth;
     }
+    if (candidate.theme === "light" || candidate.theme === "dark") {
+      settings.theme = candidate.theme;
+    }
     return settings;
   }
   function saveSettings(storage, settings) {
@@ -26377,6 +26460,7 @@ Book (stxt.play.library):
     docReset: "doc-reset",
     docClear: "doc-clear",
     share: "share",
+    themeToggle: "theme-toggle",
     status: "status",
     viewTabs: "view-tabs",
     sidebar: "sidebar",
@@ -26690,6 +26774,13 @@ Book (stxt.play.library):
           this.paintPanel();
           this.paintList();
         }
+      });
+      setupThemeToggle({
+        button: elements.themeToggle,
+        root: document.documentElement,
+        settings: this.settings,
+        system: window.matchMedia("(prefers-color-scheme: dark)"),
+        persistSettings: () => this.persistSettings()
       });
       new WorkspaceSync(this.workspace, this.analyzer, this.states, {
         list: () => this.paintList(),

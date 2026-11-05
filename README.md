@@ -82,15 +82,15 @@ What travels in the link is STXT: one document that carries the whole workspace.
 ```stxt
 # STXT Playground workspace: https://play.stxt.dev
 Workspace (stxt.play.share):
-	Version: 1
-	Document: Recipe
-		Active: true
-		Text >>
-			Recipe (stxt.play.cooking): Pancakes
-			...
-	Document: stxt.play.cooking
-		Text >>
-			...
+    Version: 1
+    Document: Recipe
+        Active: true
+        Text >>
+            Recipe (stxt.play.cooking): Pancakes
+            ...
+    Document: stxt.play.cooking
+        Text >>
+            ...
 ```
 
 - There is one `Document` per workspace document, in order, with its title as the value.
